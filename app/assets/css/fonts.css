@@ -1,0 +1,29 @@
+/**
+ * Static @font-face declarations for Unicode text fonts.
+ *
+ * These are loaded globally (not per-page like QCF fonts).
+ * QCF fonts (v1, v2, v4) are loaded dynamically by useQcfFont composable.
+ *
+ * All fonts are served from the CDN at https://assets.quran.in.th/fonts/
+ */
+
+/* QPC Uthmani Hafs — used for QuranFont.QPCHafs */
+@font-face {
+  font-family: 'UthmanicHafs';
+  src:
+    url('https://assets.quran.in.th/fonts/hafs/uthmanic_hafs/UthmanicHafs1Ver18.woff2') format('woff2'),
+    url('https://assets.quran.in.th/fonts/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf') format('truetype');
+  font-display: swap;
+}
+
+/*
+ * IndoPak Nastaleeq — used for QuranFont.IndoPak (15-line layout)
+ */
+@font-face {
+  font-family: 'IndoPakNastaleeq';
+  src:
+    url('https://assets.quran.in.th/fonts/hafs/nastaleeq/indopak/indopak-nastaleeq-waqf-lazim-v4.2.1.woff2') format('woff2'),
+    url('https://assets.quran.in.th/fonts/hafs/nastaleeq/indopak/indopak-nastaleeq-waqf-lazim-v4.2.1.woff') format('woff'),
+    url('https://assets.quran.in.th/fonts/hafs/nastaleeq/indopak/indopak-nastaleeq-waqf-lazim-v4.2.1.ttf') format('truetype');
+  font-display: swap;
+}
