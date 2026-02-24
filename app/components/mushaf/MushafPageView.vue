@@ -3,9 +3,16 @@
  * MushafPageView — renders a single Mushaf page with its lines of QCF glyphs.
  * Full-width, no card styling. White background unified with the page.
  * Pages 1-2 use center alignment and don't stretch to fill full height.
+ *
+ * Applies the mushaf scale class (from mushaf-scales.css) at the page level
+ * so --mushaf-font-size, --mushaf-line-height, and --mushaf-line-width
+ * all cascade down to MushafLine and GlyphWord children.
  */
 import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useMushafStore } from '~/stores/mushafStore'
+import { useFontSettingsStore } from '~/stores/fontSettingsStore'
+import { QuranFont } from '~/types/quran'
 import type { QuranWord } from '~/types/quran'
 
 interface Props {
@@ -15,6 +22,8 @@ interface Props {
 
 const props = defineProps<Props>()
 const mushafStore = useMushafStore()
+const fontSettings = useFontSettingsStore()
+const { quranFont, fontScale } = storeToRefs(fontSettings)
 
 const lines = computed<Record<number, QuranWord[]>>(() => {
   return mushafStore.getPageLines(props.pageNumber)
@@ -30,10 +39,26 @@ const hasWords = computed(() => sortedLineNumbers.value.length > 0)
 
 // Pages 1 and 2 have fewer words per line — center-align, don't stretch height
 const isCentered = computed(() => props.pageNumber <= 2)
+
+/**
+ * Build the mushaf scale CSS class name based on font type and scale level.
+ * Maps to classes defined in mushaf-scales.css (e.g. "qcf-v2-scale-3").
+ */
+const scaleClass = computed(() => {
+  const scale = fontScale.value
+  switch (quranFont.value) {
+    case QuranFont.MadaniV1:
+      return `qcf-v1-scale-${scale}`
+    case QuranFont.MadaniV2:
+    case QuranFont.TajweedV4:
+    default:
+      return `qcf-v2-scale-${scale}`
+  }
+})
 </script>
 
 <template>
-  <div class="mushaf-page">
+  <div class="mushaf-page" :class="scaleClass">
     <!-- Page content -->
     <div
       v-if="hasWords"
@@ -90,10 +115,10 @@ const isCentered = computed(() => props.pageNumber <= 2)
   background: white;
 }
 
-/* Tablet+: cqh-based page width (matches container height scaling) */
+/* Tablet+: page width scales with font size via --mushaf-line-width */
 @media (min-width: 768px) {
   .mushaf-page {
-    max-width: 56cqh;
+    max-width: var(--mushaf-line-width, 56cqh);
     padding: 0;
   }
 }

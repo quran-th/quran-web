@@ -42,7 +42,7 @@ export const useFontSettingsStore = defineStore('fontSettings', () => {
 
   // State
   const quranFont = ref<QuranFont>(saved?.quranFont ?? QuranFont.MadaniV2)
-  const fontScale = ref(saved?.fontScale ?? 3) // 1-5 range, 3 = default
+  const fontScale = ref(saved?.fontScale ?? 3) // 1-10 range, 3 = default
 
   // Getters
   const isQcf = computed(() => isQcfFont(quranFont.value))
@@ -56,7 +56,7 @@ export const useFontSettingsStore = defineStore('fontSettings', () => {
   }
 
   function setFontScale(scale: number) {
-    fontScale.value = Math.max(1, Math.min(5, scale))
+    fontScale.value = Math.max(1, Math.min(10, scale))
     persist()
   }
 

@@ -50,7 +50,7 @@ export default defineNuxtConfig({
     },
   },
 
-  css: ['~/assets/css/fonts.css'],
+  css: ['~/assets/css/fonts.css', '~/assets/css/mushaf-scales.css'],
 
   vite: {
     server: {

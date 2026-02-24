@@ -48,7 +48,7 @@ const decodedGlyph = computed(() => decodeHtmlEntities(props.glyphCode))
 
 <style scoped>
 .glyph-word {
-  line-height: normal;
+  line-height: var(--mushaf-line-height, normal);
   font-size: inherit;
 }
 

@@ -268,7 +268,7 @@ function handleOverlayClick(e: MouseEvent) {
             <div class="scale-controls">
               <button class="scale-btn" :disabled="fontScale <= 1" @click="fontSettings.decreaseFontScale()">−</button>
               <span class="scale-value">{{ fontScale }}</span>
-              <button class="scale-btn" :disabled="fontScale >= 5" @click="fontSettings.increaseFontScale()">+</button>
+              <button class="scale-btn" :disabled="fontScale >= 10" @click="fontSettings.increaseFontScale()">+</button>
             </div>
           </div>
         </div>

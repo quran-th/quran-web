@@ -1,0 +1,206 @@
+/**
+ * Mushaf font scale classes — ported from quran.com-frontend-next _utility.scss.
+ *
+ * Each class sets CSS variables consumed by MushafPageView, MushafLine, and GlyphWord:
+ *   --mushaf-font-size   : font size for glyph words
+ *   --mushaf-line-height  : line height (coupled with font size)
+ *   --mushaf-line-width   : page container width (scales with font size)
+ *
+ * Scale 1-10, default is 3. Values are tightly coupled per scale level
+ * to maintain correct Mushaf layout proportions.
+ *
+ * Mobile uses vw units, tablet+ uses cqh (container query height).
+ * On mobile, line-height is "normal" (font intrinsic).
+ */
+
+/* ── code_v2 / tajweed_v4 (King Fahd V2, Tajweed) ── */
+
+.qcf-v2-scale-1 {
+  --mushaf-font-size: 4vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v2-scale-2 {
+  --mushaf-font-size: 5vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v2-scale-3 {
+  --mushaf-font-size: 5.3vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v2-scale-4 {
+  --mushaf-font-size: 8.4vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v2-scale-5 {
+  --mushaf-font-size: 10vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v2-scale-6 {
+  --mushaf-font-size: 11vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v2-scale-7 {
+  --mushaf-font-size: 12vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v2-scale-8 {
+  --mushaf-font-size: 13vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v2-scale-9 {
+  --mushaf-font-size: 14vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v2-scale-10 {
+  --mushaf-font-size: 15vw;
+  --mushaf-line-height: normal;
+}
+
+@media (min-width: 768px) {
+  .qcf-v2-scale-1 {
+    --mushaf-font-size: 2.9cqh;
+    --mushaf-line-height: 6.1cqh;
+    --mushaf-line-width: 52cqh;
+  }
+  .qcf-v2-scale-2 {
+    --mushaf-font-size: 3cqh;
+    --mushaf-line-height: 6.1cqh;
+    --mushaf-line-width: 54cqh;
+  }
+  .qcf-v2-scale-3 {
+    --mushaf-font-size: 3.2cqh;
+    --mushaf-line-height: 6.1cqh;
+    --mushaf-line-width: 56cqh;
+  }
+  .qcf-v2-scale-4 {
+    --mushaf-font-size: 3.5cqh;
+    --mushaf-line-height: 6.1cqh;
+    --mushaf-line-width: 61cqh;
+  }
+  .qcf-v2-scale-5 {
+    --mushaf-font-size: 3.7cqh;
+    --mushaf-line-height: 6.1cqh;
+    --mushaf-line-width: 64.5cqh;
+  }
+  .qcf-v2-scale-6 {
+    --mushaf-font-size: 5.16cqh;
+    --mushaf-line-height: 9.28cqh;
+    --mushaf-line-width: 90.4cqh;
+  }
+  .qcf-v2-scale-7 {
+    --mushaf-font-size: 6.62cqh;
+    --mushaf-line-height: 12.46cqh;
+    --mushaf-line-width: 116.3cqh;
+  }
+  .qcf-v2-scale-8 {
+    --mushaf-font-size: 8.08cqh;
+    --mushaf-line-height: 15.64cqh;
+    --mushaf-line-width: 142.2cqh;
+  }
+  .qcf-v2-scale-9 {
+    --mushaf-font-size: 9.54cqh;
+    --mushaf-line-height: 18.82cqh;
+    --mushaf-line-width: 168.1cqh;
+  }
+  .qcf-v2-scale-10 {
+    --mushaf-font-size: 11cqh;
+    --mushaf-line-height: 22cqh;
+    --mushaf-line-width: 194cqh;
+  }
+}
+
+/* ── code_v1 (King Fahd V1) ── */
+
+.qcf-v1-scale-1 {
+  --mushaf-font-size: 4vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v1-scale-2 {
+  --mushaf-font-size: 5vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v1-scale-3 {
+  --mushaf-font-size: 5.9vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v1-scale-4 {
+  --mushaf-font-size: 10vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v1-scale-5 {
+  --mushaf-font-size: 12vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v1-scale-6 {
+  --mushaf-font-size: 13vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v1-scale-7 {
+  --mushaf-font-size: 14vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v1-scale-8 {
+  --mushaf-font-size: 15vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v1-scale-9 {
+  --mushaf-font-size: 16vw;
+  --mushaf-line-height: normal;
+}
+.qcf-v1-scale-10 {
+  --mushaf-font-size: 17vw;
+  --mushaf-line-height: normal;
+}
+
+@media (min-width: 768px) {
+  .qcf-v1-scale-1 {
+    --mushaf-font-size: 3.5cqh;
+    --mushaf-line-height: 6.1cqh;
+    --mushaf-line-width: 54cqh;
+  }
+  .qcf-v1-scale-2 {
+    --mushaf-font-size: 3.8cqh;
+    --mushaf-line-height: 6cqh;
+    --mushaf-line-width: 56.5cqh;
+  }
+  .qcf-v1-scale-3 {
+    --mushaf-font-size: 4cqh;
+    --mushaf-line-height: 5.8cqh;
+    --mushaf-line-width: 59.5cqh;
+  }
+  .qcf-v1-scale-4 {
+    --mushaf-font-size: 4.3cqh;
+    --mushaf-line-height: 5.4cqh;
+    --mushaf-line-width: 63cqh;
+  }
+  .qcf-v1-scale-5 {
+    --mushaf-font-size: 4.5cqh;
+    --mushaf-line-height: 5cqh;
+    --mushaf-line-width: 67cqh;
+  }
+  .qcf-v1-scale-6 {
+    --mushaf-font-size: 6.14cqh;
+    --mushaf-line-height: 8cqh;
+    --mushaf-line-width: 91.6cqh;
+  }
+  .qcf-v1-scale-7 {
+    --mushaf-font-size: 7.77cqh;
+    --mushaf-line-height: 11cqh;
+    --mushaf-line-width: 116.2cqh;
+  }
+  .qcf-v1-scale-8 {
+    --mushaf-font-size: 9.42cqh;
+    --mushaf-line-height: 14cqh;
+    --mushaf-line-width: 140.8cqh;
+  }
+  .qcf-v1-scale-9 {
+    --mushaf-font-size: 11.05cqh;
+    --mushaf-line-height: 17cqh;
+    --mushaf-line-width: 165.4cqh;
+  }
+  .qcf-v1-scale-10 {
+    --mushaf-font-size: 12.7cqh;
+    --mushaf-line-height: 20cqh;
+    --mushaf-line-width: 190cqh;
+  }
+}

@@ -7,6 +7,12 @@
  * All fonts are served from the CDN at https://assets.quran.in.th/fonts/
  */
 
+/* Global font rendering — matches quran.com for consistent glyph weight */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 /* QPC Uthmani Hafs — used for QuranFont.QPCHafs */
 @font-face {
   font-family: 'UthmanicHafs';

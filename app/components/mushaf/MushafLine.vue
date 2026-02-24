@@ -3,6 +3,9 @@
  * MushafLine — renders one line of a Mushaf page.
  * Words are justified across the full width in RTL layout,
  * except for special pages (1-2) where they are centered.
+ *
+ * Font size, line height, and container width are driven by CSS variables
+ * set on the parent MushafPageView via mushaf-scales.css classes.
  */
 import type { QuranWord } from '~/types/quran'
 
@@ -32,23 +35,11 @@ defineProps<Props>()
   justify-content: space-between;
   direction: rtl;
   text-align: right;
-  /* Mobile: vw-based scaling */
-  font-size: 5.3vw;
-  line-height: 10.1vw;
-  min-height: 10.1vw;
-}
-
-/* Tablet+ : cqh-based scaling (fits container height) */
-@media (min-width: 768px) {
-  .mushaf-line {
-    font-size: 3.2cqh;
-    line-height: 6.1cqh;
-    min-height: 6.1cqh;
-  }
+  font-size: var(--mushaf-font-size, 5.3vw);
+  line-height: var(--mushaf-line-height, normal);
 }
 
 .mushaf-line--centered {
   justify-content: center;
-  gap: 0.5em;
 }
 </style>
