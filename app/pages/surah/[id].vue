@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { onMounted, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch, computed } from 'vue'
 import { useQuranStore } from '~/stores/quranStore'
 import { useReaderSettingsStore } from '~/stores/readerSettingsStore'
 import { useFontSettingsStore } from '~/stores/fontSettingsStore'
@@ -10,24 +10,80 @@ const route = useRoute()
 const quranStore = useQuranStore()
 const fontSettings = useFontSettingsStore()
 const readerSettings = useReaderSettingsStore()
-const { currentSurah, loading, error, allWords } = storeToRefs(quranStore)
+const { currentSurah, verses, pagination, loading, loadingMore, error, allWords } = storeToRefs(quranStore)
 const { fontVersion } = storeToRefs(fontSettings)
 const { selectedSourceId, translationSources } = storeToRefs(readerSettings)
+
+// Sentinel ref for infinite scroll
+const sentinel = ref<HTMLElement | null>(null)
 
 // Initialize QCF font loading — loads per-page font files as words arrive
 const { isFontLoaded } = useQcfFont(allWords, fontVersion)
 
-onMounted(async () => {
-  const surahId = parseInt(route.params.id as string)
-  await readerSettings.fetchTranslationSources()
-  quranStore.fetchSurah(surahId, selectedSourceId.value)
+// SSR: Fetch first batch on server
+const id = parseInt(route.params.id as string)
+const { data: ssrData } = await useAsyncData(
+  `surah-${id}`,
+  async () => {
+    await readerSettings.fetchTranslationSources()
+    const params = new URLSearchParams({
+      offset: '0',
+      limit: '30',
+    })
+    const sourceId = selectedSourceId.value
+    if (sourceId) {
+      params.set('sourceId', sourceId.toString())
+    }
+    const url = `/api/surahs/${id}?${params.toString()}`
+    const response = await $fetch(url)
+    return response
+  }
+)
+
+// Hydrate store from SSR data
+if (ssrData.value && (ssrData.value as any).success) {
+  const data = (ssrData.value as any).data
+  currentSurah.value = {
+    id: data.id,
+    name: data.name,
+    englishName: data.englishName,
+    englishNameTranslation: data.englishNameTranslation,
+    revelationType: data.revelationType,
+    numberOfAyahs: data.numberOfAyahs,
+  }
+  verses.value = data.verses
+  pagination.value = data.pagination
+  // Load word data on client after hydration
+  onMounted(() => {
+    quranStore.fetchVerseWords(id)
+  })
+}
+
+onMounted(() => {
+  // Set up infinite scroll observer
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries[0].isIntersecting) {
+        quranStore.fetchNextBatch()
+      }
+    },
+    { rootMargin: '200px' }
+  )
+
+  if (sentinel.value) {
+    observer.observe(sentinel.value)
+  }
+
+  onUnmounted(() => {
+    observer.disconnect()
+  })
 })
 
 watch(
   () => route.params.id,
   (newId) => {
     if (newId) {
-      quranStore.fetchSurah(parseInt(newId as string), selectedSourceId.value)
+      quranStore.fetchVerses(parseInt(newId as string), selectedSourceId.value, 0)
     }
   }
 )
@@ -35,7 +91,7 @@ watch(
 function handleSourceChange(sourceId: number) {
   readerSettings.setTranslationSource(sourceId)
   const surahId = parseInt(route.params.id as string)
-  quranStore.fetchSurah(surahId, sourceId)
+  quranStore.fetchVerses(surahId, sourceId, 0)
 }
 
 useHead({
@@ -137,7 +193,7 @@ useHead({
 
         <!-- Verses List -->
         <ReadingVerseRow
-          v-for="verse in currentSurah.verses"
+          v-for="verse in verses"
           :key="verse.verseNumber"
           :verse="verse"
           :surah-number="currentSurah.id"
@@ -145,6 +201,35 @@ useHead({
           :words="quranStore.getWordsForVerse(verse.verseNumber)"
           :is-font-loaded="isFontLoaded"
         />
+
+        <!-- Infinite Scroll Sentinel -->
+        <div ref="sentinel" class="h-4" />
+
+        <!-- Loading More Spinner -->
+        <div v-if="loadingMore" class="flex justify-center py-8">
+          <svg width="40" height="40" viewBox="0 0 50 50">
+            <g fill="none" stroke="#60A5FA" stroke-width="2">
+              <path d="M15 10h15l5 5v20H15V10">
+                <animate attributeName="stroke-dasharray" values="0,100;100,0" dur="2s" repeatCount="indefinite" />
+              </path>
+              <path d="M30 10v5h5">
+                <animate attributeName="opacity" values="0;1;0" dur="2s" repeatCount="indefinite" />
+              </path>
+              <path d="M20 20h10M20 25h10M20 30h10">
+                <animate attributeName="stroke-dasharray" values="0,60;60,0" dur="2s" repeatCount="indefinite" />
+              </path>
+            </g>
+          </svg>
+        </div>
+
+        <!-- End of Surah Indicator -->
+        <div v-if="!pagination.hasMore && verses.length > 0" class="py-8 text-center text-slate-400">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-2">
+            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+          <p class="text-sm">จบซูเราะห์แล้ว</p>
+        </div>
       </div>
     </main>
   </div>

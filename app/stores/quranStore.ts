@@ -16,13 +16,32 @@ export interface Footnote {
   text: string
 }
 
+export interface Verse {
+  verseNumber: number
+  content: string
+  translation: string
+  footnotes: Footnote[]
+  isVerified: boolean
+}
+
+export interface Pagination {
+  offset: number
+  limit: number
+  total: number
+  hasMore: boolean
+}
+
 export const useQuranStore = defineStore('quran', () => {
   const { public: { assetsBaseUrl } } = useRuntimeConfig()
   const surahs = ref<Surah[]>([])
   const loading = ref(false)
+  const loadingMore = ref(false)
   const error = ref<string | null>(null)
 
   const currentSurah = ref<Surah | null>(null)
+  const currentSourceId = ref<number | undefined>(undefined)
+  const verses = ref<Verse[]>([])
+  const pagination = ref<Pagination>({ offset: 0, limit: 30, total: 0, hasMore: false })
   const verseWords = ref<Map<number, QuranWord[]>>(new Map())
 
   /** All words for the current surah — used by useQcfFont composable */
@@ -56,24 +75,63 @@ export const useQuranStore = defineStore('quran', () => {
     }
   }
 
-  async function fetchSurah(id: number, sourceId?: number) {
-    loading.value = true
+  async function fetchVerses(surahId: number, sourceId: number | undefined, offset = 0) {
+    const isLoadingInitial = offset === 0
+    if (isLoadingInitial) {
+      loading.value = true
+    } else {
+      loadingMore.value = true
+    }
     error.value = null
-    currentSurah.value = null
-    verseWords.value = new Map()
+
     try {
-      const url = sourceId ? `/api/surahs/${id}?sourceId=${sourceId}` : `/api/surahs/${id}`
+      const params = new URLSearchParams({
+        offset: offset.toString(),
+        limit: '30',
+      })
+      if (sourceId !== undefined) {
+        params.set('sourceId', sourceId.toString())
+      }
+
+      const url = `/api/surahs/${surahId}?${params.toString()}`
       const response = await fetch(url)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const result = await response.json()
       if (result.success) {
-        currentSurah.value = result.data
-        await fetchVerseWords(id)
+        const data = result.data
+
+        // Update currentSurah metadata (excluding verses)
+        currentSurah.value = {
+          id: data.id,
+          name: data.name,
+          englishName: data.englishName,
+          englishNameTranslation: data.englishNameTranslation,
+          revelationType: data.revelationType,
+          numberOfAyahs: data.numberOfAyahs,
+        }
+
+        // Track the current sourceId
+        currentSourceId.value = sourceId
+
+        // Update verses array
+        if (offset === 0) {
+          verses.value = data.verses
+        } else {
+          verses.value = [...verses.value, ...data.verses]
+        }
+
+        // Update pagination
+        pagination.value = data.pagination
+
+        // Load word data only on initial fetch
+        if (offset === 0) {
+          await fetchVerseWords(surahId)
+        }
       }
       else {
-        error.value = result.message || 'Failed to fetch surah'
+        error.value = result.message || 'Failed to fetch verses'
       }
     }
     catch (e) {
@@ -81,8 +139,26 @@ export const useQuranStore = defineStore('quran', () => {
       console.error(e)
     }
     finally {
-      loading.value = false
+      if (isLoadingInitial) {
+        loading.value = false
+      } else {
+        loadingMore.value = false
+      }
     }
+  }
+
+  async function fetchNextBatch() {
+    if (!pagination.value.hasMore || loadingMore.value) {
+      return
+    }
+
+    if (!currentSurah.value) {
+      return
+    }
+
+    const nextOffset = pagination.value.offset + pagination.value.limit
+
+    await fetchVerses(currentSurah.value.id, currentSourceId.value, nextOffset)
   }
 
   /**
@@ -116,12 +192,18 @@ export const useQuranStore = defineStore('quran', () => {
   return {
     surahs,
     currentSurah,
+    currentSourceId,
+    verses,
+    pagination,
     loading,
+    loadingMore,
     error,
     allWords,
     verseWords,
     fetchSurahs,
-    fetchSurah,
+    fetchVerses,
+    fetchVerseWords,
+    fetchNextBatch,
     getWordsForVerse,
   }
 })

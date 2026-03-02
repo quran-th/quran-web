@@ -5,7 +5,16 @@ import type { TranslationSource } from '~/types/source'
 export const useReaderSettingsStore = defineStore('readerSettings', () => {
   const selectedSourceId = ref<number>(
     import.meta.client
-      ? parseInt(localStorage.getItem('selected-source-id') ?? '1')
+      ? (() => {
+          const stored = localStorage.getItem('selected-source-id')
+          const parsed = parseInt(stored ?? '1')
+          // Clear invalid values (0, NaN, negative)
+          if (!parsed || parsed < 0 || isNaN(parsed)) {
+            localStorage.removeItem('selected-source-id')
+            return 1
+          }
+          return parsed
+        })()
       : 1
   )
   const translationSources = ref<TranslationSource[]>([])

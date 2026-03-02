@@ -27,15 +27,6 @@ const fontStyle = computed(() => {
   if (!props.isFontLoaded) return {}
   return { fontFamily: getFontFaceName(props.pageNumber, props.fontVersion) }
 })
-
-/** Decode HTML entities (e.g., "&#65152;" → actual character) for safe rendering */
-function decodeHtmlEntities(text: string): string {
-  const textarea = document.createElement('textarea')
-  textarea.innerHTML = text
-  return textarea.value
-}
-
-const decodedGlyph = computed(() => decodeHtmlEntities(props.glyphCode))
 </script>
 
 <template>
@@ -43,13 +34,19 @@ const decodedGlyph = computed(() => decodeHtmlEntities(props.glyphCode))
     class="glyph-word"
     :class="{ 'glyph-loading': !isFontLoaded }"
     :style="fontStyle"
-  >{{ decodedGlyph }}</span>
+  >{{ glyphCode }}</span>
 </template>
 
 <style scoped>
 .glyph-word {
   line-height: var(--mushaf-line-height, normal);
   font-size: inherit;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.glyph-word:hover {
+  color: #22c55e;
 }
 
 .glyph-loading {
