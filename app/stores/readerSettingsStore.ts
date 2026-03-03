@@ -27,10 +27,10 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
   }
 
   async function fetchTranslationSources() {
+    if (!import.meta.client) return
     if (translationSources.value.length > 0) return
     try {
-      const res = await fetch('/api/translation-sources')
-      const result = await res.json()
+      const result = await $fetch<{ success: boolean; data: TranslationSource[] }>('/api/translation-sources')
       if (result.success) {
         translationSources.value = result.data
       }

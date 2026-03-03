@@ -4,11 +4,13 @@ import type { QuranWord } from '~/types/quran'
 
 export interface Surah {
   id: number
-  name: string
+  name_simple: string
+  name_arabic: string
+  name_thai: string
   englishName: string
   englishNameTranslation: string
-  revelationType: string
-  numberOfAyahs: number
+  revelation_place: string
+  verses_count: number
 }
 
 export interface Footnote {
@@ -47,6 +49,8 @@ export const useQuranStore = defineStore('quran', () => {
   /** All words for the current surah — used by useQcfFont composable */
   const allWords = computed<QuranWord[]>(() => {
     const words: QuranWord[] = []
+    // Guard against deserialized SSR payload where Map becomes plain object
+    if (!(verseWords.value instanceof Map)) return words
     for (const w of verseWords.value.values()) {
       words.push(...w)
     }
@@ -75,7 +79,7 @@ export const useQuranStore = defineStore('quran', () => {
     }
   }
 
-  async function fetchVerses(surahId: number, sourceId: number | undefined, offset = 0) {
+  async function fetchVerses(surahId: number, sourceId: number | undefined, offset = 0, limit?: number) {
     const isLoadingInitial = offset === 0
     if (isLoadingInitial) {
       loading.value = true
@@ -87,7 +91,7 @@ export const useQuranStore = defineStore('quran', () => {
     try {
       const params = new URLSearchParams({
         offset: offset.toString(),
-        limit: '30',
+        limit: (limit ?? 30).toString(),
       })
       if (sourceId !== undefined) {
         params.set('sourceId', sourceId.toString())
@@ -105,11 +109,13 @@ export const useQuranStore = defineStore('quran', () => {
         // Update currentSurah metadata (excluding verses)
         currentSurah.value = {
           id: data.id,
-          name: data.name,
-          englishName: data.englishName,
-          englishNameTranslation: data.englishNameTranslation,
-          revelationType: data.revelationType,
-          numberOfAyahs: data.numberOfAyahs,
+          name_simple: data.name_simple,
+          name_arabic: data.name_arabic,
+          name_thai: data.name_thai,
+          englishName: data.name_simple,
+          englishNameTranslation: data.name_thai,
+          revelation_place: data.revelation_place,
+          verses_count: data.verses_count,
         }
 
         // Track the current sourceId

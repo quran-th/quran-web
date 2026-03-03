@@ -12,9 +12,15 @@ export default defineNuxtConfig({
     }
   },
 
+  routeRules: {
+    '/surah/**': { isr: 3600 },
+  },
+
   modules: ["nitro-cloudflare-dev", "@nuxt/eslint", "@nuxtjs/tailwindcss", "@pinia/nuxt", "@nuxtjs/i18n"],
 
   runtimeConfig: {
+    // Server-only: override with NUXT_QURAN_API_URL env var in production (Cloudflare Pages dashboard)
+    quranApiUrl: 'http://localhost:8787',
     public: {
       // Override with NUXT_PUBLIC_ASSETS_BASE_URL env var in production
       assetsBaseUrl: 'https://assets.quran.in.th',
@@ -51,16 +57,4 @@ export default defineNuxtConfig({
   },
 
   css: ['~/assets/css/fonts.css', '~/assets/css/mushaf-scales.css'],
-
-  vite: {
-    server: {
-      proxy: {
-        '/api': {
-          target: 'http://localhost:8787',
-          changeOrigin: true,
-          rewrite: (path: string) => path.replace(/^\/api/, ''),
-        },
-      },
-    },
-  },
 })
