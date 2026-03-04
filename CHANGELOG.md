@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/quran-th/quran-web/compare/v1.0.0...v1.0.1) (2026-03-04)
+
+
+### Bug Fixes
+
+* wrong wrangler deploy command, change to worker deploy ([1a07548](https://github.com/quran-th/quran-web/commit/1a07548bdcf9c8609318ed08cfb605a2d0211965))
+
 # 1.0.0 (2026-03-04)
 
 
