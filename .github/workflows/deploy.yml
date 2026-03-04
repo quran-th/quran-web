@@ -34,9 +34,9 @@ jobs:
           NUXT_QURAN_API_URL: ${{ vars.QURAN_API_URL }}
           NUXT_PUBLIC_ASSETS_BASE_URL: ${{ vars.ASSETS_BASE_URL }}
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy .output/public --project-name=${{ vars.PAGES_PROJECT_NAME || 'quran-web' }}
+          command: deploy
