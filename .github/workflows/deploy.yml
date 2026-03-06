@@ -1,4 +1,4 @@
-name: Deploy to Cloudflare Pages
+name: Deploy to Cloudflare Workers
 
 on:
   workflow_run:
@@ -37,7 +37,6 @@ jobs:
       - name: Build Nuxt application
         run: npm run build
         env:
-          NUXT_QURAN_API_URL: ${{ vars.QURAN_API_URL }}
           NUXT_PUBLIC_ASSETS_BASE_URL: ${{ vars.ASSETS_BASE_URL }}
 
       - name: Deploy to Cloudflare Workers

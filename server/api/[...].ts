@@ -8,16 +8,25 @@
  */
 export default defineEventHandler(async (event) => {
   const path = event.path.replace(/^\/api/, '')
-  const env = event.context.cloudflare?.env
 
-  if (env?.QURAN_API) {
-    const incoming = toWebRequest(event)
-    const url = new URL(incoming.url)
-    url.pathname = path
-    return env.QURAN_API.fetch(new Request(url.toString(), incoming))
+  // Production: Cloudflare Service Binding
+  // Guarded by import.meta.dev because nitro-cloudflare-dev exposes a stub
+  // QURAN_API Fetcher in dev that can't actually route to the local worker.
+  if (!import.meta.dev) {
+    const env = event.context.cloudflare?.env
+    if (env?.QURAN_API) {
+      const hasBody = !['GET', 'HEAD'].includes(event.method)
+      return env.QURAN_API.fetch(
+        new Request(new URL(path, 'https://quran-api.internal'), {
+          method: event.method,
+          headers: getRequestHeaders(event),
+          body: hasBody ? await readRawBody(event) : undefined,
+        })
+      )
+    }
   }
 
-  // Local dev fallback
+  // Dev: HTTP proxy to local quran-api
   const config = useRuntimeConfig()
   return proxyRequest(event, `${config.quranApiUrl}${path}`)
 })
