@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/quran-th/quran-web/compare/v1.0.1...v1.0.2) (2026-03-06)
+
+
+### Bug Fixes
+
+* improve guarding logic ([a4e77f6](https://github.com/quran-th/quran-web/commit/a4e77f6efebc02650d5b9e83d6fcd989a61c0c9c))
+
 ## [1.0.1](https://github.com/quran-th/quran-web/compare/v1.0.0...v1.0.1) (2026-03-04)
 
 
