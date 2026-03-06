@@ -15,6 +15,9 @@
     "enabled": true,
   },
   "compatibility_flags": ["nodejs_compat"],
+  "services": [
+    { "binding": "QURAN_API", "service": "quran-api" },
+  ],
   "routes": [
     {
       "pattern": "read.quran.in.th",

@@ -1,7 +1,9 @@
 name: Deploy to Cloudflare Pages
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
     branches: ["main"]
   workflow_dispatch:
 
@@ -11,6 +13,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: read
       deployments: write
@@ -27,6 +30,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Lint check
+        run: npm run lint
 
       - name: Build Nuxt application
         run: npm run build

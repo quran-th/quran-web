@@ -1,15 +1,23 @@
 /**
  * Catch-all proxy for the quran-api backend.
  *
- * Routes all /api/* requests to the configured backend URL so that
- * $fetch('/api/...') works from both the Nitro SSR process and the browser.
+ * Production: Uses Cloudflare Service Binding (QURAN_API) — zero-latency,
+ * no HTTP overhead, no env var required.
  *
- * Dev:  NUXT_QURAN_API_URL defaults to http://localhost:8787
- * Prod: set NUXT_QURAN_API_URL in the Cloudflare Pages environment variables
+ * Dev: Falls back to HTTP proxy via NUXT_QURAN_API_URL (default: http://localhost:8787)
  */
 export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig()
-  // Strip the /api prefix that Nuxt adds — backend routes don't have it
   const path = event.path.replace(/^\/api/, '')
+  const env = event.context.cloudflare?.env
+
+  if (env?.QURAN_API) {
+    const incoming = toWebRequest(event)
+    const url = new URL(incoming.url)
+    url.pathname = path
+    return env.QURAN_API.fetch(new Request(url.toString(), incoming))
+  }
+
+  // Local dev fallback
+  const config = useRuntimeConfig()
   return proxyRequest(event, `${config.quranApiUrl}${path}`)
 })

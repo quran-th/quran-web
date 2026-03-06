@@ -4,6 +4,7 @@
 declare namespace Cloudflare {
 	interface Env {
 		ASSETS: Fetcher;
+		QURAN_API: Fetcher;
 	}
 }
 interface Env extends Cloudflare.Env {}
