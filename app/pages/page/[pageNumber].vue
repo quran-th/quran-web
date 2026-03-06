@@ -16,7 +16,7 @@ const route = useRoute()
 const router = useRouter()
 const mushafStore = useMushafStore()
 const fontSettings = useFontSettingsStore()
-const { currentPage, loading, windowWords } = storeToRefs(mushafStore)
+const { currentPage, windowWords } = storeToRefs(mushafStore)
 const { fontVersion } = storeToRefs(fontSettings)
 
 // Load QCF fonts for the visible window of pages

@@ -14,6 +14,22 @@ interface MushafPage {
   verseCount: number
 }
 
+interface ApiResponse<T> {
+  success: boolean
+  data: T
+}
+
+interface SurahData {
+  id: number
+  name_simple: string
+  name_arabic: string
+  name_thai: string
+  revelation_place: string
+  verses_count: number
+  verses: unknown[]
+  pagination: unknown
+}
+
 const route = useRoute()
 const router = useRouter()
 const quranStore = useQuranStore()
@@ -40,14 +56,14 @@ const validSourceId = selectedSourceId.value && selectedSourceId.value > 0
 // Fetch Mushaf page mapping
 const { data: mushafPagesData } = await useAsyncData(
   `surah-${surahId}-mushaf-pages`,
-  () => $fetch(`/api/surahs/${surahId}/mushaf-pages`)
+  () => $fetch<ApiResponse<MushafPage[]>>(`/api/surahs/${surahId}/mushaf-pages`)
 )
 
 const currentPage = ref<number>(1)
 
 // Determine current page from query param or default to first page
 if (pageParam && mushafPagesData.value) {
-  const pageExists = (mushafPagesData.value as any).data?.find(
+  const pageExists = mushafPagesData.value.data?.find(
     (p: MushafPage) => p.page === pageParam
   )
   currentPage.value = pageExists ? pageParam : 1
@@ -57,7 +73,7 @@ if (pageParam && mushafPagesData.value) {
 
 // Get current page info - use mushafPagesData directly for SSR compatibility
 const currentPageInfo = computed(() => {
-  const pages = (mushafPagesData.value as any)?.data as MushafPage[] | undefined
+  const pages = mushafPagesData.value?.data
   if (!pages || !pages.length) return null
   return pages.find(p => p.page === currentPage.value) || pages[0]
 })
@@ -81,7 +97,7 @@ const { data: ssrData, status: fetchStatus } = await useAsyncData(
       params.set('sourceId', validSourceId.toString())
     }
     const url = `/api/surahs/${surahId}?${params.toString()}`
-    const response = await $fetch(url)
+    const response = await $fetch<ApiResponse<SurahData>>(url)
     return response
   }
 )
@@ -92,8 +108,8 @@ const isClientLoading = computed(() =>
 )
 
 // Hydrate store and pages
-if (ssrData.value && (ssrData.value as any).success) {
-  const data = (ssrData.value as any).data
+if (ssrData.value && ssrData.value.success) {
+  const data = ssrData.value.data
   currentSurah.value = {
     id: data.id,
     name_simple: data.name_simple,
@@ -110,8 +126,8 @@ if (ssrData.value && (ssrData.value as any).success) {
 
 // Store Mushaf pages on mount
 onMounted(async () => {
-  if (mushafPagesData.value && (mushafPagesData.value as any).success) {
-    mushafPages.value = (mushafPagesData.value as any).data
+  if (mushafPagesData.value && mushafPagesData.value.success) {
+    mushafPages.value = mushafPagesData.value.data
   }
 
   // Load word data
@@ -123,7 +139,7 @@ onMounted(async () => {
 // Watch for page changes
 watch(() => route.query.page, (newPage) => {
   const pageNum = newPage ? parseInt(newPage as string) : 1
-  const pages = (mushafPagesData.value as any)?.data as MushafPage[] | undefined
+  const pages = mushafPagesData.value?.data
   const page = pages?.find(p => p.page === pageNum)
 
   if (page && page.page !== currentPage.value) {
@@ -176,13 +192,13 @@ function handlePageChange(page: number) {
 
 // Pagination navigation
 const prevPage = computed(() => {
-  const pages = (mushafPagesData.value as any)?.data as MushafPage[] | undefined
+  const pages = mushafPagesData.value?.data
   if (!pages || currentPage.value <= 1) return null
   return pages.find(p => p.page === currentPage.value - 1)
 })
 
 const nextPage = computed(() => {
-  const pages = (mushafPagesData.value as any)?.data as MushafPage[] | undefined
+  const pages = mushafPagesData.value?.data
   if (!pages) return null
   const currentIndex = pages.findIndex(p => p.page === currentPage.value)
   if (currentIndex === -1 || currentIndex === pages.length - 1) return null
