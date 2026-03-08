@@ -3,27 +3,17 @@ import { ref } from 'vue'
 import type { TranslationSource } from '~/types/source'
 
 export const useReaderSettingsStore = defineStore('readerSettings', () => {
-  const selectedSourceId = ref<number>(
-    import.meta.client
-      ? (() => {
-          const stored = localStorage.getItem('selected-source-id')
-          const parsed = parseInt(stored ?? '1')
-          // Clear invalid values (0, NaN, negative)
-          if (!parsed || parsed < 0 || isNaN(parsed)) {
-            localStorage.removeItem('selected-source-id')
-            return 1
-          }
-          return parsed
-        })()
-      : 1
-  )
+  const sourceCookie = useCookie<number | undefined>('selected-source-id', {
+    default: () => undefined,
+    maxAge: 60 * 60 * 24 * 365, // 1 year
+  })
+
+  const selectedSourceId = ref<number | undefined>(sourceCookie.value)
   const translationSources = ref<TranslationSource[]>([])
 
-  function setTranslationSource(id: number) {
+  function setTranslationSource(id: number | undefined) {
     selectedSourceId.value = id
-    if (import.meta.client) {
-      localStorage.setItem('selected-source-id', String(id))
-    }
+    sourceCookie.value = id
   }
 
   async function fetchTranslationSources() {

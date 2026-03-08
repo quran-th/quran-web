@@ -62,7 +62,7 @@ export const useQuranStore = defineStore('quran', () => {
     error.value = null
     try {
       const response = await fetch('/api/surahs')
-      const result = await response.json()
+      const result: any = await response.json()
       if (result.success) {
         surahs.value = result.data
       }
@@ -79,8 +79,8 @@ export const useQuranStore = defineStore('quran', () => {
     }
   }
 
-  async function fetchVerses(surahId: number, sourceId: number | undefined, offset = 0, limit?: number) {
-    const isLoadingInitial = offset === 0
+  async function fetchVerses(surahId: number, sourceId: number | undefined, offset = 0, limit?: number, replace = false) {
+    const isLoadingInitial = offset === 0 || replace
     if (isLoadingInitial) {
       loading.value = true
     } else {
@@ -102,7 +102,7 @@ export const useQuranStore = defineStore('quran', () => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-      const result = await response.json()
+      const result: any = await response.json()
       if (result.success) {
         const data = result.data
 
@@ -118,11 +118,11 @@ export const useQuranStore = defineStore('quran', () => {
           verses_count: data.verses_count,
         }
 
-        // Track the current sourceId
-        currentSourceId.value = sourceId
+        // Track the current sourceId from the API response (in case frontend didn't provide one)
+        currentSourceId.value = data.sourceId
 
         // Update verses array
-        if (offset === 0) {
+        if (offset === 0 || replace) {
           verses.value = data.verses
         } else {
           verses.value = [...verses.value, ...data.verses]
@@ -178,7 +178,7 @@ export const useQuranStore = defineStore('quran', () => {
         console.warn(`Word data not available for chapter ${chapterId}`)
         return
       }
-      const verses = await response.json()
+      const verses: any[] = await response.json()
       const wordMap = new Map<number, QuranWord[]>()
       for (const verse of verses) {
         wordMap.set(verse.verse_number, verse.words)
