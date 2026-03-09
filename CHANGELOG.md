@@ -1,3 +1,15 @@
+# [1.1.0](https://github.com/quran-th/quran-web/compare/v1.0.2...v1.1.0) (2026-03-09)
+
+
+### Bug Fixes
+
+* **reading:** resolve translation fetching and rebuild settings ui ([c5c980c](https://github.com/quran-th/quran-web/commit/c5c980ce883d093e0e12360f69ba75d421f9ffca))
+
+
+### Features
+
+* footnote display and interaction enhancement ([4d067fe](https://github.com/quran-th/quran-web/commit/4d067fe402074b7310a28203aeb3ba22a2219304))
+
 ## [1.0.2](https://github.com/quran-th/quran-web/compare/v1.0.1...v1.0.2) (2026-03-06)
 
 
