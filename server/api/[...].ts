@@ -14,6 +14,16 @@ export default defineEventHandler(async (event) => {
   // QURAN_API Fetcher in dev that can't actually route to the local worker.
   if (!import.meta.dev) {
     const env = event.context.cloudflare?.env
+
+    // DIAGNOSTIC — remove after confirming root cause
+    console.log('[api-proxy]', {
+      path,
+      hasCloudflareEnv: !!env,
+      hasQuranApiBinding: !!env?.QURAN_API,
+      // Distinguishes SSR-internal calls (no host) from browser requests
+      host: getRequestHeader(event, 'host') ?? '(none)',
+    })
+
     if (env?.QURAN_API) {
       const hasBody = !['GET', 'HEAD'].includes(event.method)
       return env.QURAN_API.fetch(

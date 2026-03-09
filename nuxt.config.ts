@@ -19,7 +19,10 @@ export default defineNuxtConfig({
   modules: ["nitro-cloudflare-dev", "@nuxt/eslint", "@nuxtjs/tailwindcss", "@pinia/nuxt", "@nuxtjs/i18n"],
 
   runtimeConfig: {
-    // Server-only: override with NUXT_QURAN_API_URL env var in production (Cloudflare Pages dashboard)
+    // Server-only: used as HTTP fallback when Cloudflare service binding is unavailable
+    // (e.g. during Nuxt SSR internal sub-requests where cloudflare.env is not forwarded).
+    // REQUIRED in production: set NUXT_QURAN_API_URL=https://api.quran.in.th in
+    // Cloudflare Worker environment variables (Workers & Pages → Settings → Variables).
     quranApiUrl: 'http://localhost:8787',
     public: {
       // Override with NUXT_PUBLIC_ASSETS_BASE_URL env var in production
