@@ -426,71 +426,114 @@ useHead({
             mushafPagesData.data &&
             mushafPagesData.data.length > 0
           "
-          class="pagination-container"
+          class="border-t border-slate-100 pb-6 pt-10 mt-8"
         >
-          <div class="pagination flex flex-wrap justify-center gap-2 py-8">
+          <div class="grid grid-cols-3 items-center gap-4">
             <!-- Previous Button -->
-            <NuxtLink
-              v-if="prevPage"
-              :to="`?page=${prevPage.page}`"
-              class="pagination-link"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+            <div class="flex justify-start">
+              <NuxtLink
+                v-if="prevPage"
+                :to="`?page=${prevPage.page}`"
+                class="group flex flex-col items-start justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm transition-all duration-150 hover:border-blue-300 hover:shadow-md sm:min-w-32"
               >
-                <path d="m15 18-6-6 6 6-6" />
-              </svg>
-              <span class="ml-1">ก่อนหน้า</span>
-            </NuxtLink>
-
-            <!-- Page Numbers -->
-            <NuxtLink
-              v-for="page in mushafPagesData.data"
-              :key="page.page"
-              :to="`?page=${page.page}`"
-              class="pagination-link"
-              :class="{ 'pagination-link--active': page.page === currentPage }"
-            >
-              <div class="text-center">
-                <div class="page-number">หน้า {{ page.page }}</div>
-                <div class="verse-range">
-                  อายะห์ {{ page.verseFrom }}-{{ page.verseTo }}
+                <div
+                  class="flex items-center text-sm font-medium text-slate-500 group-hover:text-blue-600 mb-1"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="mr-1"
+                  >
+                    <path d="m15 18-6-6 6-6" />
+                  </svg>
+                  ก่อนหน้า
                 </div>
-                <div class="text-xs text-slate-400">
-                  {{ page.verseCount }} อายะห์
+                <span
+                  v-if="currentSurah"
+                  class="font-bold text-slate-900 group-hover:text-blue-700"
+                  >{{ currentSurah.name_thai }}</span
+                >
+                <span
+                  class="text-xs text-slate-500 mt-0.5 group-hover:text-blue-500"
+                  >อายะห์ {{ prevPage.verseFrom }}-{{ prevPage.verseTo }}</span
+                >
+              </NuxtLink>
+            </div>
+
+            <!-- Current page data -->
+            <div class="flex flex-col items-center justify-center text-center">
+              <div
+                v-if="currentSurah"
+                class="text-base sm:text-lg font-bold text-slate-900"
+              >
+                {{ currentSurah.name_thai }}
+              </div>
+              <div
+                v-if="mushafPagesData"
+                class="flex flex-col items-center gap-1.5 mt-1"
+              >
+                <span class="text-sm text-slate-500">
+                  หน้า {{ currentPage }} จาก {{ mushafPagesData.data.length }}
+                </span>
+                <div class="flex items-center gap-2">
+                  <span
+                    class="text-[11px] font-medium px-2 py-0.5 bg-slate-100 text-slate-600 rounded"
+                  >
+                    ญุซที่ {{ Math.ceil(currentPage / 20) }}
+                  </span>
+                  <span
+                    class="text-[11px] font-medium px-2 py-0.5 bg-slate-100 text-slate-600 rounded"
+                  >
+                    ฮิซบ์ที่ {{ Math.ceil(currentPage / 10) }}
+                  </span>
                 </div>
               </div>
-            </NuxtLink>
+            </div>
 
             <!-- Next Button -->
-            <NuxtLink
-              v-if="nextPage"
-              :to="`?page=${nextPage.page}`"
-              class="pagination-link"
-            >
-              <span class="mr-1">หน้าถัดไป</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+            <div class="flex justify-end">
+              <NuxtLink
+                v-if="nextPage"
+                :to="`?page=${nextPage.page}`"
+                class="group flex flex-col items-end justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm transition-all duration-150 hover:border-blue-300 hover:shadow-md sm:min-w-32"
               >
-                <path d="m9 18 6-6-6 6 6" />
-              </svg>
-            </NuxtLink>
+                <div
+                  class="flex items-center text-sm font-medium text-slate-500 group-hover:text-blue-600 mb-1"
+                >
+                  ถัดไป
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="ml-1"
+                  >
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                </div>
+                <span
+                  v-if="currentSurah"
+                  class="font-bold text-slate-900 group-hover:text-blue-700"
+                  >{{ currentSurah.name_thai }}</span
+                >
+                <span
+                  class="text-xs text-slate-500 mt-0.5 group-hover:text-blue-500"
+                  >อายะห์ {{ nextPage.verseFrom }}-{{ nextPage.verseTo }}</span
+                >
+              </NuxtLink>
+            </div>
           </div>
         </nav>
       </div>
@@ -500,26 +543,3 @@ useHead({
     <SettingsReaderSettingsModal v-model:visible="showSettingsModal" />
   </div>
 </template>
-
-<style scoped>
-.pagination-link {
-  @apply px-4 py-3 rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-all duration-150;
-  min-width: 100px;
-}
-
-.pagination-link--active {
-  @apply border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100;
-}
-
-.pagination-link .page-number {
-  @apply font-semibold text-sm;
-}
-
-.pagination-link .verse-range {
-  @apply text-xs text-slate-500;
-}
-
-.pagination-link--active .verse-range {
-  @apply text-blue-600;
-}
-</style>
