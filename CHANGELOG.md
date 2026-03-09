@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/quran-th/quran-web/compare/v1.1.1...v1.2.0) (2026-03-09)
+
+
+### Features
+
+* simplify pagination with juz and hizb info ([398a61a](https://github.com/quran-th/quran-web/commit/398a61ac0c13137af8d694cc8b7cc55abdadc343))
+
 ## [1.1.1](https://github.com/quran-th/quran-web/compare/v1.1.0...v1.1.1) (2026-03-09)
 
 
