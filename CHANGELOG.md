@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/quran-th/quran-web/compare/v1.2.0...v1.2.1) (2026-03-09)
+
+
+### Bug Fixes
+
+* bypass SSR child-event chain for Cloudflare service binding calls ([080ec4e](https://github.com/quran-th/quran-web/commit/080ec4e8f8777aa821c58be020bd7958ce55343a))
+
 # [1.2.0](https://github.com/quran-th/quran-web/compare/v1.1.1...v1.2.0) (2026-03-09)
 
 
