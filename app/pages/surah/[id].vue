@@ -65,10 +65,10 @@ const validSourceId =
     : undefined;
 
 // Fetch Mushaf page mapping
+const apiFetch = useQuranApiFetch()
 const { data: mushafPagesData } = await useAsyncData(
   `surah-${surahId}-mushaf-pages`,
-  () =>
-    $fetch<ApiResponse<MushafPage[]>>(`/api/surahs/${surahId}/mushaf-pages`),
+  () => apiFetch<ApiResponse<MushafPage[]>>(`/surahs/${surahId}/mushaf-pages`),
 );
 
 const currentPage = ref<number>(1);
@@ -100,7 +100,7 @@ const limit = pageInfo ? pageInfo.verseTo - pageInfo.verseFrom + 1 : 50;
 
 const { data: ssrData, status: fetchStatus } = await useAsyncData(
   `surah-${surahId}-page-${currentPage.value}`,
-  async () => {
+  () => {
     const params = new URLSearchParams({
       offset: offset.toString(),
       limit: limit.toString(),
@@ -108,9 +108,7 @@ const { data: ssrData, status: fetchStatus } = await useAsyncData(
     if (validSourceId) {
       params.set("sourceId", validSourceId.toString());
     }
-    const url = `/api/surahs/${surahId}?${params.toString()}`;
-    const response = await $fetch<ApiResponse<SurahData>>(url);
-    return response;
+    return apiFetch<ApiResponse<SurahData>>(`/surahs/${surahId}?${params.toString()}`);
   },
 );
 

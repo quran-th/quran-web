@@ -15,15 +15,6 @@ export default defineEventHandler(async (event) => {
   if (!import.meta.dev) {
     const env = event.context.cloudflare?.env
 
-    // DIAGNOSTIC — remove after confirming root cause
-    console.log('[api-proxy]', {
-      path,
-      hasCloudflareEnv: !!env,
-      hasQuranApiBinding: !!env?.QURAN_API,
-      // Distinguishes SSR-internal calls (no host) from browser requests
-      host: getRequestHeader(event, 'host') ?? '(none)',
-    })
-
     if (env?.QURAN_API) {
       const hasBody = !['GET', 'HEAD'].includes(event.method)
       return env.QURAN_API.fetch(
