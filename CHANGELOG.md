@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/quran-th/quran-web/compare/v1.1.0...v1.1.1) (2026-03-09)
+
+
+### Bug Fixes
+
+* correct type errors ([116569d](https://github.com/quran-th/quran-web/commit/116569d3cbaa982cee007d9151f7ee50b455cd7c))
+
 # [1.1.0](https://github.com/quran-th/quran-web/compare/v1.0.2...v1.1.0) (2026-03-09)
 
 
