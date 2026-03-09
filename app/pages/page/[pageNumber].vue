@@ -25,6 +25,8 @@ const { isFontLoaded } = useQcfFont(windowWords, fontVersion);
 // Settings modal
 const showSettingsModal = ref(false);
 
+const readingMode = ref<"mushaf" | "translation">("mushaf");
+
 const isUiVisible = ref(true);
 let uiTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -88,26 +90,42 @@ function handlePageChange(page: number) {
   mushafStore.goToPage(page);
 }
 
+function toggleReadingMode() {
+  readingMode.value = readingMode.value === "mushaf" ? "translation" : "mushaf";
+}
+
 useHead({
   title: computed(() => `หน้า ${currentPage.value} - มุษอฟ - อัลกุรอานแปลไทย`),
 });
 </script>
 
 <template>
-  <div class="mushaf-container">
+  <div
+    :class="[
+      'page-container',
+      readingMode === 'mushaf' ? 'mushaf-mode' : 'translation-mode',
+    ]"
+  >
     <!-- Toolbar -->
     <QuranToolbar
       mode="page"
       :current-page="currentPage"
       :total-pages="mushafStore.totalPages"
       :is-ui-visible="isUiVisible"
+      :reading-mode="readingMode"
       @back-click="handleBackClick"
       @settings-click="handleSettingsClick"
       @page-change="handlePageChange"
+      @toggle-mode="toggleReadingMode"
     />
 
     <!-- Reader -->
-    <MushafReader :is-font-loaded="isFontLoaded" :ui-visible="isUiVisible" />
+    <ReadingPageTranslationReader v-if="readingMode === 'translation'" />
+    <MushafReader
+      v-else
+      :is-font-loaded="isFontLoaded"
+      :ui-visible="isUiVisible"
+    />
 
     <!-- Font Settings Modal -->
     <SettingsReaderSettingsModal v-model:visible="showSettingsModal" />
@@ -115,12 +133,20 @@ useHead({
 </template>
 
 <style scoped>
-.mushaf-container {
+.page-container {
   display: flex;
   flex-direction: column;
+  background: white;
+}
+
+.mushaf-mode {
   min-height: 100vh;
   height: 100vh;
-  background: white;
   overflow: hidden;
+}
+
+.translation-mode {
+  min-height: 100vh;
+  overflow: auto;
 }
 </style>

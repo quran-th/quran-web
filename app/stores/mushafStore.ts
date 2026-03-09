@@ -142,6 +142,21 @@ export const useMushafStore = defineStore('mushaf', () => {
     return result
   })
 
+  // Expose unique verse keys (e.g. "2:282") strictly belonging to the current visible page.
+  // This is used to query the backend for exact page translations, including overflow parts.
+  const currentPageVerseKeys = computed<string[]>(() => {
+    const words = pageWordsCache.value.get(currentPage.value)
+    if (!words) return []
+    
+    // We use a Set to keep unique keys, and they are inherently ordered by their first appearance 
+    // in the already-sorted `words` array.
+    const keys = new Set<string>()
+    for (const w of words) {
+      if (w.verse_key) keys.add(w.verse_key)
+    }
+    return Array.from(keys)
+  })
+
   return {
     currentPage,
     totalPages,
@@ -154,5 +169,6 @@ export const useMushafStore = defineStore('mushaf', () => {
     nextPage,
     prevPage,
     windowWords,
+    currentPageVerseKeys,
   }
 })

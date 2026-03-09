@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { QuranWord } from '~/types/quran'
+import type { QuranWord, QuranVerseEntry } from '~/types/quran'
 
 export interface Surah {
   id: number
@@ -19,6 +19,7 @@ export interface Footnote {
 }
 
 export interface Verse {
+  surahNumber?: number
   verseNumber: number
   content: string
   translation: string
@@ -31,6 +32,18 @@ export interface Pagination {
   limit: number
   total: number
   hasMore: boolean
+}
+
+interface SurahApiData {
+  id: number
+  name_simple: string
+  name_arabic: string
+  name_thai: string
+  revelation_place: string
+  verses_count: number
+  sourceId: number
+  verses: Verse[]
+  pagination: Pagination
 }
 
 export const useQuranStore = defineStore('quran', () => {
@@ -62,7 +75,7 @@ export const useQuranStore = defineStore('quran', () => {
     error.value = null
     try {
       const response = await fetch('/api/surahs')
-      const result: any = await response.json()
+      const result: { success: boolean; data: Surah[] } = await response.json()
       if (result.success) {
         surahs.value = result.data
       }
@@ -102,7 +115,7 @@ export const useQuranStore = defineStore('quran', () => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-      const result: any = await response.json()
+      const result: { success: boolean; data: SurahApiData; message?: string } = await response.json()
       if (result.success) {
         const data = result.data
 
@@ -167,6 +180,30 @@ export const useQuranStore = defineStore('quran', () => {
     await fetchVerses(currentSurah.value.id, currentSourceId.value, nextOffset)
   }
 
+  async function fetchVersesByKeys(keys: string[], sourceId?: number) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await fetch('/api/verses/by-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keys, sourceId })
+      })
+      const result: { success: boolean; data: { verses: Verse[]; sourceId: number }; message?: string } = await response.json()
+      if (result.success) {
+        verses.value = result.data.verses
+        currentSourceId.value = result.data.sourceId
+      } else {
+        error.value = result.message || 'Failed to fetch verses by keys'
+      }
+    } catch (e) {
+      error.value = 'Network error'
+      console.error(e)
+    } finally {
+      loading.value = false
+    }
+  }
+
   /**
    * Load QCF V2 word data from static JSON files.
    * These are pre-fetched from quran.com API and stored as {chapterId}.json
@@ -178,7 +215,7 @@ export const useQuranStore = defineStore('quran', () => {
         console.warn(`Word data not available for chapter ${chapterId}`)
         return
       }
-      const verses: any[] = await response.json()
+      const verses: QuranVerseEntry[] = await response.json()
       const wordMap = new Map<number, QuranWord[]>()
       for (const verse of verses) {
         wordMap.set(verse.verse_number, verse.words)
@@ -208,6 +245,7 @@ export const useQuranStore = defineStore('quran', () => {
     verseWords,
     fetchSurahs,
     fetchVerses,
+    fetchVersesByKeys,
     fetchVerseWords,
     fetchNextBatch,
     getWordsForVerse,

@@ -2,6 +2,7 @@
 import { storeToRefs } from "pinia";
 import { onMounted, ref, watch, computed } from "vue";
 import { useQuranStore } from "~/stores/quranStore";
+import type { Verse, Pagination } from "~/stores/quranStore";
 import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
 import { useFontSettingsStore } from "~/stores/fontSettingsStore";
 import { useQcfFont } from "~/composables/useQcfFont";
@@ -26,8 +27,8 @@ interface SurahData {
   name_thai: string;
   revelation_place: string;
   verses_count: number;
-  verses: any[];
-  pagination: any;
+  verses: Verse[];
+  pagination: Pagination;
   sourceId: number;
 }
 
