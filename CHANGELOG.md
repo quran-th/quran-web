@@ -1,3 +1,10 @@
+## [1.2.2](https://github.com/quran-th/quran-web/compare/v1.2.1...v1.2.2) (2026-03-10)
+
+
+### Bug Fixes
+
+* initialize currentPage to actual first Mushaf page number ([a06c9ad](https://github.com/quran-th/quran-web/commit/a06c9ad98a80737d38483b952c058165bb002c31))
+
 ## [1.2.1](https://github.com/quran-th/quran-web/compare/v1.2.0...v1.2.1) (2026-03-09)
 
 
