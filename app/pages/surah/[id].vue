@@ -71,16 +71,15 @@ const { data: mushafPagesData } = await useAsyncData(
   () => apiFetch<ApiResponse<MushafPage[]>>(`/surahs/${surahId}/mushaf-pages`),
 );
 
-const currentPage = ref<number>(1);
+const firstPageNumber = mushafPagesData.value?.data?.[0]?.page ?? 1;
+const currentPage = ref<number>(firstPageNumber);
 
 // Determine current page from query param or default to first page
 if (pageParam && mushafPagesData.value) {
   const pageExists = mushafPagesData.value.data?.find(
     (p: MushafPage) => p.page === pageParam,
   );
-  currentPage.value = pageExists ? pageParam : 1;
-} else {
-  currentPage.value = 1;
+  currentPage.value = pageExists ? pageParam : firstPageNumber;
 }
 
 // Get current page info - use mushafPagesData directly for SSR compatibility
@@ -214,8 +213,10 @@ function handlePageChange(page: number) {
 // Pagination navigation
 const prevPage = computed(() => {
   const pages = mushafPagesData.value?.data;
-  if (!pages || currentPage.value <= 1) return null;
-  return pages.find((p) => p.page === currentPage.value - 1);
+  if (!pages) return null;
+  const currentIndex = pages.findIndex((p) => p.page === currentPage.value);
+  if (currentIndex <= 0) return null;
+  return pages[currentIndex - 1];
 });
 
 const nextPage = computed(() => {
