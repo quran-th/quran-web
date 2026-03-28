@@ -64,11 +64,28 @@ const validSourceId =
     ? selectedSourceId.value
     : undefined;
 
-// Fetch Mushaf page mapping
-const apiFetch = useQuranApiFetch()
+// Fetch Mushaf page mapping for current surah
+const apiFetch = useQuranApiFetch();
 const { data: mushafPagesData } = await useAsyncData(
   `surah-${surahId}-mushaf-pages`,
   () => apiFetch<ApiResponse<MushafPage[]>>(`/surahs/${surahId}/mushaf-pages`),
+);
+
+// Fetch global surah page mapping for seamless cross-surah navigation
+const { data: globalPageMapping } = await useAsyncData<
+  Record<string, MushafPage[]>
+>(`global-surah-page-mapping`, () =>
+  $fetch(
+    `${useRuntimeConfig().public.assetsBaseUrl}/quran-pages/surah-page-mapping.json`,
+  ),
+);
+
+// Fetch all surahs for global name resolution
+const { data: allSurahsData } = await useAsyncData("all-surahs", () =>
+  apiFetch<ApiResponse<Surah[]>>("/surahs"),
+);
+const allSurahs = computed(
+  () => allSurahsData.value?.data || quranStore.surahs,
 );
 
 const firstPageNumber = mushafPagesData.value?.data?.[0]?.page ?? 1;
@@ -107,7 +124,9 @@ const { data: ssrData, status: fetchStatus } = await useAsyncData(
     if (validSourceId) {
       params.set("sourceId", validSourceId.toString());
     }
-    return apiFetch<ApiResponse<SurahData>>(`/surahs/${surahId}?${params.toString()}`);
+    return apiFetch<ApiResponse<SurahData>>(
+      `/surahs/${surahId}?${params.toString()}`,
+    );
   },
 );
 
@@ -210,26 +229,49 @@ function handlePageChange(page: number) {
   router.push(`/page/${page}`);
 }
 
-// Pagination navigation
+// Pagination navigation (Seamless global navigation across the Mushaf)
+const orderedPages = computed(() => {
+  const mapping = globalPageMapping.value;
+  if (!mapping) return [];
+  const list: (MushafPage & { surahId: number; surahName: string })[] = [];
+  for (const [sIdStr, pages] of Object.entries(mapping)) {
+    const sId = parseInt(sIdStr);
+    const surah = allSurahs.value.find((s) => s.id === sId);
+    for (const p of pages) {
+      list.push({ surahId: sId, surahName: surah?.name_thai || "", ...p });
+    }
+  }
+  // Sort by page first, then by surahId
+  list.sort((a, b) => {
+    if (a.page !== b.page) return a.page - b.page;
+    return a.surahId - b.surahId;
+  });
+  return list;
+});
+
+const currentIndex = computed(() => {
+  return orderedPages.value.findIndex(
+    (p) => p.surahId === surahId && p.page === currentPage.value,
+  );
+});
+
 const prevPage = computed(() => {
-  const pages = mushafPagesData.value?.data;
-  if (!pages) return null;
-  const currentIndex = pages.findIndex((p) => p.page === currentPage.value);
-  if (currentIndex <= 0) return null;
-  return pages[currentIndex - 1];
+  if (currentIndex.value <= 0) return null;
+  return orderedPages.value[currentIndex.value - 1];
 });
 
 const nextPage = computed(() => {
-  const pages = mushafPagesData.value?.data;
-  if (!pages) return null;
-  const currentIndex = pages.findIndex((p) => p.page === currentPage.value);
-  if (currentIndex === -1 || currentIndex === pages.length - 1) return null;
-  return pages[currentIndex + 1];
+  if (
+    currentIndex.value === -1 ||
+    currentIndex.value >= orderedPages.value.length - 1
+  )
+    return null;
+  return orderedPages.value[currentIndex.value + 1];
 });
 
 // SEO metadata
+const baseUrl = "https://quran.in.th";
 const canonicalUrl = computed(() => {
-  const baseUrl = "https://quran.in.th";
   const pageQuery = currentPage.value > 1 ? `?page=${currentPage.value}` : "";
   return `${baseUrl}/surah/${surahId}${pageQuery}`;
 });
@@ -247,14 +289,14 @@ useHead({
     if (prevPage.value) {
       links.push({
         rel: "prev",
-        href: `${canonicalUrl.value.split("?")[0]}?page=${prevPage.value.page}`,
+        href: `${baseUrl}/surah/${prevPage.value.surahId}?page=${prevPage.value.page}`,
       });
     }
 
     if (nextPage.value) {
       links.push({
         rel: "next",
-        href: `${canonicalUrl.value.split("?")[0]}?page=${nextPage.value.page}`,
+        href: `${baseUrl}/surah/${nextPage.value.surahId}?page=${nextPage.value.page}`,
       });
     }
 
@@ -432,7 +474,7 @@ useHead({
             <div class="flex justify-start">
               <NuxtLink
                 v-if="prevPage"
-                :to="`?page=${prevPage.page}`"
+                :to="`/surah/${prevPage.surahId}?page=${prevPage.page}`"
                 class="group flex flex-col items-start justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm transition-all duration-150 hover:border-blue-300 hover:shadow-md sm:min-w-32"
               >
                 <div
@@ -455,9 +497,8 @@ useHead({
                   ก่อนหน้า
                 </div>
                 <span
-                  v-if="currentSurah"
                   class="font-bold text-slate-900 group-hover:text-blue-700"
-                  >{{ currentSurah.name_thai }}</span
+                  >{{ prevPage.surahName || currentSurah?.name_thai }}</span
                 >
                 <span
                   class="text-xs text-slate-500 mt-0.5 group-hover:text-blue-500"
@@ -479,7 +520,7 @@ useHead({
                 class="flex flex-col items-center gap-1.5 mt-1"
               >
                 <span class="text-sm text-slate-500">
-                  หน้า {{ currentPage }} จาก {{ mushafPagesData.data.length }}
+                  หน้า {{ currentPage }} จาก 604
                 </span>
                 <div class="flex items-center gap-2">
                   <span
@@ -500,7 +541,7 @@ useHead({
             <div class="flex justify-end">
               <NuxtLink
                 v-if="nextPage"
-                :to="`?page=${nextPage.page}`"
+                :to="`/surah/${nextPage.surahId}?page=${nextPage.page}`"
                 class="group flex flex-col items-end justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm transition-all duration-150 hover:border-blue-300 hover:shadow-md sm:min-w-32"
               >
                 <div
@@ -523,9 +564,8 @@ useHead({
                   </svg>
                 </div>
                 <span
-                  v-if="currentSurah"
                   class="font-bold text-slate-900 group-hover:text-blue-700"
-                  >{{ currentSurah.name_thai }}</span
+                  >{{ nextPage.surahName || currentSurah?.name_thai }}</span
                 >
                 <span
                   class="text-xs text-slate-500 mt-0.5 group-hover:text-blue-500"
