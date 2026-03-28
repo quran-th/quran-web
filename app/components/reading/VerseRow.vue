@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import type { QuranWord } from "~/types/quran";
+import ReportModal from "~/components/reading/ReportModal.vue";
 
 interface Footnote {
   number: number;
@@ -21,6 +22,7 @@ interface Props {
   surahName?: string;
   words?: QuranWord[];
   isFontLoaded?: (pageNumber: number) => boolean;
+  sourceId?: number;
 }
 
 const props = defineProps<Props>();
@@ -30,12 +32,11 @@ const emit = defineEmits<{
   bookmark: [verse: Verse];
   copy: [verse: Verse];
   share: [verse: Verse];
-  report: [verse: Verse];
 }>();
 
 const isCopied = ref(false);
 const isBookmarked = ref(false);
-const showMenu = ref(false);
+const showReportModal = ref(false);
 const hoveredFootnote = ref<string | null>(null);
 
 /** Split translation text to render (*N*) footnote markers as superscripts */
@@ -93,23 +94,13 @@ function handleShare() {
   emit("share", props.verse);
 }
 
-function handleReport() {
-  emit("report", props.verse);
-  showMenu.value = false;
-}
-
-function toggleMenu(event: Event) {
-  event.stopPropagation();
-  showMenu.value = !showMenu.value;
-}
-
-function handleClickOutside() {
-  showMenu.value = false;
+function openReport() {
+  showReportModal.value = true;
 }
 </script>
 
 <template>
-  <div class="relative" @click="handleClickOutside">
+  <div class="relative">
     <!-- Actions row: action icons on left, share and report on right -->
     <div class="flex items-center justify-between px-4 pt-4 pb-2">
       <!-- Left: Action icons -->
@@ -231,58 +222,26 @@ function handleClickOutside() {
             <line x1="15.41" x2="8.59" y1="6.51" y2="10.49" />
           </svg>
         </button>
-        <div class="relative">
-          <button
-            class="flex h-9 w-9 items-center justify-center rounded-lg bg-transparent text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-500"
-            title="ตัวเลือกเพิ่มเติม"
-            @click="toggleMenu"
+        <button
+          class="flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-slate-400 transition-all duration-200 hover:bg-amber-50 hover:text-amber-600"
+          :title="$t('report.button_tooltip')"
+          @click="openReport"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <circle cx="12" cy="12" r="1" />
-              <circle cx="12" cy="5" r="1" />
-              <circle cx="12" cy="19" r="1" />
-            </svg>
-          </button>
-
-          <div
-            v-if="showMenu"
-            class="absolute top-full right-0 z-50 mt-1 min-w-40 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"
-          >
-            <button
-              class="flex w-full cursor-pointer items-center gap-3 border-none bg-transparent px-4 py-3 text-left font-sans text-sm text-red-600 transition-colors duration-200 hover:bg-red-50"
-              @click.stop="handleReport"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path
-                  d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14a2 2 0 0 0 1.73 3h16a2 2 0 0 0 1.73-3Z"
-                />
-                <line x1="12" x2="12" y1="9" y2="13" />
-                <line x1="12" x2="12.01" y1="17" y2="17" />
-              </svg>
-              รายงานปัญหา
-            </button>
-          </div>
-        </div>
+            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+            <line x1="4" x2="4" y1="22" y2="15" />
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -364,6 +323,16 @@ function handleClickOutside() {
     <!-- Separator line -->
     <div
       class="mx-4 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent"
+    />
+
+    <!-- Report Modal -->
+    <ReportModal
+      :visible="showReportModal"
+      :verse="verse"
+      :surah-number="surahNumber"
+      :surah-name="surahName"
+      :source-id="sourceId"
+      @update:visible="showReportModal = $event"
     />
   </div>
 </template>

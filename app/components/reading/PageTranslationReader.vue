@@ -108,6 +108,7 @@ const getWordsForVerse = (surahNumber: number, verseNumber: number) => {
         :surah-name="getSurahName(verse.surahNumber || 1)"
         :words="getWordsForVerse(verse.surahNumber || 1, verse.verseNumber)"
         :is-font-loaded="isFontLoaded"
+        :source-id="selectedSourceId"
       />
     </div>
   </div>

@@ -171,5 +171,34 @@
   },
   "diff": {
     "no_changes": "ไม่พบการเปลี่ยนแปลง"
+  },
+  "report": {
+    "title": "รายงานปัญหาคำแปล",
+    "verse_ref": "{surah}:{verse}",
+    "tab_quick": "รายงานด่วน",
+    "tab_suggest": "เสนอแก้ไข",
+    "quick_description": "เลือกประเภทปัญหาที่พบ",
+    "category_typo": "พิมพ์ผิด / สะกดผิด",
+    "category_missing_words": "คำขาดหาย",
+    "category_wrong_translation": "คำแปลผิดอายะห์",
+    "category_footnote_issue": "เชิงอรรถผิด / ขาดหาย",
+    "suggest_description": "เสนอคำแปลที่ถูกต้อง",
+    "suggest_label": "คำแปลที่เสนอ",
+    "suggest_placeholder": "กรอกคำแปลที่ถูกต้อง…",
+    "footnote_add": "เพิ่มเชิงอรรถ",
+    "footnote_placeholder": "เนื้อหาเชิงอรรถ…",
+    "footnote_remove": "ลบ",
+    "diff_title": "ดูตัวอย่างการเปลี่ยนแปลง",
+    "name_label": "ชื่อ (ไม่จำเป็น)",
+    "name_placeholder": "ชื่อของคุณ",
+    "submit": "ส่งรายงาน",
+    "submitting": "กำลังส่ง…",
+    "success": "ส่งรายงานเรียบร้อยแล้ว ขอบคุณที่ช่วยปรับปรุง",
+    "error": "ส่งรายงานไม่สำเร็จ กรุณาลองใหม่",
+    "turnstile_failed": "การยืนยันตัวตนล้มเหลว กรุณาลองใหม่",
+    "already_reported": "คุณเคยรายงานอายะห์นี้แล้ว",
+    "select_at_least_one": "กรุณาเลือกอย่างน้อย 1 ปัญหา",
+    "button_tooltip": "รายงานปัญหาคำแปล",
+    "char_count": "{n} ตัวอักษร"
   }
 }

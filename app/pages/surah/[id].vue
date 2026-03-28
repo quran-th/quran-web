@@ -458,6 +458,7 @@ useHead({
           :surah-name="currentSurah.name_simple"
           :words="quranStore.getWordsForVerse(verse.verseNumber)"
           :is-font-loaded="isFontLoaded"
+          :source-id="currentSourceId"
         />
 
         <!-- Mushaf Page Pagination -->

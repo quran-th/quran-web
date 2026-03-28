@@ -27,6 +27,9 @@ export default defineNuxtConfig({
     public: {
       // Override with NUXT_PUBLIC_ASSETS_BASE_URL env var in production
       assetsBaseUrl: 'https://assets.quran.in.th',
+      // Cloudflare Turnstile site key for anti-spam on public reports
+      // Override with NUXT_PUBLIC_TURNSTILE_SITE_KEY env var in production
+      turnstileSiteKey: '1x00000000000000000000AA',
     },
   },
 
