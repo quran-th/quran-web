@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/quran-th/quran-web/compare/v1.4.0...v1.5.0) (2026-03-29)
+
+
+### Features
+
+* display surah meaning in translation view ([0cc7d89](https://github.com/quran-th/quran-web/commit/0cc7d8975d2d84fb52267e782962e0edc9272a20))
+
 # [1.4.0](https://github.com/quran-th/quran-web/compare/v1.3.1...v1.4.0) (2026-03-29)
 
 
