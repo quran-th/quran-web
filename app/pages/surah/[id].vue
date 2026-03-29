@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
-import { onMounted, ref, watch, computed } from "vue";
+import { onMounted, ref, watch, computed, nextTick } from "vue";
 import { useQuranStore } from "~/stores/quranStore";
 import type { Verse, Pagination } from "~/stores/quranStore";
 import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
@@ -155,6 +155,15 @@ if (ssrData.value && ssrData.value.success) {
   currentSourceId.value = data.sourceId;
 }
 
+function scrollToFirstVerse() {
+  nextTick(() => {
+    const el = document.getElementById("first-verse");
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY - 72;
+    window.scrollTo({ top, behavior: "smooth" });
+  });
+}
+
 // Store Mushaf pages on mount
 onMounted(async () => {
   if (mushafPagesData.value && mushafPagesData.value.success) {
@@ -165,12 +174,13 @@ onMounted(async () => {
   quranStore.fetchVerseWords(surahId);
 
   await readerSettings.fetchTranslationSources();
+  scrollToFirstVerse();
 });
 
 // Watch for page changes
 watch(
   () => route.query.page,
-  (newPage) => {
+  async (newPage) => {
     const pageNum = newPage ? parseInt(newPage as string) : 1;
     const pages = mushafPagesData.value?.data;
     const page = pages?.find((p) => p.page === pageNum);
@@ -180,7 +190,8 @@ watch(
       // Fetch verses for this page
       const offset = page.verseFrom - 1;
       const limit = page.verseTo - page.verseFrom + 1;
-      quranStore.fetchVerses(surahId, validSourceId, offset, limit, true);
+      await quranStore.fetchVerses(surahId, validSourceId, offset, limit, true);
+      scrollToFirstVerse();
     }
   },
 );
@@ -449,6 +460,9 @@ useHead({
         >
           بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
         </div>
+
+        <!-- Scroll anchor for first verse -->
+        <div id="first-verse" />
 
         <!-- Verses List -->
         <ReadingVerseRow
