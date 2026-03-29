@@ -1,3 +1,11 @@
+# [1.3.0](https://github.com/quran-th/quran-web/compare/v1.2.2...v1.3.0) (2026-03-29)
+
+
+### Features
+
+* add public translation report modal with quick and detailed modes ([c9067ef](https://github.com/quran-th/quran-web/commit/c9067eff335bede4faeed6a37a5ce0e7e1a8c943))
+* utilize uthmanic font for arabic display ([63bc604](https://github.com/quran-th/quran-web/commit/63bc604a35599c3036d788fe95df8f9773b33977))
+
 ## [1.2.2](https://github.com/quran-th/quran-web/compare/v1.2.1...v1.2.2) (2026-03-10)
 
 
