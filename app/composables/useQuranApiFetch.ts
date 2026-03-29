@@ -19,7 +19,7 @@ export function useQuranApiFetch() {
   const event = import.meta.server ? useRequestEvent() : undefined
 
   return async <T>(path: string): Promise<T> => {
-    if (import.meta.server) {
+    if (import.meta.server && !import.meta.dev) {
       const binding = event?.context?.cloudflare?.env?.QURAN_API
       if (binding) {
         const res = await binding.fetch(

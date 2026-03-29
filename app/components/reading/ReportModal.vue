@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch } from "vue";
 import { useFingerprint } from "~/composables/useFingerprint";
 import {
   type FootnoteMarker,
@@ -8,6 +8,18 @@ import {
   renumberFootnotesInOrder,
 } from "~/composables/useFootnoteMarkers";
 import { useDiff } from "~/composables/useDiff";
+
+interface TurnstileInstance {
+  render(container: HTMLElement, options: Record<string, unknown>): string;
+  reset(widgetId: string): void;
+  remove(widgetId: string): void;
+}
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileInstance;
+  }
+}
 
 interface VerseFootnote {
   number: number;
@@ -157,7 +169,7 @@ function renderTurnstile() {
   if (!turnstileContainerRef.value) return;
   if (typeof window === "undefined") return;
 
-  const turnstile = (window as any).turnstile;
+  const turnstile = window.turnstile;
   if (!turnstile) return;
 
   if (turnstileWidgetId.value) {
@@ -178,7 +190,7 @@ function renderTurnstile() {
 }
 
 function resetTurnstile() {
-  const turnstile = (window as any).turnstile;
+  const turnstile = window.turnstile;
   if (turnstile && turnstileWidgetId.value) {
     turnstile.reset(turnstileWidgetId.value);
   }
@@ -188,7 +200,7 @@ function resetTurnstile() {
 // Load Turnstile script
 function loadTurnstileScript(): Promise<void> {
   return new Promise((resolve) => {
-    if ((window as any).turnstile) {
+    if (window.turnstile) {
       resolve();
       return;
     }
@@ -217,7 +229,7 @@ watch(
       await loadTurnstileScript();
       setTimeout(renderTurnstile, 100);
     } else {
-      const turnstile = (window as any).turnstile;
+      const turnstile = window.turnstile;
       if (turnstile && turnstileWidgetId.value) {
         turnstile.remove(turnstileWidgetId.value);
         turnstileWidgetId.value = null;
@@ -282,9 +294,10 @@ async function handleSubmit() {
       submitStatus.value = "error";
       submitError.value = t("report.error");
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     submitStatus.value = "error";
-    if (e?.data?.message?.includes("verification")) {
+    const err = e as { data?: { message?: string } };
+    if (err?.data?.message?.includes("verification")) {
       submitError.value = t("report.turnstile_failed");
     } else {
       submitError.value = t("report.error");
@@ -370,7 +383,7 @@ async function handleSubmit() {
                   :checked="selectedCategories.has(cat.key)"
                   class="category-checkbox"
                   @change="toggleCategory(cat.key)"
-                />
+                >
                 <span class="category-label">{{ t(cat.labelKey) }}</span>
               </label>
             </div>
@@ -433,7 +446,7 @@ async function handleSubmit() {
                   type="text"
                   class="footnote-input"
                   :placeholder="t('report.footnote_placeholder')"
-                />
+                >
                 <button
                   class="footnote-remove"
                   :title="t('report.footnote_remove')"
@@ -491,7 +504,7 @@ async function handleSubmit() {
               type="text"
               class="name-input"
               :placeholder="t('report.name_placeholder')"
-            />
+            >
           </div>
 
           <!-- Turnstile widget -->
