@@ -1,3 +1,16 @@
+# [1.6.0](https://github.com/quran-th/quran-web/compare/v1.5.0...v1.6.0) (2026-03-29)
+
+
+### Bug Fixes
+
+* adjust surah view in mobile screen ([14e452b](https://github.com/quran-th/quran-web/commit/14e452bb0dfa980100667fa2c31353a790bc62a6))
+
+
+### Features
+
+* auto focus first surah on next page ([870516d](https://github.com/quran-th/quran-web/commit/870516df00168e6b0ad5cbcae4bb817e1f507507))
+* improve page navigation ([ee65593](https://github.com/quran-th/quran-web/commit/ee655934c71b0ee728d9f8e838d4938e8c61ff69))
+
 # [1.5.0](https://github.com/quran-th/quran-web/compare/v1.4.0...v1.5.0) (2026-03-29)
 
 
