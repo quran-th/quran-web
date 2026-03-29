@@ -28,8 +28,8 @@ onMounted(() => {
           {{ surah.id }}
         </div>
         <div class="flex flex-col">
-          <span class="group-hover:text-sand-600 font-medium text-slate-900 transition-colors">ซูเราะห์ {{ surah.name_simple }}</span>
-          <span class="text-xs text-slate-500">{{ surah.name_thai }}</span>
+          <span class="group-hover:text-sand-600 font-medium text-slate-900 transition-colors">{{ surah.name_thai }}</span>
+          <span class="text-xs text-slate-500">{{ surah.name_meaning_thai }}</span>
         </div>
       </div>
       <div class="flex flex-col items-end gap-1">
