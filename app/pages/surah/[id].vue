@@ -382,83 +382,38 @@ useHead({
         class="space-y-6"
       >
         <!-- Surah Header -->
-        <div class="space-y-4 border-b border-slate-200 py-10 text-center">
-          <h1 class="font-arabic mb-4 text-5xl text-slate-900">
-            {{ currentSurah.name_arabic }}
-          </h1>
-          <h2 class="text-3xl font-bold tracking-tight text-slate-800">
-            ซูเราะห์ {{ currentSurah.name_thai }}
-          </h2>
-          <p class="text-xl font-medium text-slate-500">
-            ( {{ currentSurah.name_meaning_thai }} )
-          </p>
+        <div class="border-b border-slate-200 py-3 text-center">
+          <div class="flex items-baseline justify-center gap-3">
+            <h1 class="font-arabic text-3xl leading-none text-slate-900">
+              {{ currentSurah.name_arabic }}
+            </h1>
+            <h2 class="text-lg font-bold tracking-tight text-slate-800">
+              ซูเราะห์ {{ currentSurah.name_thai }}
+            </h2>
+          </div>
           <div
-            class="flex justify-center gap-6 pt-4 text-sm font-semibold tracking-wider text-slate-400 uppercase"
+            class="mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 text-xs text-slate-400"
           >
-            <span class="flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
-              {{
-                currentSurah.revelation_place === "meccan"
-                  ? "มักกียะฮ์"
-                  : "มะดะนียะฮ์"
-              }}
-            </span>
+            <span>{{ currentSurah.name_meaning_thai }}</span>
             <span class="text-slate-200">|</span>
-            <span class="flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+            <span>{{
+              currentSurah.revelation_place === "meccan"
+                ? "มักกียะฮ์"
+                : "มะดะนียะฮ์"
+            }}</span>
+            <span class="text-slate-200">|</span>
+            <span>{{ currentSurah.verses_count }} อายะห์</span>
+            <template v-if="currentPageInfo">
+              <span class="text-slate-200">|</span>
+              <NuxtLink
+                to="/page/1"
+                class="hover:text-slate-500 underline"
+                title="อ่านในมุษอฟ"
               >
-                <path
-                  d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"
-                />
-                <path d="M8 7h6" />
-                <path d="M8 11h8" />
-              </svg>
-              {{ currentSurah.verses_count }} อายะห์
-            </span>
+                หน้า {{ currentPageInfo.page }}
+              </NuxtLink>
+            </template>
           </div>
-
-          <!-- Current page info -->
-          <div v-if="currentPageInfo" class="pt-2 text-sm text-slate-500">
-            <NuxtLink
-              to="/page/1"
-              class="hover:text-slate-700 underline"
-              title="อ่านในมุษอฟ"
-            >
-              มุษอฟ หน้า {{ currentPageInfo.page }}
-            </NuxtLink>
-            <span class="mx-2">•</span>
-            อายะห์ {{ currentPageInfo.verseFrom }}-{{ currentPageInfo.verseTo }}
-          </div>
-        </div>
-
-        <!-- Bismillah -->
-        <div
-          v-if="currentSurah.id !== 1 && currentSurah.id !== 9"
-          class="font-arabic py-10 text-center text-4xl text-slate-800"
-        >
-          بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
         </div>
 
         <!-- Scroll anchor for first verse -->
@@ -483,112 +438,47 @@ useHead({
             mushafPagesData.data &&
             mushafPagesData.data.length > 0
           "
-          class="border-t border-slate-100 pb-6 pt-10 mt-8"
+          class="mt-10 mb-6"
         >
-          <div class="grid grid-cols-3 items-center gap-4">
+          <div class="flex items-center justify-between">
             <!-- Previous Button -->
-            <div class="flex justify-start">
-              <NuxtLink
-                v-if="prevPage"
-                :to="`/surah/${prevPage.surahId}?page=${prevPage.page}`"
-                class="group flex flex-col items-start justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm transition-all duration-150 hover:border-blue-300 hover:shadow-md sm:min-w-32"
-              >
-                <div
-                  class="flex items-center text-sm font-medium text-slate-500 group-hover:text-blue-600 mb-1"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="mr-1"
-                  >
-                    <path d="m15 18-6-6 6-6" />
-                  </svg>
-                  ก่อนหน้า
-                </div>
-                <span
-                  class="font-bold text-slate-900 group-hover:text-blue-700"
-                  >{{ prevPage.surahName || currentSurah?.name_thai }}</span
-                >
-                <span
-                  class="text-xs text-slate-500 mt-0.5 group-hover:text-blue-500"
-                  >อายะห์ {{ prevPage.verseFrom }}-{{ prevPage.verseTo }}</span
-                >
-              </NuxtLink>
-            </div>
+            <NuxtLink
+              v-if="prevPage"
+              :to="`/surah/${prevPage.surahId}?page=${prevPage.page}`"
+              class="group flex items-center gap-3 text-slate-600 transition-colors hover:text-slate-900"
+            >
+              <span class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-white transition-colors group-hover:bg-slate-900">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+              </span>
+              <div class="flex flex-col">
+                <span class="text-xs text-slate-400 sm:hidden">ก่อนหน้า</span>
+                <span class="hidden text-sm font-medium sm:block">{{ prevPage.surahName || currentSurah?.name_thai }}</span>
+                <span class="hidden text-xs text-slate-400 sm:block">อายะห์ {{ prevPage.verseFrom }}-{{ prevPage.verseTo }}</span>
+              </div>
+            </NuxtLink>
+            <div v-else />
 
-            <!-- Current page data -->
-            <div class="flex flex-col items-center justify-center text-center">
-              <div
-                v-if="currentSurah"
-                class="text-base sm:text-lg font-bold text-slate-900"
-              >
-                {{ currentSurah.name_thai }}
-              </div>
-              <div
-                v-if="mushafPagesData"
-                class="flex flex-col items-center gap-1.5 mt-1"
-              >
-                <span class="text-sm text-slate-500">
-                  หน้า {{ currentPage }} จาก 604
-                </span>
-                <div class="flex items-center gap-2">
-                  <span
-                    class="text-[11px] font-medium px-2 py-0.5 bg-slate-100 text-slate-600 rounded"
-                  >
-                    ญุซที่ {{ Math.ceil(currentPage / 20) }}
-                  </span>
-                  <span
-                    class="text-[11px] font-medium px-2 py-0.5 bg-slate-100 text-slate-600 rounded"
-                  >
-                    ฮิซบ์ที่ {{ Math.ceil(currentPage / 10) }}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <!-- Current page info -->
+            <span class="text-xs text-slate-400">
+              {{ currentPage }} / 604
+            </span>
 
             <!-- Next Button -->
-            <div class="flex justify-end">
-              <NuxtLink
-                v-if="nextPage"
-                :to="`/surah/${nextPage.surahId}?page=${nextPage.page}`"
-                class="group flex flex-col items-end justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm transition-all duration-150 hover:border-blue-300 hover:shadow-md sm:min-w-32"
-              >
-                <div
-                  class="flex items-center text-sm font-medium text-slate-500 group-hover:text-blue-600 mb-1"
-                >
-                  ถัดไป
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="ml-1"
-                  >
-                    <path d="m9 18 6-6-6-6" />
-                  </svg>
-                </div>
-                <span
-                  class="font-bold text-slate-900 group-hover:text-blue-700"
-                  >{{ nextPage.surahName || currentSurah?.name_thai }}</span
-                >
-                <span
-                  class="text-xs text-slate-500 mt-0.5 group-hover:text-blue-500"
-                  >อายะห์ {{ nextPage.verseFrom }}-{{ nextPage.verseTo }}</span
-                >
-              </NuxtLink>
-            </div>
+            <NuxtLink
+              v-if="nextPage"
+              :to="`/surah/${nextPage.surahId}?page=${nextPage.page}`"
+              class="group flex items-center gap-3 text-slate-600 transition-colors hover:text-slate-900"
+            >
+              <div class="flex flex-col items-end">
+                <span class="text-xs text-slate-400 sm:hidden">ถัดไป</span>
+                <span class="hidden text-sm font-medium sm:block">{{ nextPage.surahName || currentSurah?.name_thai }}</span>
+                <span class="hidden text-xs text-slate-400 sm:block">อายะห์ {{ nextPage.verseFrom }}-{{ nextPage.verseTo }}</span>
+              </div>
+              <span class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-white transition-colors group-hover:bg-slate-900">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+              </span>
+            </NuxtLink>
+            <div v-else />
           </div>
         </nav>
       </div>
