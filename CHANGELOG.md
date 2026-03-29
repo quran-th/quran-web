@@ -1,3 +1,15 @@
+# [1.4.0](https://github.com/quran-th/quran-web/compare/v1.3.1...v1.4.0) (2026-03-29)
+
+
+### Bug Fixes
+
+* report modal has to pass spam check before entering report form ([10f7253](https://github.com/quran-th/quran-web/commit/10f725327c5e194fc99744fbfb3a5b8a70c6f844))
+
+
+### Features
+
+* update surah list view ([3dfc043](https://github.com/quran-th/quran-web/commit/3dfc043e321c85a1e75d65bee700119468d8fa04))
+
 ## [1.3.1](https://github.com/quran-th/quran-web/compare/v1.3.0...v1.3.1) (2026-03-29)
 
 
