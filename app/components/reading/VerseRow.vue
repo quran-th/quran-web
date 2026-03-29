@@ -256,7 +256,7 @@ function openReport() {
       <!-- Fallback: plain unicode text -->
       <div
         v-else
-        class="font-arabic rtl text-right text-3xl leading-loose text-slate-900"
+        class="font-arabic rtl text-right text-2xl sm:text-3xl leading-loose text-slate-900"
         dir="rtl"
       >
         {{ verse.content }}
@@ -288,7 +288,7 @@ function openReport() {
       <!-- Footnotes (always visible when present) -->
       <ol
         v-if="verse.footnotes && verse.footnotes.length > 0"
-        class="mt-3 space-y-1 pl-4 text-sm leading-relaxed text-slate-500"
+        class="mt-3 space-y-1 pl-0 sm:pl-4 text-sm leading-relaxed text-slate-500"
       >
         <li
           v-for="fn in verse.footnotes"

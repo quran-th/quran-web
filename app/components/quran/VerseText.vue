@@ -27,11 +27,18 @@ defineProps<Props>()
 .verse-text {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
   direction: rtl;
   text-align: right;
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   line-height: 2.5;
   gap: 0;
+}
+
+@media (min-width: 640px) {
+  .verse-text {
+    justify-content: center;
+    font-size: 1.8rem;
+  }
 }
 </style>
