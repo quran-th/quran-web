@@ -144,6 +144,7 @@ if (ssrData.value && ssrData.value.success) {
     name_simple: data.name_simple,
     name_arabic: data.name_arabic,
     name_thai: data.name_thai,
+    name_meaning_thai: data.name_meaning_thai,
     englishName: data.name_simple,
     englishNameTranslation: data.name_thai,
     revelation_place: data.revelation_place,
@@ -455,7 +456,7 @@ useHead({
           :key="verse.verseNumber"
           :verse="verse"
           :surah-number="currentSurah.id"
-          :surah-name="currentSurah.name_simple"
+          :surah-name="currentSurah.name_thai"
           :words="quranStore.getWordsForVerse(verse.verseNumber)"
           :is-font-loaded="isFontLoaded"
           :source-id="currentSourceId"

@@ -176,7 +176,7 @@
     "title": "รายงานปัญหาคำแปล",
     "verse_ref": "{surah}:{verse}",
     "tab_quick": "รายงานด่วน",
-    "tab_suggest": "เสนอแก้ไข",
+    "tab_suggest": "รายงานพร้อมแก้ไข",
     "quick_description": "เลือกประเภทปัญหาที่พบ",
     "category_typo": "พิมพ์ผิด / สะกดผิด",
     "category_missing_words": "คำขาดหาย",
@@ -189,7 +189,7 @@
     "footnote_placeholder": "เนื้อหาเชิงอรรถ…",
     "footnote_remove": "ลบ",
     "diff_title": "ดูตัวอย่างการเปลี่ยนแปลง",
-    "name_label": "ชื่อ (ไม่จำเป็น)",
+    "name_label": "ชื่อผู้รายงาน (ไม่บังคับ)",
     "name_placeholder": "ชื่อของคุณ",
     "submit": "ส่งรายงาน",
     "submitting": "กำลังส่ง…",
@@ -199,6 +199,7 @@
     "already_reported": "คุณเคยรายงานอายะห์นี้แล้ว",
     "select_at_least_one": "กรุณาเลือกอย่างน้อย 1 ปัญหา",
     "button_tooltip": "รายงานปัญหาคำแปล",
-    "char_count": "{n} ตัวอักษร"
+    "char_count": "{n} ตัวอักษร",
+    "verify_hint": "กำลังตรวจสอบว่าคุณไม่ใช่บอท"
   }
 }

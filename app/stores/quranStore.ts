@@ -7,6 +7,7 @@ export interface Surah {
   name_simple: string
   name_arabic: string
   name_thai: string
+  name_meaning_thai: string
   englishName: string
   englishNameTranslation: string
   revelation_place: string
@@ -125,6 +126,7 @@ export const useQuranStore = defineStore('quran', () => {
           name_simple: data.name_simple,
           name_arabic: data.name_arabic,
           name_thai: data.name_thai,
+          name_meaning_thai: data.name_meaning_thai,
           englishName: data.name_simple,
           englishNameTranslation: data.name_thai,
           revelation_place: data.revelation_place,
