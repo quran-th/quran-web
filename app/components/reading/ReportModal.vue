@@ -73,6 +73,7 @@ const isTextareaFocused = ref(false);
 const turnstileToken = ref("");
 const turnstileWidgetId = ref<string | null>(null);
 const turnstileContainerRef = ref<HTMLDivElement | null>(null);
+const verified = computed(() => !!turnstileToken.value);
 
 // Diff preview
 const currentTranslation = computed(() => props.verse.translation || "");
@@ -350,189 +351,197 @@ async function handleSubmit() {
             </button>
           </div>
 
-          <!-- Tabs -->
-          <div class="tabs">
-            <button
-              class="tab"
-              :class="{ 'tab--active': activeTab === 'quick' }"
-              @click="activeTab = 'quick'"
-            >
-              {{ t("report.tab_quick") }}
-            </button>
-            <button
-              class="tab"
-              :class="{ 'tab--active': activeTab === 'suggest' }"
-              @click="activeTab = 'suggest'"
-            >
-              {{ t("report.tab_suggest") }}
-            </button>
-          </div>
-
-          <!-- Quick Report Tab -->
-          <div v-if="activeTab === 'quick'" class="tab-content">
-            <p class="tab-description">{{ t("report.quick_description") }}</p>
-            <div class="categories">
-              <label
-                v-for="cat in categories"
-                :key="cat.key"
-                class="category-item"
-                :class="{ 'category-item--selected': selectedCategories.has(cat.key) }"
-              >
-                <input
-                  type="checkbox"
-                  :checked="selectedCategories.has(cat.key)"
-                  class="category-checkbox"
-                  @change="toggleCategory(cat.key)"
-                >
-                <span class="category-label">{{ t(cat.labelKey) }}</span>
-              </label>
+          <!-- Step 1: Turnstile verification -->
+          <div v-if="!verified" class="verification-screen">
+            <p class="verification-hint">{{ t("report.verify_hint") }}</p>
+            <div class="turnstile-wrapper">
+              <div ref="turnstileContainerRef" />
             </div>
           </div>
 
-          <!-- Suggest Edit Tab -->
-          <div v-if="activeTab === 'suggest'" class="tab-content">
-            <p class="tab-description">{{ t("report.suggest_description") }}</p>
-
-            <!-- Textarea with footnote toolbar -->
-            <div class="textarea-wrapper">
-              <textarea
-                ref="textareaEl"
-                v-model="proposalText"
-                class="proposal-textarea"
-                :placeholder="t('report.suggest_placeholder')"
-                rows="5"
-                @focus="isTextareaFocused = true"
-                @blur="isTextareaFocused = false"
-              />
-              <div class="textarea-toolbar">
+          <!-- Step 2: Form (shown after verification) -->
+          <template v-else>
+            <div class="modal-body">
+              <!-- Tabs -->
+              <div class="tabs">
                 <button
-                  class="footnote-btn"
-                  :disabled="!isTextareaFocused"
-                  :title="t('report.footnote_add')"
-                  @mousedown.prevent="handleInsertFootnote"
+                  class="tab"
+                  :class="{ 'tab--active': activeTab === 'quick' }"
+                  @click="activeTab = 'quick'"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M12 5v14" />
-                    <path d="M5 12h14" />
-                  </svg>
-                  {{ t("report.footnote_add") }}
+                  {{ t("report.tab_quick") }}
                 </button>
-                <span class="char-count">
-                  {{ t("report.char_count", { n: proposalText.length }) }}
-                </span>
+                <button
+                  class="tab"
+                  :class="{ 'tab--active': activeTab === 'suggest' }"
+                  @click="activeTab = 'suggest'"
+                >
+                  {{ t("report.tab_suggest") }}
+                </button>
               </div>
-            </div>
 
-            <!-- Footnotes -->
-            <div v-if="footnotes.length > 0" class="footnotes-section">
-              <div
-                v-for="(fn, idx) in footnotes"
-                :key="fn.footnoteNumber"
-                class="footnote-row"
-              >
-                <span class="footnote-number">(*{{ fn.footnoteNumber }}*)</span>
+              <!-- Quick Report Tab -->
+              <div v-if="activeTab === 'quick'" class="tab-content">
+                <p class="tab-description">{{ t("report.quick_description") }}</p>
+                <div class="categories">
+                  <label
+                    v-for="cat in categories"
+                    :key="cat.key"
+                    class="category-item"
+                    :class="{ 'category-item--selected': selectedCategories.has(cat.key) }"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="selectedCategories.has(cat.key)"
+                      class="category-checkbox"
+                      @change="toggleCategory(cat.key)"
+                    >
+                    <span class="category-label">{{ t(cat.labelKey) }}</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Suggest Edit Tab -->
+              <div v-if="activeTab === 'suggest'" class="tab-content">
+                <p class="tab-description">{{ t("report.suggest_description") }}</p>
+
+                <!-- Textarea with footnote toolbar -->
+                <div class="textarea-wrapper">
+                  <textarea
+                    ref="textareaEl"
+                    v-model="proposalText"
+                    class="proposal-textarea"
+                    :placeholder="t('report.suggest_placeholder')"
+                    rows="5"
+                    @focus="isTextareaFocused = true"
+                    @blur="isTextareaFocused = false"
+                  />
+                  <div class="textarea-toolbar">
+                    <button
+                      class="footnote-btn"
+                      :disabled="!isTextareaFocused"
+                      :title="t('report.footnote_add')"
+                      @mousedown.prevent="handleInsertFootnote"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M12 5v14" />
+                        <path d="M5 12h14" />
+                      </svg>
+                      {{ t("report.footnote_add") }}
+                    </button>
+                    <span class="char-count">
+                      {{ t("report.char_count", { n: proposalText.length }) }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Footnotes -->
+                <div v-if="footnotes.length > 0" class="footnotes-section">
+                  <div
+                    v-for="(fn, idx) in footnotes"
+                    :key="fn.footnoteNumber"
+                    class="footnote-row"
+                  >
+                    <span class="footnote-number">(*{{ fn.footnoteNumber }}*)</span>
+                    <input
+                      v-model="fn.text"
+                      type="text"
+                      class="footnote-input"
+                      :placeholder="t('report.footnote_placeholder')"
+                    >
+                    <button
+                      class="footnote-remove"
+                      :title="t('report.footnote_remove')"
+                      @click="removeFootnote(idx)"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Validation errors -->
+                <div v-if="validationErrors.length > 0" class="validation-errors">
+                  <p v-for="err in validationErrors" :key="err" class="validation-error">
+                    {{ err }}
+                  </p>
+                </div>
+
+                <!-- Diff preview -->
+                <div v-if="diffTokens.length > 0" class="diff-section">
+                  <h4 class="diff-title">{{ t("report.diff_title") }}</h4>
+                  <div class="diff-preview">
+                    <span
+                      v-for="(token, i) in diffTokens"
+                      :key="i"
+                      :class="{
+                        'diff-insert': token.type === 'insert',
+                        'diff-delete': token.type === 'delete',
+                      }"
+                    >{{ token.text }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Name field (both modes) -->
+              <div class="name-field">
+                <label class="name-label" for="report-name">
+                  {{ t("report.name_label") }}
+                </label>
                 <input
-                  v-model="fn.text"
+                  id="report-name"
+                  v-model="contactName"
                   type="text"
-                  class="footnote-input"
-                  :placeholder="t('report.footnote_placeholder')"
+                  class="name-input"
+                  :placeholder="t('report.name_placeholder')"
                 >
-                <button
-                  class="footnote-remove"
-                  :title="t('report.footnote_remove')"
-                  @click="removeFootnote(idx)"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M18 6 6 18" />
-                    <path d="m6 6 12 12" />
-                  </svg>
-                </button>
+              </div>
+
+              <!-- Success/Error messages -->
+              <div v-if="submitStatus === 'success'" class="status-message status-success">
+                {{ t("report.success") }}
+              </div>
+              <div v-if="submitStatus === 'error'" class="status-message status-error">
+                {{ submitError || t("report.error") }}
               </div>
             </div>
 
-            <!-- Validation errors -->
-            <div v-if="validationErrors.length > 0" class="validation-errors">
-              <p v-for="err in validationErrors" :key="err" class="validation-error">
-                {{ err }}
-              </p>
+            <!-- Footer (fixed at bottom) -->
+            <div class="modal-footer">
+              <button class="btn-cancel" @click="close">
+                {{ t("common.back") }}
+              </button>
+              <button
+                class="btn-submit"
+                :disabled="!canSubmit"
+                @click="handleSubmit"
+              >
+                {{ submitting ? t("report.submitting") : t("report.submit") }}
+              </button>
             </div>
-
-            <!-- Diff preview -->
-            <div v-if="diffTokens.length > 0" class="diff-section">
-              <h4 class="diff-title">{{ t("report.diff_title") }}</h4>
-              <div class="diff-preview">
-                <span
-                  v-for="(token, i) in diffTokens"
-                  :key="i"
-                  :class="{
-                    'diff-insert': token.type === 'insert',
-                    'diff-delete': token.type === 'delete',
-                  }"
-                >{{ token.text }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Name field (both modes) -->
-          <div class="name-field">
-            <label class="name-label" for="report-name">
-              {{ t("report.name_label") }}
-            </label>
-            <input
-              id="report-name"
-              v-model="contactName"
-              type="text"
-              class="name-input"
-              :placeholder="t('report.name_placeholder')"
-            >
-          </div>
-
-          <!-- Turnstile widget -->
-          <div class="turnstile-wrapper">
-            <div ref="turnstileContainerRef" />
-          </div>
-
-          <!-- Success/Error messages -->
-          <div v-if="submitStatus === 'success'" class="status-message status-success">
-            {{ t("report.success") }}
-          </div>
-          <div v-if="submitStatus === 'error'" class="status-message status-error">
-            {{ submitError || t("report.error") }}
-          </div>
-
-          <!-- Footer -->
-          <div class="modal-footer">
-            <button class="btn-cancel" @click="close">
-              {{ t("common.back") }}
-            </button>
-            <button
-              class="btn-submit"
-              :disabled="!canSubmit"
-              @click="handleSubmit"
-            >
-              {{ submitting ? t("report.submitting") : t("report.submit") }}
-            </button>
-          </div>
+          </template>
         </div>
       </div>
     </Transition>
@@ -555,12 +564,19 @@ async function handleSubmit() {
   background: white;
   border-radius: 16px;
   width: 90%;
-  max-width: 480px;
-  max-height: 85vh;
-  overflow-y: auto;
+  max-width: 580px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
   box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.15),
     0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .modal-header {
@@ -606,14 +622,14 @@ async function handleSubmit() {
 .tabs {
   display: flex;
   gap: 4px;
-  padding: 0 1.5rem;
+  padding: 0.75rem 1.5rem 0;
   margin-bottom: 0.5rem;
 }
 
 .tab {
   flex: 1;
   padding: 0.5rem 0;
-  border: none;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: transparent;
   color: #94a3b8;
@@ -878,6 +894,22 @@ async function handleSubmit() {
   box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
 }
 
+.verification-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem 2.5rem;
+  gap: 1rem;
+}
+
+.verification-hint {
+  font-size: 0.85rem;
+  color: #64748b;
+  text-align: center;
+  margin: 0;
+}
+
 .turnstile-wrapper {
   display: flex;
   justify-content: center;
@@ -907,6 +939,8 @@ async function handleSubmit() {
   justify-content: flex-end;
   gap: 8px;
   padding: 0.75rem 1.5rem 1.25rem;
+  border-top: 1px solid #f1f5f9;
+  flex-shrink: 0;
 }
 
 .btn-cancel {
