@@ -376,10 +376,10 @@ useHead({
             {{ currentSurah.name_arabic }}
           </h1>
           <h2 class="text-3xl font-bold tracking-tight text-slate-800">
-            ซูเราะห์ {{ currentSurah.name_simple }}
+            ซูเราะห์ {{ currentSurah.name_thai }}
           </h2>
           <p class="text-xl font-medium text-slate-500">
-            {{ currentSurah.name_thai }}
+            ( {{ currentSurah.name_meaning_thai }} )
           </p>
           <div
             class="flex justify-center gap-6 pt-4 text-sm font-semibold tracking-wider text-slate-400 uppercase"
