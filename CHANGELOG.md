@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/quran-th/quran-web/compare/v1.3.0...v1.3.1) (2026-03-29)
+
+
+### Bug Fixes
+
+* lint error ([9e85b55](https://github.com/quran-th/quran-web/commit/9e85b55b6fe0d2e8dcc0a683dd216eeeb41b82cc))
+
 # [1.3.0](https://github.com/quran-th/quran-web/compare/v1.2.2...v1.3.0) (2026-03-29)
 
 
