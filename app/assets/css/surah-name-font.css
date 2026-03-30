@@ -1,0 +1,8 @@
+@font-face {
+  font-family: 'SurahNameV4';
+  src: url('https://assets.quran.in.th/fonts/surah-names/v4/surah-name.woff2') format('woff2'),
+       url('https://assets.quran.in.th/fonts/surah-names/v4/surah-name.woff') format('woff'),
+       url('https://assets.quran.in.th/fonts/surah-names/v4/surah-name.ttf') format('truetype');
+  font-display: swap;
+  unicode-range: U+FB51-FBEB, U+FC45-FCB9;
+}

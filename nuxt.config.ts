@@ -74,5 +74,5 @@ export default defineNuxtConfig({
     },
   },
 
-  css: ['~/assets/css/fonts.css', '~/assets/css/mushaf-scales.css'],
+  css: ['~/assets/css/fonts.css', '~/assets/css/mushaf-scales.css', '~/assets/css/surah-name-font.css'],
 })

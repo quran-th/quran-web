@@ -16,6 +16,19 @@ async function loadPageIndex(baseUrl: string): Promise<Record<number, number[]>>
 }
 
 /**
+ * Surah-page mapping: maps surah ID → array of {page, verseFrom, verseTo}.
+ * Loaded once on first use.
+ */
+let surahPageMapping: Record<string, Array<{ page: number, verseFrom: number, verseTo: number }>> | null = null
+
+async function loadSurahPageMapping(baseUrl: string): Promise<Record<string, Array<{ page: number, verseFrom: number, verseTo: number }>>> {
+  if (surahPageMapping) return surahPageMapping
+  const res = await fetch(`${baseUrl}/quran-pages/surah-page-mapping.json`)
+  surahPageMapping = await res.json()
+  return surahPageMapping!
+}
+
+/**
  * Chapter word cache: avoids re-fetching the same chapter JSON.
  */
 const chapterCache = new Map<number, QuranVerseEntry[]>()
@@ -28,6 +41,13 @@ async function loadChapterWords(chapterId: number, baseUrl: string): Promise<Qur
   return data
 }
 
+/** Info about a surah that starts on a specific page. */
+export interface SurahStartInfo {
+  surahId: number
+  firstVerseLine: number
+  hasBismillah: boolean
+}
+
 export const useMushafStore = defineStore('mushaf', () => {
   const { public: { assetsBaseUrl } } = useRuntimeConfig()
   const currentPage = ref(1)
@@ -36,6 +56,9 @@ export const useMushafStore = defineStore('mushaf', () => {
 
   // Cache of words grouped by page number
   const pageWordsCache = ref<Map<number, QuranWord[]>>(new Map())
+
+  // Cached bismillah words (from 1:1 positions 1-4, loaded once)
+  const bismillahWords = ref<QuranWord[] | null>(null)
 
   /**
    * Fetch words for a specific Mushaf page.
@@ -102,6 +125,54 @@ export const useMushafStore = defineStore('mushaf', () => {
   }
 
   /**
+   * Detect which surahs start on a given page and at which line.
+   * Returns an array of SurahStartInfo, ordered by first verse line.
+   */
+  function getSurahStartsOnPage(pageNumber: number): SurahStartInfo[] {
+    const results: SurahStartInfo[] = []
+    const words = pageWordsCache.value.get(pageNumber)
+    if (!words || words.length === 0) return results
+
+    // Check each word to see if it's verse_number=1 of any surah
+    const seen = new Set<number>()
+    for (const word of words) {
+      if (word.verse_number === 1 && word.char_type_name === 'word' && word.verse_key) {
+        const surahId = parseInt(word.verse_key!.split(':')[0])
+        if (!seen.has(surahId)) {
+          seen.add(surahId)
+          results.push({
+            surahId,
+            firstVerseLine: word.line_number,
+            hasBismillah: surahId !== 9 && surahId !== 1,
+          })
+        }
+      }
+    }
+
+    return results
+  }
+
+  /**
+   * Load bismillah words from surah 1, verse 1 (positions 1-4 only, skip end marker).
+   * Cached after first load.
+   */
+  async function fetchBismillahWords(): Promise<QuranWord[]> {
+    if (bismillahWords.value) return bismillahWords.value
+
+    const data = await loadChapterWords(1, assetsBaseUrl)
+    const firstVerse = data[0] // verse 1:1
+    if (!firstVerse) return []
+
+    // Take words 1-4 only (skip position 5 which is the end marker)
+    const words = firstVerse.words
+      .filter(w => w.char_type_name === 'word')
+      .slice(0, 4)
+
+    bismillahWords.value = words
+    return words
+  }
+
+  /**
    * Load the current page plus its neighbors (sliding window of 3).
    */
   async function loadWindow(centerPage: number) {
@@ -113,6 +184,13 @@ export const useMushafStore = defineStore('mushaf', () => {
     if (centerPage < totalPages) pages.push(centerPage + 1)
 
     await Promise.all(pages.map(p => fetchPageWords(p)))
+
+    // Pre-load bismillah words if any surah starts on this page
+    const surahStarts = getSurahStartsOnPage(centerPage)
+    if (surahStarts.some(s => s.hasBismillah)) {
+      await fetchBismillahWords()
+    }
+
     loading.value = false
   }
 
@@ -139,6 +217,10 @@ export const useMushafStore = defineStore('mushaf', () => {
       const words = pageWordsCache.value.get(pg)
       if (words) result.push(...words)
     }
+    // Include bismillah words so their QCF font (page 1) gets loaded
+    if (bismillahWords.value && bismillahWords.value.length > 0) {
+      result.push(...bismillahWords.value)
+    }
     return result
   })
 
@@ -147,8 +229,8 @@ export const useMushafStore = defineStore('mushaf', () => {
   const currentPageVerseKeys = computed<string[]>(() => {
     const words = pageWordsCache.value.get(currentPage.value)
     if (!words) return []
-    
-    // We use a Set to keep unique keys, and they are inherently ordered by their first appearance 
+
+    // We use a Set to keep unique keys, and they are inherently ordered by their first appearance
     // in the already-sorted `words` array.
     const keys = new Set<string>()
     for (const w of words) {
@@ -162,8 +244,11 @@ export const useMushafStore = defineStore('mushaf', () => {
     totalPages,
     loading,
     pageWordsCache,
+    bismillahWords,
     fetchPageWords,
     getPageLines,
+    getSurahStartsOnPage,
+    fetchBismillahWords,
     loadWindow,
     goToPage,
     nextPage,
