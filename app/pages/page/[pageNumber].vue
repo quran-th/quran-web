@@ -95,7 +95,7 @@ function toggleReadingMode() {
 }
 
 useHead({
-  title: computed(() => `หน้า ${currentPage.value} - มุษอฟ - อัลกุรอานแปลไทย`),
+  title: computed(() => `หน้า ${currentPage.value} - มุศฮัฟ - อัลกุรอานแปลไทย`),
 });
 </script>
 

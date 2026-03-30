@@ -114,7 +114,7 @@ function handleGoToPage(e: Event) {
         v-if="readingMode"
         class="toolbar-icon-btn mr-2"
         :title="
-          readingMode === 'translation' ? 'อ่านในมุษอฟ' : 'อ่านพร้อมคำแปล'
+          readingMode === 'translation' ? 'อ่านในมุศฮัฟ' : 'อ่านพร้อมคำแปล'
         "
         @click="$emit('toggle-mode')"
       >

@@ -223,14 +223,14 @@ function openReport() {
           </svg>
         </button>
         <button
-          class="flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-slate-400 transition-all duration-200 hover:bg-amber-50 hover:text-amber-600"
+          class="flex items-center gap-1.5 rounded-lg bg-transparent px-2 py-1.5 text-sm text-slate-400 transition-all duration-200 hover:bg-amber-50 hover:text-amber-600"
           :title="$t('report.button_tooltip')"
           @click="openReport"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
+            width="16"
+            height="16"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -241,6 +241,7 @@ function openReport() {
             <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
             <line x1="4" x2="4" y1="22" y2="15" />
           </svg>
+          <span>{{ $t('report.button_message') }}</span>
         </button>
       </div>
     </div>
@@ -265,7 +266,7 @@ function openReport() {
 
     <!-- Thai translation row -->
     <div class="px-4 py-2 pb-4">
-      <div class="text-left font-sans text-lg leading-relaxed text-slate-600">
+      <div class="text-left font-reading text-lg leading-relaxed text-slate-600">
         <template v-for="(part, index) in translationParts" :key="index">
           <sup
             v-if="part.type === 'footnote'"
@@ -288,7 +289,7 @@ function openReport() {
       <!-- Footnotes (always visible when present) -->
       <ol
         v-if="verse.footnotes && verse.footnotes.length > 0"
-        class="mt-3 space-y-1 pl-0 sm:pl-4 text-sm leading-relaxed text-slate-500"
+        class="mt-3 space-y-1 pl-0 sm:pl-4 font-reading text-sm leading-relaxed text-slate-500"
       >
         <li
           v-for="fn in verse.footnotes"

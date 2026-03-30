@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
-import { onMounted, ref, watch, computed, nextTick } from "vue";
+import { onMounted, onBeforeUnmount, ref, watch, computed, nextTick, resolveComponent } from "vue";
 import { useQuranStore } from "~/stores/quranStore";
 import type { Verse, Pagination } from "~/stores/quranStore";
 import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
@@ -37,6 +37,7 @@ const router = useRouter();
 const quranStore = useQuranStore();
 const fontSettings = useFontSettingsStore();
 const readerSettings = useReaderSettingsStore();
+const NuxtLink = resolveComponent("NuxtLink");
 const {
   currentSurah,
   verses,
@@ -163,6 +164,31 @@ function scrollToFirstVerse() {
     window.scrollTo({ top, behavior: "smooth" });
   });
 }
+
+// Bottom nav auto-hide on scroll
+const isNavVisible = ref(true);
+let scrollTimer: ReturnType<typeof setTimeout> | null = null;
+
+function onScrollActivity() {
+  isNavVisible.value = false;
+  if (scrollTimer) clearTimeout(scrollTimer);
+  scrollTimer = setTimeout(() => {
+    isNavVisible.value = true;
+  }, 800);
+}
+
+if (import.meta.client) {
+  window.addEventListener("scroll", onScrollActivity, { passive: true });
+  window.addEventListener("touchmove", onScrollActivity, { passive: true });
+}
+
+onBeforeUnmount(() => {
+  if (import.meta.client) {
+    window.removeEventListener("scroll", onScrollActivity);
+    window.removeEventListener("touchmove", onScrollActivity);
+    if (scrollTimer) clearTimeout(scrollTimer);
+  }
+});
 
 // Store Mushaf pages on mount
 onMounted(async () => {
@@ -330,7 +356,7 @@ useHead({
       @page-change="handlePageChange"
     />
 
-    <main class="container mx-auto max-w-6xl px-4 py-8">
+    <main class="container mx-auto max-w-6xl px-4 py-8 pb-20">
       <!-- Loading State (client-only — never rendered during SSR to avoid hydration mismatch) -->
       <ClientOnly>
         <div v-if="isClientLoading" class="flex justify-center py-12">
@@ -382,37 +408,37 @@ useHead({
         class="space-y-6"
       >
         <!-- Surah Header -->
-        <div class="border-b border-slate-200 py-3 text-center">
-          <div class="flex items-baseline justify-center gap-3">
-            <h1 class="font-arabic text-3xl leading-none text-slate-900">
-              {{ currentSurah.name_arabic }}
-            </h1>
-            <h2 class="text-lg font-bold tracking-tight text-slate-800">
-              ซูเราะห์ {{ currentSurah.name_thai }}
-            </h2>
+        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+          <!-- Left: Surah name -->
+          <div>
+            <div class="flex items-baseline gap-2.5">
+              <h2 class="text-base sm:text-lg font-bold tracking-tight text-slate-800">
+                {{ currentSurah.name_thai }} <span class="font-arabic">({{ currentSurah.name_arabic }})</span>
+              </h2>
+            </div>
+            <span class="mt-1 text-sm text-slate-400">
+              {{ currentSurah.name_meaning_thai }}
+            </span>
           </div>
-          <div
-            class="mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 text-xs text-slate-400"
-          >
-            <span>{{ currentSurah.name_meaning_thai }}</span>
-            <span class="text-slate-200">|</span>
-            <span>{{
-              currentSurah.revelation_place === "meccan"
-                ? "มักกียะฮ์"
-                : "มะดะนียะฮ์"
-            }}</span>
-            <span class="text-slate-200">|</span>
-            <span>{{ currentSurah.verses_count }} อายะห์</span>
-            <template v-if="currentPageInfo">
-              <span class="text-slate-200">|</span>
+
+          <!-- Right: Surah info -->
+          <div class="text-right text-sm text-slate-500 shrink-0">
+            <div class="flex items-center justify-end gap-2">
+              <span>อายะห์ {{ currentPageInfo?.verseFrom || 1 }}-{{ currentPageInfo?.verseTo || currentSurah.verses_count }}</span>
+              <span v-if="currentPageInfo" class="text-slate-300">·</span>
               <NuxtLink
+                v-if="currentPageInfo"
                 to="/page/1"
-                class="hover:text-slate-500 underline"
-                title="อ่านในมุษอฟ"
+                class="hover:text-slate-700 underline underline-offset-2"
+                title="อ่านในมุศฮัฟ"
               >
                 หน้า {{ currentPageInfo.page }}
               </NuxtLink>
-            </template>
+            </div>
+            <div class="mt-0.5 text-xs text-slate-400">
+              {{ currentSurah.revelation_place === "makkiyah" ? "มักกียะฮ์" : "มะดะนียะฮ์" }}
+              · {{ currentSurah.verses_count }} อายะห์
+            </div>
           </div>
         </div>
 
@@ -431,32 +457,33 @@ useHead({
           :source-id="currentSourceId"
         />
 
-        <!-- Mushaf Page Pagination -->
+        <!-- Mushaf Page Pagination (sticky bottom, auto-hide on scroll) -->
         <nav
           v-if="
             mushafPagesData &&
             mushafPagesData.data &&
             mushafPagesData.data.length > 0
           "
-          class="mt-10 mb-6"
+          class="fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-sm border-t border-slate-100 px-4 py-2.5 transition-transform duration-200 ease-out"
+          :class="isNavVisible ? 'translate-y-0' : 'translate-y-full'"
         >
-          <div class="flex items-center justify-between">
+          <div class="container mx-auto max-w-6xl flex items-center justify-between">
             <!-- Previous Button -->
-            <NuxtLink
-              v-if="prevPage"
-              :to="`/surah/${prevPage.surahId}?page=${prevPage.page}`"
-              class="group flex items-center gap-3 text-slate-600 transition-colors hover:text-slate-900"
+            <component
+              :is="prevPage ? NuxtLink : 'span'"
+              :to="prevPage ? `/surah/${prevPage.surahId}?page=${prevPage.page}` : undefined"
+              class="group flex items-center gap-3 text-slate-600 transition-colors"
+              :class="prevPage ? 'hover:text-slate-900' : 'opacity-30 cursor-not-allowed pointer-events-none'"
             >
-              <span class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-white transition-colors group-hover:bg-slate-900">
+              <span class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-white transition-colors" :class="prevPage && 'group-hover:bg-slate-900'">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
               </span>
               <div class="flex flex-col">
                 <span class="text-xs text-slate-400 sm:hidden">ก่อนหน้า</span>
-                <span class="hidden text-sm font-medium sm:block">{{ prevPage.surahName || currentSurah?.name_thai }}</span>
-                <span class="hidden text-xs text-slate-400 sm:block">อายะห์ {{ prevPage.verseFrom }}-{{ prevPage.verseTo }}</span>
+                <span class="hidden text-sm font-medium sm:block">{{ prevPage?.surahName || currentSurah?.name_thai }}</span>
+                <span class="hidden text-xs text-slate-400 sm:block">{{ prevPage ? `อายะห์ ${prevPage.verseFrom}-${prevPage.verseTo}` : '' }}</span>
               </div>
-            </NuxtLink>
-            <div v-else />
+            </component>
 
             <!-- Current page info -->
             <span class="text-xs text-slate-400">
@@ -464,21 +491,21 @@ useHead({
             </span>
 
             <!-- Next Button -->
-            <NuxtLink
-              v-if="nextPage"
-              :to="`/surah/${nextPage.surahId}?page=${nextPage.page}`"
-              class="group flex items-center gap-3 text-slate-600 transition-colors hover:text-slate-900"
+            <component
+              :is="nextPage ? NuxtLink : 'span'"
+              :to="nextPage ? `/surah/${nextPage.surahId}?page=${nextPage.page}` : undefined"
+              class="group flex items-center gap-3 text-slate-600 transition-colors"
+              :class="nextPage ? 'hover:text-slate-900' : 'opacity-30 cursor-not-allowed pointer-events-none'"
             >
               <div class="flex flex-col items-end">
                 <span class="text-xs text-slate-400 sm:hidden">ถัดไป</span>
-                <span class="hidden text-sm font-medium sm:block">{{ nextPage.surahName || currentSurah?.name_thai }}</span>
-                <span class="hidden text-xs text-slate-400 sm:block">อายะห์ {{ nextPage.verseFrom }}-{{ nextPage.verseTo }}</span>
+                <span class="hidden text-sm font-medium sm:block">{{ nextPage?.surahName || currentSurah?.name_thai }}</span>
+                <span class="hidden text-xs text-slate-400 sm:block">{{ nextPage ? `อายะห์ ${nextPage.verseFrom}-${nextPage.verseTo}` : '' }}</span>
               </div>
-              <span class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-white transition-colors group-hover:bg-slate-900">
+              <span class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-white transition-colors" :class="nextPage && 'group-hover:bg-slate-900'">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
               </span>
-            </NuxtLink>
-            <div v-else />
+            </component>
           </div>
         </nav>
       </div>

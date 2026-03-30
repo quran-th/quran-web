@@ -16,7 +16,22 @@ export default defineNuxtConfig({
     '/surah/**': { isr: 3600 },
   },
 
-  modules: ["nitro-cloudflare-dev", "@nuxt/eslint", "@nuxtjs/tailwindcss", "@pinia/nuxt", "@nuxtjs/i18n"],
+  modules: ["nitro-cloudflare-dev", "@nuxt/eslint", "@nuxtjs/tailwindcss", "@pinia/nuxt", "@nuxtjs/i18n", "@nuxt/fonts"],
+
+  fonts: {
+    provider: 'google',
+    defaults: {
+      subsets: ['thai', 'latin'],
+    },
+    families: [
+      {
+        name: 'IBM Plex Sans Thai',
+        provider: 'google',
+        weights: ['100', '200', '300', '400', '500', '600', '700'],
+        global: true,
+      },
+    ],
+  },
 
   runtimeConfig: {
     // Server-only: used as HTTP fallback when Cloudflare service binding is unavailable
@@ -55,10 +70,7 @@ export default defineNuxtConfig({
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'description', content: 'อัลกุรอานภาษาไทย - คำแปลและความหมายระดับคำ' },
       ],
-      link: [
-        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-      ],
+      link: [],
     },
   },
 

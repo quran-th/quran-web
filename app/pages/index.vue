@@ -7,29 +7,39 @@
       <p class="text-lg text-slate-600">ศึกษาอัลกุรอานพร้อมคำแปลภาษาไทย</p>
     </div>
 
-    <!-- Quick Links / Tabs Placeholder -->
     <div class="mb-8 flex justify-center space-x-2">
       <button
-        class="inline-flex items-center justify-center rounded-full bg-stone-900 px-4 py-2 text-sm font-medium whitespace-nowrap text-white shadow transition-colors hover:bg-stone-900/90"
+        :class="activeTab === 'surah'
+          ? 'bg-stone-900 text-white shadow hover:bg-stone-900/90'
+          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'"
+        class="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors"
+        @click="activeTab = 'surah'"
       >
         ซูเราะห์
       </button>
       <button
-        class="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+        :class="activeTab === 'juz'
+          ? 'bg-stone-900 text-white shadow hover:bg-stone-900/90'
+          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'"
+        class="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors"
+        @click="activeTab = 'juz'"
       >
         ญุซ
       </button>
     </div>
 
-    <ReadingSurahList />
+    <ReadingSurahList v-if="activeTab === 'surah'" />
+    <ReadingJuzList v-else />
   </div>
 </template>
 
 <script setup lang="ts">
+const activeTab = ref<'surah' | 'juz'>('surah')
+
 useHead({
   title: 'อัลกุรอานแปลไทย - คำแปลและความหมายระดับคำ',
   meta: [
-    { name: 'description', content: 'อ่านอัลกุรอานภาษาไทยพร้อมคำแปลและความหมายระดับคำ รองรับทั้งการอ่านแบบซูเราะห์และมุษอฟ' },
+    { name: 'description', content: 'อ่านอัลกุรอานภาษาไทยพร้อมคำแปลและความหมายระดับคำ รองรับทั้งการอ่านแบบซูเราะห์และมุศฮัฟ' },
   ],
 })
 </script>

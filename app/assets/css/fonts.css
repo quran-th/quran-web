@@ -13,6 +13,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Paragraphs use browser default font */
+p {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
 /* QPC Uthmani Hafs — used for QuranFont.QPCHafs */
 @font-face {
   font-family: 'UthmanicHafs';

@@ -14,6 +14,20 @@ export interface Surah {
   verses_count: number
 }
 
+export interface JuzSurah {
+  id: number
+  name_thai: string
+  name_arabic: string
+  verses: string
+}
+
+export interface Juz {
+  number: number
+  verse_mapping: Record<string, string>
+  verses_count: number
+  surahs: JuzSurah[]
+}
+
 export interface Footnote {
   number: number
   text: string
@@ -50,6 +64,7 @@ interface SurahApiData {
 export const useQuranStore = defineStore('quran', () => {
   const { public: { assetsBaseUrl } } = useRuntimeConfig()
   const surahs = ref<Surah[]>([])
+  const juzs = ref<Juz[]>([])
   const loading = ref(false)
   const loadingMore = ref(false)
   const error = ref<string | null>(null)
@@ -82,6 +97,28 @@ export const useQuranStore = defineStore('quran', () => {
       }
       else {
         error.value = 'Failed to fetch surahs'
+      }
+    }
+    catch (e) {
+      error.value = 'Network error to backend'
+      console.error(e)
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchJuzs() {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await fetch('/api/juzs')
+      const result: { success: boolean; data: Juz[] } = await response.json()
+      if (result.success) {
+        juzs.value = result.data
+      }
+      else {
+        error.value = 'Failed to fetch juzs'
       }
     }
     catch (e) {
@@ -236,6 +273,7 @@ export const useQuranStore = defineStore('quran', () => {
 
   return {
     surahs,
+    juzs,
     currentSurah,
     currentSourceId,
     verses,
@@ -246,6 +284,7 @@ export const useQuranStore = defineStore('quran', () => {
     allWords,
     verseWords,
     fetchSurahs,
+    fetchJuzs,
     fetchVerses,
     fetchVersesByKeys,
     fetchVerseWords,

@@ -359,7 +359,30 @@ async function handleSubmit() {
             </div>
           </div>
 
-          <!-- Step 2: Form (shown after verification) -->
+          <!-- Step 2: Success screen -->
+          <div v-else-if="submitStatus === 'success'" class="success-screen">
+            <div class="success-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="40"
+                height="40"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </div>
+            <p class="success-text">{{ t("report.success") }}</p>
+            <button class="btn-success-close" @click="close">
+              {{ t("common.back") }}
+            </button>
+          </div>
+
+          <!-- Step 3: Form -->
           <template v-else>
             <div class="modal-body">
               <!-- Tabs -->
@@ -519,10 +542,7 @@ async function handleSubmit() {
                 >
               </div>
 
-              <!-- Success/Error messages -->
-              <div v-if="submitStatus === 'success'" class="status-message status-success">
-                {{ t("report.success") }}
-              </div>
+              <!-- Error message -->
               <div v-if="submitStatus === 'error'" class="status-message status-error">
                 {{ submitError || t("report.error") }}
               </div>
@@ -535,9 +555,24 @@ async function handleSubmit() {
               </button>
               <button
                 class="btn-submit"
-                :disabled="!canSubmit"
+                :disabled="!canSubmit || submitting"
                 @click="handleSubmit"
               >
+                <svg
+                  v-if="submitting"
+                  class="btn-spinner"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
                 {{ submitting ? t("report.submitting") : t("report.submit") }}
               </button>
             </div>
@@ -894,6 +929,52 @@ async function handleSubmit() {
   box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
 }
 
+.success-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1.5rem 2rem;
+  gap: 0.75rem;
+}
+
+.success-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.success-text {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #166534;
+  margin: 0;
+  text-align: center;
+}
+
+.btn-success-close {
+  margin-top: 0.5rem;
+  padding: 8px 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-success-close:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
 .verification-screen {
   display: flex;
   flex-direction: column;
@@ -917,6 +998,10 @@ async function handleSubmit() {
 }
 
 .status-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   margin: 0.5rem 1.5rem;
   padding: 0.75rem;
   border-radius: 8px;
@@ -961,6 +1046,9 @@ async function handleSubmit() {
 }
 
 .btn-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 20px;
   border: none;
   border-radius: 8px;
@@ -970,6 +1058,14 @@ async function handleSubmit() {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
+}
+
+.btn-spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .btn-submit:hover:not(:disabled) {

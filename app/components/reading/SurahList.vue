@@ -14,7 +14,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 max-w-screen-lg mx-auto">
     <NuxtLink
       v-for="surah in surahs"
       :key="surah.id"
@@ -34,7 +34,7 @@ onMounted(() => {
       </div>
       <div class="flex flex-col items-end gap-1">
         <span class="font-arabic text-lg text-slate-800">{{ surah.name_arabic }}</span>
-        <span class="text-xs text-slate-400 capitalize">{{ surah.revelation_place === 'meccan' ? 'มักกียะฮ์' : 'มะดะนียะฮ์' }} • {{ surah.verses_count }} อายะห์</span>
+        <span class="text-xs text-slate-400 capitalize">{{ surah.revelation_place === 'makkiyah' ? 'มักกียะฮ์' : 'มะดะนียะฮ์' }} • {{ surah.verses_count }} อายะห์</span>
       </div>
     </NuxtLink>
   </div>

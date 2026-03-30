@@ -173,7 +173,7 @@
     "no_changes": "ไม่พบการเปลี่ยนแปลง"
   },
   "report": {
-    "title": "รายงานปัญหาคำแปล",
+    "title": "รายงานปัญหา",
     "verse_ref": "{surah}:{verse}",
     "tab_quick": "รายงานด่วน",
     "tab_suggest": "รายงานพร้อมแก้ไข",
@@ -199,6 +199,7 @@
     "already_reported": "คุณเคยรายงานอายะห์นี้แล้ว",
     "select_at_least_one": "กรุณาเลือกอย่างน้อย 1 ปัญหา",
     "button_tooltip": "รายงานปัญหาคำแปล",
+    "button_message": "รายงาน",
     "char_count": "{n} ตัวอักษร",
     "verify_hint": "กำลังตรวจสอบว่าคุณไม่ใช่บอท"
   }
