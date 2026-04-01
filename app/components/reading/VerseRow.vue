@@ -23,6 +23,7 @@ interface Props {
   words?: QuranWord[];
   isFontLoaded?: (pageNumber: number) => boolean;
   sourceId?: number;
+  disableActions?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -106,9 +107,11 @@ function openReport() {
       <!-- Left: Action icons -->
       <div class="flex items-center gap-2">
         <button
-          class="flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-500"
+          class="flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-slate-400 transition-all duration-200"
+          :class="disableActions ? 'cursor-not-allowed opacity-30' : 'hover:bg-slate-100 hover:text-slate-500'"
+          :disabled="disableActions"
           title="เล่น"
-          @click="handlePlay"
+          @click="!disableActions && handlePlay()"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -125,10 +128,14 @@ function openReport() {
           </svg>
         </button>
         <button
-          class="flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-500"
-          :class="isBookmarked ? 'bg-[#fbf8f3] text-[#cbbd93]' : ''"
+          class="flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-slate-400 transition-all duration-200"
+          :class="[
+            disableActions ? 'cursor-not-allowed opacity-30' : 'hover:bg-slate-100 hover:text-slate-500',
+            isBookmarked && !disableActions ? 'bg-[#fbf8f3] text-[#cbbd93]' : '',
+          ]"
+          :disabled="disableActions"
           :title="isBookmarked ? 'เอาออกจากรายการโปรด' : 'บันทึกในรายการโปรด'"
-          @click="toggleBookmark"
+          @click="!disableActions && toggleBookmark()"
         >
           <svg
             v-if="!isBookmarked"
@@ -270,7 +277,7 @@ function openReport() {
         <template v-for="(part, index) in translationParts" :key="index">
           <sup
             v-if="part.type === 'footnote'"
-            class="relative inline-flex items-center justify-center px-0.5 py-4 -my-1 cursor-pointer transition-colors duration-200 rounded text-[11px] leading-none"
+            class="relative inline-flex items-center justify-center px-0.5 cursor-pointer transition-colors duration-200 rounded text-xs leading-none"
             :class="{
               'text-amber-700 bg-[#fcf9bf]': hoveredFootnote === part.value,
               'text-slate-600 hover:text-amber-700 hover:bg-[#fcf9bf]':
