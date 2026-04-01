@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/quran-th/quran-web/compare/v1.7.0...v1.8.0) (2026-04-01)
+
+
+### Features
+
+* surah name headers, mushaf improvements & lint-staged setup ([38f1405](https://github.com/quran-th/quran-web/commit/38f14052d015c0d92a1209ec4200cd238f058402))
+
 # [1.7.0](https://github.com/quran-th/quran-web/compare/v1.6.0...v1.7.0) (2026-04-01)
 
 
