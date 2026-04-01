@@ -17,10 +17,7 @@ import { useMushafStore } from "~/stores/mushafStore";
 import { useFontSettingsStore } from "~/stores/fontSettingsStore";
 import { QuranFont } from "~/types/quran";
 import type { QuranWord } from "~/types/quran";
-import {
-  getSurahNameGlyph,
-  surahHasBismillah,
-} from "~/composables/useSurahNameGlyph";
+import { getSurahNameGlyph } from "~/composables/useSurahNameGlyph";
 
 interface Props {
   pageNumber: number;

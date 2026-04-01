@@ -15,18 +15,6 @@ async function loadPageIndex(baseUrl: string): Promise<Record<number, number[]>>
   return pageIndex!
 }
 
-/**
- * Surah-page mapping: maps surah ID → array of {page, verseFrom, verseTo}.
- * Loaded once on first use.
- */
-let surahPageMapping: Record<string, Array<{ page: number, verseFrom: number, verseTo: number }>> | null = null
-
-async function loadSurahPageMapping(baseUrl: string): Promise<Record<string, Array<{ page: number, verseFrom: number, verseTo: number }>>> {
-  if (surahPageMapping) return surahPageMapping
-  const res = await fetch(`${baseUrl}/quran-pages/surah-page-mapping.json`)
-  surahPageMapping = await res.json()
-  return surahPageMapping!
-}
 
 /**
  * Chapter word cache: avoids re-fetching the same chapter JSON.

@@ -18,7 +18,7 @@ interface Props {
   isFontLoaded: boolean
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const fontSettings = useFontSettingsStore()
 const { quranFont, fontVersion, isQcf } = storeToRefs(fontSettings)
 </script>
