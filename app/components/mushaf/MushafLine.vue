@@ -32,7 +32,8 @@ defineProps<Props>()
 <style scoped>
 .mushaf-line {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 0;
   direction: rtl;
   text-align: right;
   font-size: var(--mushaf-font-size, 5.3vw);
