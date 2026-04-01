@@ -30,6 +30,13 @@ export default defineNuxtConfig({
         weights: ['100', '200', '300', '400', '500', '600', '700'],
         global: true,
       },
+      {
+        name: 'Sarabun',
+        provider: 'google',
+        weights: ['100', '200', '300', '400', '500', '600', '700', '800'],
+        styles: ['normal', 'italic'],
+        global: true,
+      },
     ],
   },
 

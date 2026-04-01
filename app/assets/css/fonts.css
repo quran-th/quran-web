@@ -13,9 +13,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Paragraphs use browser default font */
-p {
-  font-family: ui-sans-serif, system-ui, sans-serif;
+/* Reading body text — Sarabun for comfortable Thai readability */
+p,
+.text-reading {
+  font-family: 'Sarabun', 'IBM Plex Sans Thai', ui-sans-serif, system-ui, sans-serif;
 }
 
 /* QPC Uthmani Hafs — used for QuranFont.QPCHafs */
