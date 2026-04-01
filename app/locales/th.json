@@ -175,8 +175,7 @@
   "report": {
     "title": "รายงานปัญหาคำแปล",
     "verse_ref": "{surah}:{verse}",
-    "tab_quick": "รายงานด่วน",
-    "tab_suggest": "เสนอแก้ไข",
+    "suggest_prompt": "ต้องการเสนอคำแปลที่ถูกต้องไหม?",
     "quick_description": "เลือกประเภทปัญหาที่พบ",
     "category_typo": "พิมพ์ผิด / สะกดผิด",
     "category_missing_words": "คำขาดหาย",

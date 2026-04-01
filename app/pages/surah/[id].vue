@@ -455,6 +455,7 @@ useHead({
           :words="quranStore.getWordsForVerse(verse.verseNumber)"
           :is-font-loaded="isFontLoaded"
           :source-id="currentSourceId"
+          :disable-actions="surahId === 67"
         />
 
         <!-- Mushaf Page Pagination (sticky bottom, auto-hide on scroll) -->

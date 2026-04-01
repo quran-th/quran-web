@@ -58,8 +58,8 @@ const { getFingerprint } = useFingerprint();
 const config = useRuntimeConfig();
 
 // State
-const activeTab = ref<"quick" | "suggest">("quick");
 const selectedCategories = ref<Set<ReportCategory>>(new Set());
+const showSuggestEdit = ref(false);
 const proposalText = ref("");
 const footnotes = ref<FootnoteMarker[]>([]);
 const contactName = ref("");
@@ -93,23 +93,19 @@ const categories: { key: ReportCategory; labelKey: string }[] = [
   { key: "footnote_issue", labelKey: "report.category_footnote_issue" },
 ];
 
+const hasSuggestion = computed(() => {
+  const text = proposalText.value.trim();
+  return text.length > 0 && text !== currentTranslation.value.trim();
+});
+
 const canSubmit = computed(() => {
   if (submitting.value) return false;
   if (!turnstileToken.value) return false;
 
-  if (activeTab.value === "quick") {
-    return selectedCategories.value.size > 0;
-  }
+  const hasCategories = selectedCategories.value.size > 0;
+  const hasValidSuggestion = hasSuggestion.value && validationErrors.value.length === 0;
 
-  if (activeTab.value === "suggest") {
-    return (
-      proposalText.value.trim().length > 0 &&
-      proposalText.value.trim() !== currentTranslation.value.trim() &&
-      validationErrors.value.length === 0
-    );
-  }
-
-  return false;
+  return hasCategories || hasValidSuggestion;
 });
 
 function toggleCategory(cat: ReportCategory) {
@@ -124,6 +120,21 @@ function toggleCategory(cat: ReportCategory) {
 
 function handleInsertFootnote() {
   insertFootnoteMarker(textareaEl, proposalText, footnotes);
+}
+
+function expandFootnote(el: HTMLTextAreaElement) {
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
+}
+
+function collapseFootnote(el: HTMLTextAreaElement) {
+  el.style.height = "";
+  el.scrollTop = 0;
+}
+
+function autoResizeFootnote(el: HTMLTextAreaElement) {
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
 }
 
 function removeFootnote(index: number) {
@@ -143,6 +154,7 @@ function removeFootnote(index: number) {
 
 function resetForm() {
   selectedCategories.value = new Set();
+  showSuggestEdit.value = false;
   proposalText.value = props.verse.translation || "";
   footnotes.value = (props.verse.footnotes || []).map((fn) => ({
     footnoteNumber: fn.number,
@@ -249,21 +261,24 @@ async function handleSubmit() {
   try {
     const fingerprint = await getFingerprint();
 
+    const isDetailed = hasSuggestion.value;
     const payload: Record<string, unknown> = {
       surahNumber: props.surahNumber,
       verseNumber: props.verse.verseNumber,
       fingerprint,
       turnstileToken: turnstileToken.value,
-      reportType: activeTab.value === "quick" ? "quick" : "detailed",
+      reportType: isDetailed ? "detailed" : "quick",
     };
 
     if (props.sourceId) {
       payload.sourceId = props.sourceId;
     }
 
-    if (activeTab.value === "quick") {
+    if (selectedCategories.value.size > 0) {
       payload.categories = Array.from(selectedCategories.value);
-    } else {
+    }
+
+    if (isDetailed) {
       payload.suggestedText = proposalText.value.trim();
       if (footnotes.value.length > 0) {
         payload.suggestedFootnotes = footnotes.value.map((fn) => ({
@@ -385,27 +400,9 @@ async function handleSubmit() {
           <!-- Step 3: Form -->
           <template v-else>
             <div class="modal-body">
-              <!-- Tabs -->
-              <div class="tabs">
-                <button
-                  class="tab"
-                  :class="{ 'tab--active': activeTab === 'quick' }"
-                  @click="activeTab = 'quick'"
-                >
-                  {{ t("report.tab_quick") }}
-                </button>
-                <button
-                  class="tab"
-                  :class="{ 'tab--active': activeTab === 'suggest' }"
-                  @click="activeTab = 'suggest'"
-                >
-                  {{ t("report.tab_suggest") }}
-                </button>
-              </div>
-
-              <!-- Quick Report Tab -->
-              <div v-if="activeTab === 'quick'" class="tab-content">
-                <p class="tab-description">{{ t("report.quick_description") }}</p>
+              <!-- Issue categories (2-column grid) -->
+              <div class="section">
+                <p class="section-label">{{ t("report.quick_description") }}</p>
                 <div class="categories">
                   <label
                     v-for="cat in categories"
@@ -424,112 +421,139 @@ async function handleSubmit() {
                 </div>
               </div>
 
-              <!-- Suggest Edit Tab -->
-              <div v-if="activeTab === 'suggest'" class="tab-content">
-                <p class="tab-description">{{ t("report.suggest_description") }}</p>
-
-                <!-- Textarea with footnote toolbar -->
-                <div class="textarea-wrapper">
-                  <textarea
-                    ref="textareaEl"
-                    v-model="proposalText"
-                    class="proposal-textarea"
-                    :placeholder="t('report.suggest_placeholder')"
-                    rows="5"
-                    @focus="isTextareaFocused = true"
-                    @blur="isTextareaFocused = false"
-                  />
-                  <div class="textarea-toolbar">
-                    <button
-                      class="footnote-btn"
-                      :disabled="!isTextareaFocused"
-                      :title="t('report.footnote_add')"
-                      @mousedown.prevent="handleInsertFootnote"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <path d="M12 5v14" />
-                        <path d="M5 12h14" />
-                      </svg>
-                      {{ t("report.footnote_add") }}
-                    </button>
-                    <span class="char-count">
-                      {{ t("report.char_count", { n: proposalText.length }) }}
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Footnotes -->
-                <div v-if="footnotes.length > 0" class="footnotes-section">
-                  <div
-                    v-for="(fn, idx) in footnotes"
-                    :key="fn.footnoteNumber"
-                    class="footnote-row"
+              <!-- Suggest edit toggle -->
+              <div class="section">
+                <button class="suggest-toggle" @click="showSuggestEdit = !showSuggestEdit">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="toggle-icon"
+                    :class="{ 'toggle-icon--open': showSuggestEdit }"
                   >
-                    <span class="footnote-number">(*{{ fn.footnoteNumber }}*)</span>
-                    <input
-                      v-model="fn.text"
-                      type="text"
-                      class="footnote-input"
-                      :placeholder="t('report.footnote_placeholder')"
-                    >
-                    <button
-                      class="footnote-remove"
-                      :title="t('report.footnote_remove')"
-                      @click="removeFootnote(idx)"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                  {{ t("report.suggest_prompt") }}
+                </button>
+
+                <!-- Edit form (collapsible) -->
+                <Transition name="collapse">
+                  <div v-if="showSuggestEdit" class="suggest-content">
+                    <div class="section-hint">{{ t("report.suggest_description") }}</div>
+
+                    <!-- Textarea with footnote toolbar -->
+                    <div class="textarea-wrapper">
+                      <textarea
+                        ref="textareaEl"
+                        v-model="proposalText"
+                        class="proposal-textarea"
+                        :placeholder="t('report.suggest_placeholder')"
+                        rows="5"
+                        @focus="isTextareaFocused = true"
+                        @blur="isTextareaFocused = false"
+                      />
+                      <div class="textarea-toolbar">
+                        <button
+                          class="footnote-btn"
+                          :disabled="!isTextareaFocused"
+                          :title="t('report.footnote_add')"
+                          @mousedown.prevent="handleInsertFootnote"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <path d="M12 5v14" />
+                            <path d="M5 12h14" />
+                          </svg>
+                          {{ t("report.footnote_add") }}
+                        </button>
+                        <span class="char-count">
+                          {{ t("report.char_count", { n: proposalText.length }) }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Footnotes -->
+                    <div v-if="footnotes.length > 0" class="footnotes-section">
+                      <div
+                        v-for="(fn, idx) in footnotes"
+                        :key="fn.footnoteNumber"
+                        class="footnote-row"
                       >
-                        <path d="M18 6 6 18" />
-                        <path d="m6 6 12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
+                        <span class="footnote-number">(*{{ fn.footnoteNumber }}*)</span>
+                        <textarea
+                          v-model="fn.text"
+                          class="footnote-input"
+                          :placeholder="t('report.footnote_placeholder')"
+                          rows="1"
+                          @focus="(e) => expandFootnote(e.target as HTMLTextAreaElement)"
+                          @blur="(e) => collapseFootnote(e.target as HTMLTextAreaElement)"
+                          @input="(e) => autoResizeFootnote(e.target as HTMLTextAreaElement)"
+                        />
+                        <button
+                          class="footnote-remove"
+                          :title="t('report.footnote_remove')"
+                          @click="removeFootnote(idx)"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <path d="M18 6 6 18" />
+                            <path d="m6 6 12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
 
-                <!-- Validation errors -->
-                <div v-if="validationErrors.length > 0" class="validation-errors">
-                  <p v-for="err in validationErrors" :key="err" class="validation-error">
-                    {{ err }}
-                  </p>
-                </div>
+                    <!-- Validation errors -->
+                    <div v-if="validationErrors.length > 0" class="validation-errors">
+                      <p v-for="err in validationErrors" :key="err" class="validation-error">
+                        {{ err }}
+                      </p>
+                    </div>
 
-                <!-- Diff preview -->
-                <div v-if="diffTokens.length > 0" class="diff-section">
-                  <h4 class="diff-title">{{ t("report.diff_title") }}</h4>
-                  <div class="diff-preview">
-                    <span
-                      v-for="(token, i) in diffTokens"
-                      :key="i"
-                      :class="{
-                        'diff-insert': token.type === 'insert',
-                        'diff-delete': token.type === 'delete',
-                      }"
-                    >{{ token.text }}</span>
+                    <!-- Diff preview -->
+                    <div v-if="diffTokens.length > 0" class="diff-section">
+                      <h4 class="diff-title">{{ t("report.diff_title") }}</h4>
+                      <div class="diff-preview text-reading">
+                        <span
+                          v-for="(token, i) in diffTokens"
+                          :key="i"
+                          :class="{
+                            'diff-insert': token.type === 'insert',
+                            'diff-delete': token.type === 'delete',
+                          }"
+                        >{{ token.text }}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </Transition>
               </div>
 
-              <!-- Name field (both modes) -->
-              <div class="name-field">
+              <!-- Name field (always visible) -->
+              <div class="name-field section">
                 <label class="name-label" for="report-name">
                   {{ t("report.name_label") }}
                 </label>
@@ -654,62 +678,34 @@ async function handleSubmit() {
   color: #475569;
 }
 
-.tabs {
-  display: flex;
-  gap: 4px;
-  padding: 0.75rem 1.5rem 0;
-  margin-bottom: 0.5rem;
+.section {
+  padding: 0.5rem 1.5rem;
 }
 
-.tab {
-  flex: 1;
-  padding: 0.5rem 0;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: transparent;
-  color: #94a3b8;
-  font-size: 0.85rem;
+.section-label {
+  font-size: 0.8rem;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.tab:hover {
-  background: #f8fafc;
   color: #475569;
+  margin: 0 0 0.5rem;
 }
 
-.tab--active {
-  background: #0ea5e9;
-  color: white;
-}
-
-.tab--active:hover {
-  background: #0284c7;
-  color: white;
-}
-
-.tab-content {
-  padding: 0.75rem 1.5rem;
-}
-
-.tab-description {
+.section-hint {
   font-size: 0.8rem;
   color: #64748b;
   margin: 0 0 0.75rem;
 }
 
 .categories {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
 
 .category-item {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   cursor: pointer;
@@ -731,13 +727,67 @@ async function handleSubmit() {
   width: 18px;
   height: 18px;
   accent-color: #0ea5e9;
+  color: white;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .category-label {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #334155;
+}
+
+.suggest-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0;
+  border: none;
+  border-top: 1px solid #f1f5f9;
+  border-radius: 0;
+  background: transparent;
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s;
+  margin-top: 0.25rem;
+}
+
+.suggest-toggle:hover {
+  color: #0ea5e9;
+}
+
+.toggle-icon {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.toggle-icon--open {
+  transform: rotate(90deg);
+}
+
+.suggest-content {
+  padding-top: 0.5rem;
+}
+
+.collapse-enter-active,
+.collapse-leave-active {
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.collapse-enter-from,
+.collapse-leave-to {
+  opacity: 0;
+  max-height: 0;
+}
+
+.collapse-enter-to,
+.collapse-leave-from {
+  opacity: 1;
+  max-height: 600px;
 }
 
 .textarea-wrapper {
@@ -751,7 +801,7 @@ async function handleSubmit() {
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   font-size: 0.9rem;
-  font-family: inherit;
+  font-family: system-ui, -apple-system, sans-serif;
   color: #1e293b;
   resize: vertical;
   transition: border-color 0.15s;
@@ -827,7 +877,15 @@ async function handleSubmit() {
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   font-size: 0.8rem;
+  font-family: system-ui, -apple-system, sans-serif;
   color: #1e293b;
+  resize: none;
+  overflow: hidden;
+  height: 1.75rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  transition: height 0.15s ease;
 }
 
 .footnote-input:focus {
@@ -893,16 +951,20 @@ async function handleSubmit() {
   background: #dcfce7;
   color: #166534;
   text-decoration: none;
+  padding: 1px 3px;
+  border-radius: 3px;
 }
 
 .diff-delete {
   background: #fee2e2;
   color: #991b1b;
   text-decoration: line-through;
+  padding: 1px 3px;
+  border-radius: 3px;
 }
 
 .name-field {
-  padding: 0.5rem 1.5rem;
+  padding-top: 0.25rem;
 }
 
 .name-label {
