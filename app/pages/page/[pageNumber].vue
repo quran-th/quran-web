@@ -8,7 +8,8 @@ import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useMushafStore } from "~/stores/mushafStore";
 import { useFontSettingsStore } from "~/stores/fontSettingsStore";
 import { useQcfFont } from "~/composables/useQcfFont";
-import QuranToolbar from "~/components/reading/QuranToolbar.vue";
+// TODO: re-enable when QuranToolbar is unhidden
+// import QuranToolbar from "~/components/reading/QuranToolbar.vue";
 
 defineOptions({ layout: false }); // Mushaf uses its own full-screen layout
 
@@ -78,21 +79,19 @@ watch(currentPage, (newPage) => {
   }
 });
 
-function handleBackClick() {
-  router.push("/");
-}
-
-function handleSettingsClick() {
-  showSettingsModal.value = true;
-}
-
-function handlePageChange(page: number) {
-  mushafStore.goToPage(page);
-}
-
-function toggleReadingMode() {
-  readingMode.value = readingMode.value === "mushaf" ? "translation" : "mushaf";
-}
+// TODO: re-enable when QuranToolbar is unhidden
+// function handleBackClick() {
+//   router.push("/");
+// }
+// function handleSettingsClick() {
+//   showSettingsModal.value = true;
+// }
+// function handlePageChange(page: number) {
+//   mushafStore.goToPage(page);
+// }
+// function toggleReadingMode() {
+//   readingMode.value = readingMode.value === "mushaf" ? "translation" : "mushaf";
+// }
 
 useHead({
   title: computed(() => `หน้า ${currentPage.value} - มุศฮัฟ - อัลกุรอานแปลไทย`),
@@ -106,8 +105,8 @@ useHead({
       readingMode === 'mushaf' ? 'mushaf-mode' : 'translation-mode',
     ]"
   >
-    <!-- Toolbar -->
-    <QuranToolbar
+    <!-- TODO: temporarily hidden -->
+    <!-- <QuranToolbar
       mode="page"
       :current-page="currentPage"
       :total-pages="mushafStore.totalPages"
@@ -117,7 +116,7 @@ useHead({
       @settings-click="handleSettingsClick"
       @page-change="handlePageChange"
       @toggle-mode="toggleReadingMode"
-    />
+    /> -->
 
     <!-- Reader -->
     <ReadingPageTranslationReader v-if="readingMode === 'translation'" />

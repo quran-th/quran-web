@@ -273,7 +273,7 @@ function openReport() {
 
     <!-- Thai translation row -->
     <div class="px-4 py-2 pb-4">
-      <div class="text-left font-reading text-lg leading-relaxed text-slate-600">
+      <div class="text-left text-reading text-lg leading-relaxed text-slate-600">
         <template v-for="(part, index) in translationParts" :key="index">
           <sup
             v-if="part.type === 'footnote'"
@@ -296,7 +296,7 @@ function openReport() {
       <!-- Footnotes (always visible when present) -->
       <ol
         v-if="verse.footnotes && verse.footnotes.length > 0"
-        class="mt-3 space-y-1 pl-0 sm:pl-4 font-reading text-sm leading-relaxed text-slate-500"
+        class="mt-3 space-y-1 pl-0 sm:pl-4 text-reading text-sm leading-relaxed text-slate-500"
       >
         <li
           v-for="fn in verse.footnotes"

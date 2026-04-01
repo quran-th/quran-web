@@ -6,7 +6,8 @@ import type { Verse, Pagination } from "~/stores/quranStore";
 import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
 import { useFontSettingsStore } from "~/stores/fontSettingsStore";
 import { useQcfFont } from "~/composables/useQcfFont";
-import QuranToolbar from "~/components/reading/QuranToolbar.vue";
+// TODO: re-enable when QuranToolbar is unhidden
+// import QuranToolbar from "~/components/reading/QuranToolbar.vue";
 
 interface MushafPage {
   page: number;
@@ -174,7 +175,7 @@ function onScrollActivity() {
   if (scrollTimer) clearTimeout(scrollTimer);
   scrollTimer = setTimeout(() => {
     isNavVisible.value = true;
-  }, 800);
+  }, 400);
 }
 
 if (import.meta.client) {
@@ -249,23 +250,22 @@ watch(
   },
 );
 
-// Toolbar handlers
-function handleBackClick() {
-  const page = currentPageInfo.value;
-  if (page && page.page > 1) {
-    router.push(`/page/${page.page}`);
-  } else {
-    router.push("/");
-  }
-}
-
-function handleSettingsClick() {
-  showSettingsModal.value = true;
-}
-
-function handlePageChange(page: number) {
-  router.push(`/page/${page}`);
-}
+// TODO: re-enable when QuranToolbar is unhidden
+// // Toolbar handlers
+// function handleBackClick() {
+//   const page = currentPageInfo.value;
+//   if (page && page.page > 1) {
+//     router.push(`/page/${page.page}`);
+//   } else {
+//     router.push("/");
+//   }
+// }
+// function handleSettingsClick() {
+//   showSettingsModal.value = true;
+// }
+// function handlePageChange(page: number) {
+//   router.push(`/page/${page}`);
+// }
 
 // Pagination navigation (Seamless global navigation across the Mushaf)
 const orderedPages = computed(() => {
@@ -345,8 +345,8 @@ useHead({
 
 <template>
   <div class="min-h-screen bg-white font-sans text-slate-900">
-    <!-- Toolbar -->
-    <QuranToolbar
+    <!-- TODO: temporarily hidden -->
+    <!-- <QuranToolbar
       class="sticky top-0 z-40"
       mode="surah"
       :current-page="currentPageInfo?.page ?? currentPage"
@@ -354,7 +354,7 @@ useHead({
       @back-click="handleBackClick"
       @settings-click="handleSettingsClick"
       @page-change="handlePageChange"
-    />
+    /> -->
 
     <main class="container mx-auto max-w-6xl px-4 py-8 pb-20">
       <!-- Loading State (client-only — never rendered during SSR to avoid hydration mismatch) -->
@@ -455,7 +455,7 @@ useHead({
           :words="quranStore.getWordsForVerse(verse.verseNumber)"
           :is-font-loaded="isFontLoaded"
           :source-id="currentSourceId"
-          :disable-actions="surahId === 67"
+          :disable-actions="true"
         />
 
         <!-- Mushaf Page Pagination (sticky bottom, auto-hide on scroll) -->
@@ -466,7 +466,7 @@ useHead({
             mushafPagesData.data.length > 0
           "
           class="fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-sm border-t border-slate-100 px-4 py-2.5 transition-transform duration-200 ease-out"
-          :class="isNavVisible ? 'translate-y-0' : 'translate-y-full'"
+          :class="isNavVisible ? 'translate-y-0' : 'md:translate-y-0 translate-y-full'"
         >
           <div class="container mx-auto max-w-6xl flex items-center justify-between">
             <!-- Previous Button -->
