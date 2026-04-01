@@ -1,3 +1,19 @@
+# [1.7.0](https://github.com/quran-th/quran-web/compare/v1.6.0...v1.7.0) (2026-04-01)
+
+
+### Bug Fixes
+
+* centered glyph font on mushaf reading page ([c285aef](https://github.com/quran-th/quran-web/commit/c285aef071f4285eda487620603c3a98c13dd3f9))
+* disable not ready feature buttons ([8dba355](https://github.com/quran-th/quran-web/commit/8dba3550905751712ce167719be1ae55086e7a97))
+
+
+### Features
+
+* add sarabun font for reading or paragraph text ([5b37644](https://github.com/quran-th/quran-web/commit/5b37644d02e878d2997f59aa581d2980ad315db9))
+* add surah name headers and bismillah in mushaf page view ([a3422a3](https://github.com/quran-th/quran-web/commit/a3422a301675f03f3ad3a65442c1ef0646244280))
+* improve ayah issue report form ([f41f24f](https://github.com/quran-th/quran-web/commit/f41f24f2574c49f8108f3d29e3092aea7f02d240))
+* report issue enhancement and reading components improve ([6c30d9a](https://github.com/quran-th/quran-web/commit/6c30d9aef1905024b3e2834793bc4c3d4d174b5e))
+
 # [1.6.0](https://github.com/quran-th/quran-web/compare/v1.5.0...v1.6.0) (2026-03-29)
 
 
