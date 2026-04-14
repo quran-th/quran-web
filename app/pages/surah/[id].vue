@@ -69,15 +69,22 @@ const showSettingsModal = ref(false);
 // Parse query parameters
 const pageParam = parseInt(route.query.page as string) || null;
 const ayahParam = parseInt(route.query.ayah as string) || null;
+const sourceParam = parseInt(route.query.translation as string) || null;
 const surahId = parseInt(route.params.id as string);
+
+// If a translation source was specified in the URL, apply it and persist to cookie
+if (sourceParam && sourceParam > 0) {
+  readerSettings.setTranslationSource(sourceParam);
+}
 
 // SSR-time source used for the initial useAsyncData call. Subsequent
 // client-side fetches use `effectiveSourceId` below so the latest
 // selection (or source resolved by the API) is always sent.
 const validSourceId =
-  selectedSourceId.value && selectedSourceId.value > 0
+  sourceParam ||
+  (selectedSourceId.value && selectedSourceId.value > 0
     ? selectedSourceId.value
-    : undefined;
+    : undefined);
 
 // Always send an explicit sourceId on client nav so response URLs are
 // uniquely keyed by source (avoids browser cache collisions across
@@ -151,7 +158,7 @@ const offset = pageInfo ? pageInfo.verseFrom - 1 : 0;
 const limit = pageInfo ? pageInfo.verseTo - pageInfo.verseFrom + 1 : 50;
 
 const { data: ssrData, status: fetchStatus } = await useAsyncData(
-  `surah-${surahId}-page-${currentPage.value}`,
+  `surah-${surahId}-page-${currentPage.value}-source-${validSourceId ?? 'default'}`,
   () => {
     const params = new URLSearchParams({
       offset: offset.toString(),
