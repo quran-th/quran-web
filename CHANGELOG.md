@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/quran-th/quran-web/compare/v1.8.0...v1.9.0) (2026-04-14)
+
+
+### Features
+
+* external source translation support ([#2](https://github.com/quran-th/quran-web/issues/2)) ([7ab6a7e](https://github.com/quran-th/quran-web/commit/7ab6a7efe0fd16c4aa1f22be2493263b546032c9))
+
 # [1.8.0](https://github.com/quran-th/quran-web/compare/v1.7.0...v1.8.0) (2026-04-01)
 
 
