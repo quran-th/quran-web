@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/quran-th/quran-web/compare/v1.9.0...v1.10.0) (2026-04-14)
+
+
+### Features
+
+* enhance share functionality for auto focus and shortened link ([0b2f390](https://github.com/quran-th/quran-web/commit/0b2f390530c44447f48274c081ffe4a7f347fc78))
+
 # [1.9.0](https://github.com/quran-th/quran-web/compare/v1.8.0...v1.9.0) (2026-04-14)
 
 
