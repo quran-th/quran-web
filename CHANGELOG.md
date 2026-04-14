@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/quran-th/quran-web/compare/v1.10.0...v1.11.0) (2026-04-14)
+
+
+### Features
+
+* add translation source to share links and auto-scroll to ayah ([#3](https://github.com/quran-th/quran-web/issues/3)) ([bc21d8c](https://github.com/quran-th/quran-web/commit/bc21d8c3d4b82d25c083bf5750f76bff4c48f8a4))
+
 # [1.10.0](https://github.com/quran-th/quran-web/compare/v1.9.0...v1.10.0) (2026-04-14)
 
 
