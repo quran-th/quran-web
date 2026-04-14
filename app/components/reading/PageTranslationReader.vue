@@ -23,6 +23,11 @@ const isExternalSource = computed(() => {
   return src?.isExternal ?? false;
 });
 
+const currentSourceName = computed(() => {
+  const src = translationSources.value.find((s) => s.id === selectedSourceId.value);
+  return src?.name ?? "";
+});
+
 // Ensure fonts are loaded based on window words from mushafStore
 const { isFontLoaded } = useQcfFont(windowWords, fontVersion);
 
@@ -114,6 +119,7 @@ const getWordsForVerse = (surahNumber: number, verseNumber: number) => {
         :words="getWordsForVerse(verse.surahNumber || 1, verse.verseNumber)"
         :is-font-loaded="isFontLoaded"
         :source-id="selectedSourceId"
+        :source-name="currentSourceName"
         :is-external-source="isExternalSource"
       />
     </div>

@@ -23,6 +23,8 @@ interface Props {
   words?: QuranWord[];
   isFontLoaded?: (pageNumber: number) => boolean;
   sourceId?: number;
+  sourceName?: string;
+  pageNumber?: number;
   isExternalSource?: boolean;
   disableActions?: boolean;
 }
@@ -71,7 +73,9 @@ const translationParts = computed(() => {
 
 async function handleCopy() {
   try {
-    const textToCopy = `${props.surahName || ""} (${props.surahNumber}:${props.verse.verseNumber})\n\n${props.verse.content}\n\n${props.verse.translation}`;
+    const url = `${window.location.origin}/${props.surahNumber}:${props.verse.verseNumber}`
+    const sourceLine = props.sourceName ? `- ${props.sourceName}` : ""
+    const textToCopy = `${props.surahName || ""} (${props.surahNumber}:${props.verse.verseNumber})\n\n${props.verse.content}\n\n${props.verse.translation}\n${sourceLine} ${url}`;
     await navigator.clipboard.writeText(textToCopy);
     isCopied.value = true;
     emit("copy", props.verse);
@@ -93,7 +97,18 @@ function handlePlay() {
 }
 
 function handleShare() {
-  emit("share", props.verse);
+  const base = window.location.origin
+  const url = `${base}/${props.surahNumber}:${props.verse.verseNumber}`
+  const text = `${props.surahName || ""} (${props.surahNumber}:${props.verse.verseNumber})\n\n${props.verse.content}\n\n${props.verse.translation}`
+
+  if (navigator.share) {
+    navigator.share({ title: `${props.surahName} ${props.surahNumber}:${props.verse.verseNumber}`, text, url }).catch(() => {})
+  } else {
+    navigator.clipboard.writeText(`${text}\n\n${url}`)
+    isCopied.value = true
+    setTimeout(() => { isCopied.value = false }, 2000)
+  }
+  emit("share", props.verse)
 }
 
 function openReport() {
@@ -102,7 +117,7 @@ function openReport() {
 </script>
 
 <template>
-  <div class="relative">
+  <div :id="`ayah-${verse.verseNumber}`" class="relative">
     <!-- Actions row: action icons on left, share and report on right -->
     <div class="flex items-center justify-between px-4 pt-4 pb-2">
       <!-- Left: Action icons -->
@@ -328,6 +343,14 @@ function openReport() {
           {{ fn.text }}
         </li>
       </ol>
+
+      <!-- Source name attribution -->
+      <p
+        v-if="sourceName"
+        class="mt-2 text-xs text-slate-400"
+      >
+        — {{ sourceName }}
+      </p>
     </div>
 
     <!-- Separator line -->

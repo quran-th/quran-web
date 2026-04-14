@@ -55,6 +55,11 @@ const isExternalSource = computed(() => {
   return src?.isExternal ?? false;
 });
 
+const currentSourceName = computed(() => {
+  const src = translationSources.value.find((s) => s.id === currentSourceId.value);
+  return src?.name ?? "";
+});
+
 // Initialize QCF font loading
 const { isFontLoaded } = useQcfFont(allWords, fontVersion);
 
@@ -63,6 +68,7 @@ const showSettingsModal = ref(false);
 
 // Parse query parameters
 const pageParam = parseInt(route.query.page as string) || null;
+const ayahParam = parseInt(route.query.ayah as string) || null;
 const surahId = parseInt(route.params.id as string);
 
 // SSR-time source used for the initial useAsyncData call. Subsequent
@@ -111,8 +117,18 @@ const allSurahs = computed(
 const firstPageNumber = mushafPagesData.value?.data?.[0]?.page ?? 1;
 const currentPage = ref<number>(firstPageNumber);
 
-// Determine current page from query param or default to first page
-if (pageParam && mushafPagesData.value) {
+// Resolve page from ayah param by finding the Mushaf page containing that verse
+function resolvePageForAyah(ayah: number, pages: MushafPage[]): number | null {
+  for (const p of pages) {
+    if (ayah >= p.verseFrom && ayah <= p.verseTo) return p.page;
+  }
+  return null;
+}
+
+if (ayahParam && mushafPagesData.value?.data?.length) {
+  const resolved = resolvePageForAyah(ayahParam, mushafPagesData.value.data);
+  currentPage.value = resolved ?? firstPageNumber;
+} else if (pageParam && mushafPagesData.value) {
   const pageExists = mushafPagesData.value.data?.find(
     (p: MushafPage) => p.page === pageParam,
   );
@@ -219,7 +235,19 @@ onMounted(async () => {
   quranStore.fetchVerseWords(surahId);
 
   await readerSettings.fetchTranslationSources();
-  scrollToFirstVerse();
+
+  // Scroll to specific ayah if ?ayah=N is present
+  if (ayahParam) {
+    nextTick(() => {
+      const el = document.getElementById(`ayah-${ayahParam}`);
+      if (el) {
+        const top = el.getBoundingClientRect().top + window.scrollY - 72;
+        window.scrollTo({ top, behavior: "smooth" });
+      }
+    });
+  } else {
+    scrollToFirstVerse();
+  }
 });
 
 // Watch for page changes
@@ -468,6 +496,7 @@ useHead({
             :words="quranStore.getWordsForVerse(verse.verseNumber)"
             :is-font-loaded="isFontLoaded"
             :source-id="currentSourceId"
+            :source-name="currentSourceName"
             :is-external-source="isExternalSource"
             :disable-actions="true"
           />
