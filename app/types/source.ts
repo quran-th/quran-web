@@ -13,8 +13,11 @@ export interface TranslationSource {
   id: number;
   name: string;
   shortName: string | null;
+  short_name: string | null;
   author: string | null;
   language: string;
   description: string | null;
   isDefault: number;
+  is_default: number;
+  isExternal: boolean;
 }

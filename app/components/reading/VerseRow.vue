@@ -23,6 +23,7 @@ interface Props {
   words?: QuranWord[];
   isFontLoaded?: (pageNumber: number) => boolean;
   sourceId?: number;
+  isExternalSource?: boolean;
   disableActions?: boolean;
 }
 
@@ -230,6 +231,7 @@ function openReport() {
           </svg>
         </button>
         <button
+          v-if="!isExternalSource"
           class="flex items-center gap-1.5 rounded-lg bg-transparent px-2 py-1.5 text-sm text-slate-400 transition-all duration-200 hover:bg-amber-50 hover:text-amber-600"
           :title="$t('report.button_tooltip')"
           @click="openReport"
@@ -333,8 +335,9 @@ function openReport() {
       class="mx-4 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent"
     />
 
-    <!-- Report Modal -->
+    <!-- Report Modal (hidden for external translation sources) -->
     <ReportModal
+      v-if="!isExternalSource"
       :visible="showReportModal"
       :verse="verse"
       :surah-number="surahNumber"

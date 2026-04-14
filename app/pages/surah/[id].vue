@@ -43,13 +43,17 @@ const {
   currentSurah,
   verses,
   pagination,
-  loading,
   error,
   allWords,
   currentSourceId,
 } = storeToRefs(quranStore);
 const { fontVersion } = storeToRefs(fontSettings);
-const { selectedSourceId } = storeToRefs(readerSettings);
+const { selectedSourceId, translationSources } = storeToRefs(readerSettings);
+
+const isExternalSource = computed(() => {
+  const src = translationSources.value.find((s) => s.id === currentSourceId.value);
+  return src?.isExternal ?? false;
+});
 
 // Initialize QCF font loading
 const { isFontLoaded } = useQcfFont(allWords, fontVersion);
@@ -61,10 +65,24 @@ const showSettingsModal = ref(false);
 const pageParam = parseInt(route.query.page as string) || null;
 const surahId = parseInt(route.params.id as string);
 
+// SSR-time source used for the initial useAsyncData call. Subsequent
+// client-side fetches use `effectiveSourceId` below so the latest
+// selection (or source resolved by the API) is always sent.
 const validSourceId =
   selectedSourceId.value && selectedSourceId.value > 0
     ? selectedSourceId.value
     : undefined;
+
+// Always send an explicit sourceId on client nav so response URLs are
+// uniquely keyed by source (avoids browser cache collisions across
+// sources). Prefers the user selection, falls back to whatever the
+// last API response resolved as the active source.
+const effectiveSourceId = computed(
+  () =>
+    (selectedSourceId.value && selectedSourceId.value > 0
+      ? selectedSourceId.value
+      : undefined) ?? currentSourceId.value,
+);
 
 // Fetch Mushaf page mapping for current surah
 const apiFetch = useQuranApiFetch();
@@ -132,12 +150,6 @@ const { data: ssrData, status: fetchStatus } = await useAsyncData(
   },
 );
 
-// Client-side loading: covers both surah navigation (useAsyncData pending) and page pagination (store loading)
-const isClientLoading = computed(
-  () =>
-    import.meta.client && (fetchStatus.value === "pending" || loading.value),
-);
-
 // Hydrate store and pages
 if (ssrData.value && ssrData.value.success) {
   const data = ssrData.value.data;
@@ -164,6 +176,12 @@ function scrollToFirstVerse() {
     const top = el.getBoundingClientRect().top + window.scrollY - 72;
     window.scrollTo({ top, behavior: "smooth" });
   });
+}
+
+// Navigation loading state — shows spinner on clicked button until SSR page loads
+const navDirection = ref<"prev" | "next" | null>(null);
+function onNavClick(dir: "prev" | "next") {
+  navDirection.value = dir;
 }
 
 // Bottom nav auto-hide on scroll
@@ -217,7 +235,13 @@ watch(
       // Fetch verses for this page
       const offset = page.verseFrom - 1;
       const limit = page.verseTo - page.verseFrom + 1;
-      await quranStore.fetchVerses(surahId, validSourceId, offset, limit, true);
+      await quranStore.fetchVerses(
+        surahId,
+        effectiveSourceId.value,
+        offset,
+        limit,
+        true,
+      );
       scrollToFirstVerse();
     }
   },
@@ -239,13 +263,14 @@ watch(
   () => selectedSourceId.value,
   (newId) => {
     const surahId = parseInt(route.params.id as string);
-    const validSourceId = newId && newId > 0 ? newId : undefined;
+    const nextSourceId =
+      (newId && newId > 0 ? newId : undefined) ?? currentSourceId.value;
 
     const page = currentPageInfo.value;
     if (page) {
       const offset = page.verseFrom - 1;
       const limit = page.verseTo - page.verseFrom + 1;
-      quranStore.fetchVerses(surahId, validSourceId, offset, limit, true);
+      quranStore.fetchVerses(surahId, nextSourceId, offset, limit, true);
     }
   },
 );
@@ -260,9 +285,9 @@ watch(
 //     router.push("/");
 //   }
 // }
-// function handleSettingsClick() {
-//   showSettingsModal.value = true;
-// }
+function handleSettingsClick() {
+  showSettingsModal.value = true;
+}
 // function handlePageChange(page: number) {
 //   router.push(`/page/${page}`);
 // }
@@ -357,40 +382,6 @@ useHead({
     /> -->
 
     <main class="container mx-auto max-w-6xl px-4 py-8 pb-20">
-      <!-- Loading State (client-only — never rendered during SSR to avoid hydration mismatch) -->
-      <ClientOnly>
-        <div v-if="isClientLoading" class="flex justify-center py-12">
-          <svg width="60" height="60" viewBox="0 0 50 50">
-            <g fill="none" stroke="#60A5FA" stroke-width="2">
-              <path d="M15 10h15l5 5v20H15V10">
-                <animate
-                  attributeName="stroke-dasharray"
-                  values="0,100;100,0"
-                  dur="2s"
-                  repeatCount="indefinite"
-                />
-              </path>
-              <path d="M30 10v5h5">
-                <animate
-                  attributeName="opacity"
-                  values="0;1;0"
-                  dur="2s"
-                  repeatCount="indefinite"
-                />
-              </path>
-              <path d="M20 20h10M20 25h10M20 30h10">
-                <animate
-                  attributeName="stroke-dasharray"
-                  values="0,60;60,0"
-                  dur="2s"
-                  repeatCount="indefinite"
-                />
-              </path>
-            </g>
-          </svg>
-        </div>
-      </ClientOnly>
-
       <!-- Error State -->
       <div
         v-if="fetchStatus === 'error'"
@@ -402,114 +393,163 @@ useHead({
         {{ error }}
       </div>
 
-      <!-- Surah Content — fetchStatus === 'success' is hydration-safe (SSR cache is immediately available on client) -->
+      <!-- Surah Content -->
       <div
         v-else-if="fetchStatus === 'success' && currentSurah"
         class="space-y-6"
       >
-        <!-- Surah Header -->
-        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
-          <!-- Left: Surah name -->
-          <div>
-            <div class="flex items-baseline gap-2.5">
-              <h2 class="text-base sm:text-lg font-bold tracking-tight text-slate-800">
-                {{ currentSurah.name_thai }} <span class="font-arabic">({{ currentSurah.name_arabic }})</span>
-              </h2>
+          <!-- Surah Header -->
+          <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+            <!-- Left: Surah name -->
+            <div>
+              <div class="flex items-baseline gap-2.5">
+                <h2 class="text-base sm:text-lg font-bold tracking-tight text-slate-800">
+                  {{ currentSurah.name_thai }} <span class="font-arabic">({{ currentSurah.name_arabic }})</span>
+                </h2>
+              </div>
+              <span class="mt-1 text-sm text-slate-400">
+                {{ currentSurah.name_meaning_thai }}
+              </span>
             </div>
-            <span class="mt-1 text-sm text-slate-400">
-              {{ currentSurah.name_meaning_thai }}
-            </span>
+
+            <!-- Right: Surah info + settings -->
+            <div class="flex items-start gap-3 shrink-0">
+              <div class="text-right text-sm text-slate-500">
+                <div class="flex items-center justify-end gap-2">
+                  <span>อายะห์ {{ currentPageInfo?.verseFrom || 1 }}-{{ currentPageInfo?.verseTo || currentSurah.verses_count }}</span>
+                  <span v-if="currentPageInfo" class="text-slate-300">·</span>
+                  <NuxtLink
+                    v-if="currentPageInfo"
+                    to="/page/1"
+                    class="hover:text-slate-700 underline underline-offset-2"
+                    title="อ่านในมุศฮัฟ"
+                  >
+                    หน้า {{ currentPageInfo.page }}
+                  </NuxtLink>
+                </div>
+                <div class="mt-0.5 text-xs text-slate-400">
+                  {{ currentSurah.revelation_place === "makkiyah" ? "มักกียะฮ์" : "มะดะนียะฮ์" }}
+                  · {{ currentSurah.verses_count }} อายะห์
+                </div>
+              </div>
+              <button
+                class="flex h-9 w-9 items-center justify-center rounded-lg bg-transparent text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
+                title="ตั้งค่าการอ่าน"
+                @click="handleSettingsClick"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </div>
           </div>
 
-          <!-- Right: Surah info -->
-          <div class="text-right text-sm text-slate-500 shrink-0">
-            <div class="flex items-center justify-end gap-2">
-              <span>อายะห์ {{ currentPageInfo?.verseFrom || 1 }}-{{ currentPageInfo?.verseTo || currentSurah.verses_count }}</span>
-              <span v-if="currentPageInfo" class="text-slate-300">·</span>
-              <NuxtLink
-                v-if="currentPageInfo"
-                to="/page/1"
-                class="hover:text-slate-700 underline underline-offset-2"
-                title="อ่านในมุศฮัฟ"
-              >
-                หน้า {{ currentPageInfo.page }}
-              </NuxtLink>
-            </div>
-            <div class="mt-0.5 text-xs text-slate-400">
-              {{ currentSurah.revelation_place === "makkiyah" ? "มักกียะฮ์" : "มะดะนียะฮ์" }}
-              · {{ currentSurah.verses_count }} อายะห์
-            </div>
-          </div>
+          <!-- Scroll anchor for first verse -->
+          <div id="first-verse" />
+
+          <!-- Verses List -->
+          <ReadingVerseRow
+            v-for="verse in verses"
+            :key="verse.verseNumber"
+            :verse="verse"
+            :surah-number="currentSurah.id"
+            :surah-name="currentSurah.name_thai"
+            :words="quranStore.getWordsForVerse(verse.verseNumber)"
+            :is-font-loaded="isFontLoaded"
+            :source-id="currentSourceId"
+            :is-external-source="isExternalSource"
+            :disable-actions="true"
+          />
         </div>
 
-        <!-- Scroll anchor for first verse -->
-        <div id="first-verse" />
-
-        <!-- Verses List -->
-        <ReadingVerseRow
-          v-for="verse in verses"
-          :key="verse.verseNumber"
-          :verse="verse"
-          :surah-number="currentSurah.id"
-          :surah-name="currentSurah.name_thai"
-          :words="quranStore.getWordsForVerse(verse.verseNumber)"
-          :is-font-loaded="isFontLoaded"
-          :source-id="currentSourceId"
-          :disable-actions="true"
-        />
-
-        <!-- Mushaf Page Pagination (sticky bottom, auto-hide on scroll) -->
-        <nav
-          v-if="
-            mushafPagesData &&
-            mushafPagesData.data &&
-            mushafPagesData.data.length > 0
-          "
-          class="fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-sm border-t border-slate-100 px-4 py-2.5 transition-transform duration-200 ease-out"
-          :class="isNavVisible ? 'translate-y-0' : 'md:translate-y-0 translate-y-full'"
-        >
-          <div class="container mx-auto max-w-6xl flex items-center justify-between">
-            <!-- Previous Button -->
-            <component
-              :is="prevPage ? NuxtLink : 'span'"
-              :to="prevPage ? `/surah/${prevPage.surahId}?page=${prevPage.page}` : undefined"
-              class="group flex items-center gap-3 text-slate-600 transition-colors"
-              :class="prevPage ? 'hover:text-slate-900' : 'opacity-30 cursor-not-allowed pointer-events-none'"
-            >
-              <span class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-white transition-colors" :class="prevPage && 'group-hover:bg-slate-900'">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-              </span>
-              <div class="flex flex-col">
-                <span class="text-xs text-slate-400 sm:hidden">ก่อนหน้า</span>
-                <span class="hidden text-sm font-medium sm:block">{{ prevPage?.surahName || currentSurah?.name_thai }}</span>
-                <span class="hidden text-xs text-slate-400 sm:block">{{ prevPage ? `อายะห์ ${prevPage.verseFrom}-${prevPage.verseTo}` : '' }}</span>
-              </div>
-            </component>
-
-            <!-- Current page info -->
-            <span class="text-xs text-slate-400">
-              {{ currentPage }} / 604
+      <!-- Mushaf Page Pagination (sticky bottom, auto-hide on scroll) -->
+      <nav
+        v-if="
+          mushafPagesData &&
+          mushafPagesData.data &&
+          mushafPagesData.data.length > 0
+        "
+        class="fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-sm border-t border-slate-100 px-4 py-2.5 transition-transform duration-200 ease-out"
+        :class="isNavVisible ? 'translate-y-0' : 'md:translate-y-0 translate-y-full'"
+      >
+        <div class="container mx-auto max-w-6xl flex items-center justify-between">
+          <!-- Previous Button (plain <a> for SSR navigation) -->
+          <a
+            v-if="prevPage"
+            :href="`/surah/${prevPage.surahId}?page=${prevPage.page}`"
+            class="group flex items-center gap-3 text-slate-600 transition-colors hover:text-slate-900"
+            @click="onNavClick('prev')"
+          >
+            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-white transition-colors" :class="prevPage && 'group-hover:bg-slate-900'">
+              <svg v-if="navDirection !== 'prev'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+              <svg v-else class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="opacity-25" /><path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
             </span>
+            <div class="flex flex-col">
+              <span class="text-xs text-slate-400 sm:hidden">ก่อนหน้า</span>
+              <span class="hidden text-sm font-medium sm:block">{{ prevPage?.surahName || currentSurah?.name_thai }}</span>
+              <span class="hidden text-xs text-slate-400 sm:block">{{ prevPage ? `อายะห์ ${prevPage.verseFrom}-${prevPage.verseTo}` : '' }}</span>
+            </div>
+          </a>
+          <span
+            v-else
+            class="flex items-center gap-3 text-slate-600 opacity-30 cursor-not-allowed pointer-events-none"
+          >
+            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+            </span>
+            <div class="flex flex-col">
+              <span class="text-xs text-slate-400 sm:hidden">ก่อนหน้า</span>
+              <span class="hidden text-sm font-medium sm:block">{{ currentSurah?.name_thai }}</span>
+            </div>
+          </span>
 
-            <!-- Next Button -->
-            <component
-              :is="nextPage ? NuxtLink : 'span'"
-              :to="nextPage ? `/surah/${nextPage.surahId}?page=${nextPage.page}` : undefined"
-              class="group flex items-center gap-3 text-slate-600 transition-colors"
-              :class="nextPage ? 'hover:text-slate-900' : 'opacity-30 cursor-not-allowed pointer-events-none'"
-            >
-              <div class="flex flex-col items-end">
-                <span class="text-xs text-slate-400 sm:hidden">ถัดไป</span>
-                <span class="hidden text-sm font-medium sm:block">{{ nextPage?.surahName || currentSurah?.name_thai }}</span>
-                <span class="hidden text-xs text-slate-400 sm:block">{{ nextPage ? `อายะห์ ${nextPage.verseFrom}-${nextPage.verseTo}` : '' }}</span>
-              </div>
-              <span class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-white transition-colors" :class="nextPage && 'group-hover:bg-slate-900'">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
-              </span>
-            </component>
-          </div>
-        </nav>
-      </div>
+          <!-- Current page info -->
+          <span class="text-xs text-slate-400">
+            {{ currentPage }} / 604
+          </span>
+
+          <!-- Next Button (plain <a> for SSR navigation) -->
+          <a
+            v-if="nextPage"
+            :href="`/surah/${nextPage.surahId}?page=${nextPage.page}`"
+            class="group flex items-center gap-3 text-slate-600 transition-colors hover:text-slate-900"
+            @click="onNavClick('next')"
+          >
+            <div class="flex flex-col items-end">
+              <span class="text-xs text-slate-400 sm:hidden">ถัดไป</span>
+              <span class="hidden text-sm font-medium sm:block">{{ nextPage.surahName || currentSurah?.name_thai }}</span>
+              <span class="hidden text-xs text-slate-400 sm:block">{{ `อายะห์ ${nextPage.verseFrom}-${nextPage.verseTo}` }}</span>
+            </div>
+            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-white transition-colors group-hover:bg-slate-900">
+              <svg v-if="navDirection !== 'next'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+              <svg v-else class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="opacity-25" /><path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
+            </span>
+          </a>
+          <span
+            v-else
+            class="flex items-center gap-3 text-slate-600 opacity-30 cursor-not-allowed pointer-events-none"
+          >
+            <div class="flex flex-col items-end">
+              <span class="text-xs text-slate-400 sm:hidden">ถัดไป</span>
+              <span class="hidden text-sm font-medium sm:block">{{ currentSurah?.name_thai }}</span>
+            </div>
+            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+            </span>
+          </span>
+        </div>
+      </nav>
     </main>
 
     <!-- Font Settings Modal -->

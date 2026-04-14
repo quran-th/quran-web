@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch, onMounted } from "vue";
+import { watch, onMounted, computed } from "vue";
 import { storeToRefs } from "pinia";
 import { useQuranStore } from "~/stores/quranStore";
 import { useMushafStore } from "~/stores/mushafStore";
@@ -15,8 +15,13 @@ const fontSettings = useFontSettingsStore();
 
 const { currentPageVerseKeys, windowWords } = storeToRefs(mushafStore);
 const { verses, loading, error } = storeToRefs(quranStore);
-const { selectedSourceId } = storeToRefs(readerSettings);
+const { selectedSourceId, translationSources } = storeToRefs(readerSettings);
 const { fontVersion } = storeToRefs(fontSettings);
+
+const isExternalSource = computed(() => {
+  const src = translationSources.value.find((s) => s.id === selectedSourceId.value);
+  return src?.isExternal ?? false;
+});
 
 // Ensure fonts are loaded based on window words from mushafStore
 const { isFontLoaded } = useQcfFont(windowWords, fontVersion);
@@ -109,6 +114,7 @@ const getWordsForVerse = (surahNumber: number, verseNumber: number) => {
         :words="getWordsForVerse(verse.surahNumber || 1, verse.verseNumber)"
         :is-font-loaded="isFontLoaded"
         :source-id="selectedSourceId"
+        :is-external-source="isExternalSource"
       />
     </div>
   </div>
