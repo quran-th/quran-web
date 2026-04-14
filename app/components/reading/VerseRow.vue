@@ -73,7 +73,7 @@ const translationParts = computed(() => {
 
 async function handleCopy() {
   try {
-    const url = `${window.location.origin}/${props.surahNumber}:${props.verse.verseNumber}`
+    const url = buildShareUrl()
     const sourceLine = props.sourceName ? `- ${props.sourceName}` : ""
     const textToCopy = `${props.surahName || ""} (${props.surahNumber}:${props.verse.verseNumber})\n\n${props.verse.content}\n\n${props.verse.translation}\n${sourceLine} ${url}`;
     await navigator.clipboard.writeText(textToCopy);
@@ -96,9 +96,15 @@ function handlePlay() {
   emit("play", props.verse);
 }
 
-function handleShare() {
+function buildShareUrl() {
   const base = window.location.origin
-  const url = `${base}/${props.surahNumber}:${props.verse.verseNumber}`
+  const path = `/${props.surahNumber}:${props.verse.verseNumber}`
+  const params = props.sourceId ? `?t=${props.sourceId}` : ""
+  return `${base}${path}${params}`
+}
+
+function handleShare() {
+  const url = buildShareUrl()
   const text = `${props.surahName || ""} (${props.surahNumber}:${props.verse.verseNumber})\n\n${props.verse.content}\n\n${props.verse.translation}`
 
   if (navigator.share) {
