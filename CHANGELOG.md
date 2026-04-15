@@ -1,3 +1,15 @@
+# [1.12.0](https://github.com/quran-th/quran-web/compare/v1.11.0...v1.12.0) (2026-04-15)
+
+
+### Bug Fixes
+
+* move reader setting to top navbar and improve translation source selection ([a238cdf](https://github.com/quran-th/quran-web/commit/a238cdf64f34b17d13284efb1efe67450b3ad329))
+
+
+### Features
+
+* add SEO and social sharing with OG tags, sitemap, and structured data ([6efaed1](https://github.com/quran-th/quran-web/commit/6efaed13c8b019835b4a2212b2869b523f6bd993))
+
 # [1.11.0](https://github.com/quran-th/quran-web/compare/v1.10.0...v1.11.0) (2026-04-14)
 
 
