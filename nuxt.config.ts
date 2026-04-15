@@ -1,4 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import tailwindcss from "@tailwindcss/vite"
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
@@ -19,7 +21,6 @@ export default defineNuxtConfig({
   modules: [
     "nitro-cloudflare-dev",
     "@nuxt/eslint",
-    "@nuxtjs/tailwindcss",
     "@pinia/nuxt",
     "@nuxtjs/i18n",
     "@nuxt/fonts",
@@ -111,5 +112,9 @@ export default defineNuxtConfig({
     },
   },
 
-  css: ['~/assets/css/fonts.css', '~/assets/css/mushaf-scales.css', '~/assets/css/surah-name-font.css'],
+  css: ['~/assets/css/main.css', '~/assets/css/fonts.css', '~/assets/css/mushaf-scales.css', '~/assets/css/surah-name-font.css'],
+
+  vite: {
+    plugins: [tailwindcss()],
+  },
 })
