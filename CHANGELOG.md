@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/quran-th/quran-web/compare/v1.12.0...v1.12.1) (2026-04-15)
+
+
+### Bug Fixes
+
+* font size adjustment for consistency of arabic and translation text ([63f26eb](https://github.com/quran-th/quran-web/commit/63f26eb8db995b4fb7c908059bc75ad4059fcf2e))
+
 # [1.12.0](https://github.com/quran-th/quran-web/compare/v1.11.0...v1.12.0) (2026-04-15)
 
 
