@@ -367,20 +367,43 @@ const nextPage = computed(() => {
   return orderedPages.value[currentIndex.value + 1];
 });
 
-// SEO metadata
-const baseUrl = "https://quran.in.th";
+const pageTitle = computed(() => {
+  const siteName = "read.quran.in.th";
+  if (!currentSurah.value) return `อ่านอัลกุรอานออนไลน์ พร้อมคำแปลภาษาไทย | ${siteName}`;
+  
+  const page = currentPageInfo.value;
+  const source = currentSourceName.value ? ` (${currentSourceName.value})` : '';
+  const ayahRange = page ? `อายะฮ์ที่ ${page.verseFrom}-${page.verseTo}` : "";
+  
+  return `ซูเราะห์${currentSurah.value.name_thai} (${currentSurah.value.name_meaning_thai})${ayahRange} แปลไทย${source} | ${siteName}`;
+});
+
+const pageDescription = computed(() => {
+  const ayahRange = currentPageInfo.value ? `ของอายะฮ์ที่ ${currentPageInfo.value.verseFrom}-${currentPageInfo.value.verseTo}` : "ของอายะห์ต่าง ๆ";
+
+  if (!currentSurah.value) {
+    return 'อ่านอัลกุรอานออนไลน์พร้อมคำแปลภาษาไทย ฟังเสียงอ่านอัลกุรอาน เลือกอ่านตามซูเราะห์หรือหน้า สะดวกและใช้งานง่าย';
+  }
+
+  const source = currentSourceName.value ? `ฉบับ${currentSourceName.value}` : '';
+  const surahName = `ซูเราะห์ ${currentSurah.value.name_thai} (${currentSurah.value.name_simple})`;
+  
+  return `อ่าน${surahName} พร้อมคำแปลภาษาไทย${source} ฟังเสียงอ่านอัลกุรอานออนไลน์ เรียนรู้ความหมายและบริบท${ayahRange}ใน${surahName}`;
+});
+
+useSeoMeta({
+  title: pageTitle,
+  ogTitle: pageTitle,
+  description: pageDescription,
+  ogDescription: pageDescription,
+})
+
 const canonicalUrl = computed(() => {
   const pageQuery = currentPage.value > 1 ? `?page=${currentPage.value}` : "";
   return `${baseUrl}/surah/${surahId}${pageQuery}`;
 });
 
 useHead({
-  title: computed(() => {
-    if (!currentSurah.value) return "อัลกุรอานแปลไทย";
-    const page = currentPageInfo.value;
-    const pageText = page && page.page > 1 ? ` (หน้า ${page.page})` : "";
-    return `ซูเราะห์ ${currentSurah.value.name_simple}${pageText} - อัลกุรอานแปลไทย`;
-  }),
   link: computed(() => {
     const links = [{ rel: "canonical", href: canonicalUrl.value }];
 
@@ -400,7 +423,20 @@ useHead({
 
     return links;
   }),
-});
+})
+
+useSchemaOrg([
+  defineBreadcrumb({
+    itemListElement: [
+      { name: 'หน้าแรก', item: '/' },
+      { name: computed(() => currentSurah.value?.name_thai ?? 'ซูเราะห์') },
+    ],
+  }),
+  defineArticle({
+    headline: computed(() => currentSurah.value ? `ซูเราะห์ ${currentSurah.value.name_thai}` : 'อัลกุรอานแปลไทย'),
+    description: pageDescription,
+  }),
+])
 </script>
 
 <template>

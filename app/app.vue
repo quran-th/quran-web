@@ -14,4 +14,10 @@ useHead({
     dir: 'ltr',
   },
 })
+
+useSchemaOrg([
+  defineWebSite({
+    name: 'อัลกุรอานแปลไทย',
+  }),
+])
 </script>

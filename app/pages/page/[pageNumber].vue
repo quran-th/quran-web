@@ -93,8 +93,12 @@ watch(currentPage, (newPage) => {
 //   readingMode.value = readingMode.value === "mushaf" ? "translation" : "mushaf";
 // }
 
-useHead({
+useSeoMeta({
   title: computed(() => `หน้า ${currentPage.value} - มุศฮัฟ - อัลกุรอานแปลไทย`),
+  ogTitle: computed(() => `หน้า ${currentPage.value} - มุศฮัฟ - อัลกุรอานแปลไทย`),
+  description: computed(() => `อ่านอัลกุรอานหน้ามุศฮัฟ ${currentPage.value}`),
+  ogDescription: computed(() => `อ่านอัลกุรอานหน้ามุศฮัฟ ${currentPage.value}`),
+  robots: 'noindex, nofollow',
 });
 </script>
 

@@ -16,7 +16,37 @@ export default defineNuxtConfig({
     '/surah/**': { isr: 3600 },
   },
 
-  modules: ["nitro-cloudflare-dev", "@nuxt/eslint", "@nuxtjs/tailwindcss", "@pinia/nuxt", "@nuxtjs/i18n", "@nuxt/fonts"],
+  modules: [
+    "nitro-cloudflare-dev",
+    "@nuxt/eslint",
+    "@nuxtjs/tailwindcss",
+    "@pinia/nuxt",
+    "@nuxtjs/i18n",
+    "@nuxt/fonts",
+    '@nuxtjs/seo',
+  ],
+
+  site: {
+    url: 'https://read.quran.in.th',
+    name: 'อัลกุรอานแปลไทย',
+    description: 'อัลกุรอานภาษาไทย - เรียนรู้อัลกุรอานภาษาไทย',
+  },
+
+  seo: {
+    meta: {
+      ogType: 'website',
+      ogLocale: 'th_TH',
+      twitterCard: 'summary_large_image',
+    },
+  },
+
+  sitemap: {
+    sources: ['/api/__sitemap__/urls'],
+  },
+
+  ogImage: {
+    enabled: false,
+  },
 
   fonts: {
     provider: 'google',
@@ -72,10 +102,10 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: 'th' },
+      titleTemplate: '%s',
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        { name: 'description', content: 'อัลกุรอานภาษาไทย - คำแปลและความหมายระดับคำ' },
       ],
       link: [],
     },
