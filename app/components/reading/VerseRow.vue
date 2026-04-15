@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
+import { storeToRefs } from "pinia";
 import type { QuranWord } from "~/types/quran";
 import ReportModal from "~/components/reading/ReportModal.vue";
+import { useFontSettingsStore } from "~/stores/fontSettingsStore";
+
+const fontSettings = useFontSettingsStore();
+const { fontScale } = storeToRefs(fontSettings);
+
+// Reader-mode scale: fontScale=3 is baseline (1.0), ±12% per step.
+const readerScale = computed(() => 1 + (fontScale.value - 3) * 0.12);
 
 interface Footnote {
   number: number;
@@ -123,7 +131,7 @@ function openReport() {
 </script>
 
 <template>
-  <div :id="`ayah-${verse.verseNumber}`" class="relative">
+  <div :id="`ayah-${verse.verseNumber}`" class="relative" :style="{ '--reader-scale': readerScale }">
     <!-- Actions row: action icons on left, share and report on right -->
     <div class="flex items-center justify-between px-4 pt-4 pb-2">
       <!-- Left: Action icons -->
@@ -296,7 +304,10 @@ function openReport() {
 
     <!-- Thai translation row -->
     <div class="px-4 py-2 pb-4">
-      <div class="text-left text-reading text-lg leading-relaxed text-slate-600">
+      <div
+        class="text-left text-reading leading-relaxed text-slate-600"
+        :style="{ fontSize: `calc(1rem * var(--reader-scale, 1))` }"
+      >
         <template v-for="(part, index) in translationParts" :key="index">
           <sup
             v-if="part.type === 'footnote'"

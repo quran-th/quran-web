@@ -30,7 +30,7 @@ defineProps<Props>()
   justify-content: flex-start;
   direction: rtl;
   text-align: right;
-  font-size: 1.5rem;
+  font-size: calc(1.7rem * var(--reader-scale, 1));
   line-height: 2.5;
   gap: 0;
 }
@@ -38,7 +38,6 @@ defineProps<Props>()
 @media (min-width: 640px) {
   .verse-text {
     justify-content: center;
-    font-size: 1.8rem;
   }
 }
 </style>
