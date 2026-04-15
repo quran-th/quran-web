@@ -34,6 +34,26 @@ const { quranFont, fontScale, fontCategory, fontVersion, isQcf } =
 const readerSettings = useReaderSettingsStore();
 const { selectedSourceId, translationSources } = storeToRefs(readerSettings);
 
+type ModalView = "main" | "source";
+const currentView = ref<ModalView>("main");
+
+const selectedSource = computed(() =>
+  translationSources.value.find((s) => s.id === selectedSourceId.value),
+);
+
+function openSourceView() {
+  currentView.value = "source";
+}
+
+function goBack() {
+  currentView.value = "main";
+}
+
+function selectSource(id: number) {
+  readerSettings.setTranslationSource(id);
+  currentView.value = "main";
+}
+
 // Local active tab (defaults to current font's category)
 const activeTab = ref<FontCategory>(fontCategory.value);
 
@@ -180,12 +200,32 @@ const isPreviewLoading = computed(() => {
 
 function close() {
   emit("update:visible", false);
+  setTimeout(() => {
+    currentView.value = "main";
+  }, 200);
 }
 
 function handleOverlayClick(e: MouseEvent) {
   if ((e.target as HTMLElement).classList.contains("modal-overlay")) {
     close();
   }
+}
+
+const transitionName = ref<"slide-forward" | "slide-back">("slide-forward");
+
+function enterSourceView() {
+  transitionName.value = "slide-forward";
+  openSourceView();
+}
+
+function backToMain() {
+  transitionName.value = "slide-back";
+  goBack();
+}
+
+function pickSource(id: number) {
+  transitionName.value = "slide-back";
+  selectSource(id);
 }
 </script>
 
@@ -202,59 +242,72 @@ function handleOverlayClick(e: MouseEvent) {
           class="modal-content"
           role="dialog"
           aria-modal="true"
-          aria-label="Font Settings"
+          aria-label="Reading Settings"
         >
-          <!-- Header -->
-          <div class="modal-header">
-            <h2 class="modal-title">ตั้งค่าการอ่าน</h2>
-            <button class="modal-close" title="Close" @click="close">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M18 6 6 18" />
-                <path d="m6 6 12 12" />
-              </svg>
-            </button>
-          </div>
+          <div class="modal-viewport">
+            <Transition :name="transitionName">
+              <!-- Main View -->
+              <div v-if="currentView === 'main'" key="main" class="modal-view">
+                <!-- Header -->
+                <div class="modal-header">
+                  <h2 class="modal-title">ตั้งค่าการอ่าน</h2>
+                  <button class="modal-close" title="Close" @click="close">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M18 6 6 18" />
+                      <path d="m6 6 12 12" />
+                    </svg>
+                  </button>
+                </div>
 
-          <!-- Translation Settings Section -->
-          <div v-if="translationSources.length > 0" class="settings-group">
-            <h3 class="section-title">คำแปลเนื้อหา</h3>
-            <div class="translation-section">
-              <span class="translation-label">แหล่งที่มาของคำแปล</span>
-              <select
-                class="translation-select"
-                :value="selectedSourceId || ''"
-                @change="
-                  (e) =>
-                    readerSettings.setTranslationSource(
-                      parseInt((e.target as HTMLSelectElement).value) ||
-                        undefined,
-                    )
-                "
-              >
-                <option value="" disabled>ค่าเริ่มต้นของระบบ</option>
-                <option
-                  v-for="source in translationSources"
-                  :key="source.id"
-                  :value="source.id"
+                <!-- Translation Settings Section -->
+                <div
+                  v-if="translationSources.length > 0"
+                  class="settings-group"
                 >
-                  {{ source.name }}
-                </option>
-              </select>
-            </div>
-          </div>
+                  <h3 class="section-title">คำแปลเนื้อหา</h3>
+                  <div class="source-section">
+                    <button class="source-trigger" @click="enterSourceView">
+                      <div class="source-trigger-info">
+                        <span class="source-trigger-name">
+                          {{ selectedSource?.name || "ค่าเริ่มต้นของระบบ" }}
+                        </span>
+                        <span
+                          v-if="selectedSource?.description"
+                          class="source-trigger-desc"
+                        >
+                          {{ selectedSource.description }}
+                        </span>
+                      </div>
+                      <svg
+                        class="source-trigger-icon"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="m9 18 6-6-6-6" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
 
-          <!-- Font Settings Section -->
-          <div class="settings-group">
+                <!-- Font Settings Section -->
+                <div class="settings-group">
             <h3 class="section-title">รูปแบบตัวอักษร</h3>
 
             <!-- Preview (moved inside Font Settings) -->
@@ -370,6 +423,94 @@ function handleOverlayClick(e: MouseEvent) {
                 </button>
               </div>
             </div>
+                </div>
+              </div>
+
+              <!-- Source Selection View -->
+              <div
+                v-else-if="currentView === 'source'"
+                key="source"
+                class="modal-view"
+              >
+                <div class="modal-header">
+                  <button
+                    class="modal-back"
+                    title="Back"
+                    @click="backToMain"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m15 18-6-6 6-6" />
+                    </svg>
+                  </button>
+                  <h2 class="modal-title">แหล่งที่มาของคำแปล</h2>
+                  <button class="modal-close" title="Close" @click="close">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M18 6 6 18" />
+                      <path d="m6 6 12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div class="source-cards">
+                  <button
+                    v-for="source in translationSources"
+                    :key="source.id"
+                    class="source-card"
+                    :class="{
+                      'source-card--selected':
+                        selectedSourceId === source.id,
+                    }"
+                    @click="pickSource(source.id)"
+                  >
+                    <div class="source-card-info">
+                      <span class="source-card-name">{{ source.name }}</span>
+                      <span
+                        v-if="source.description"
+                        class="source-card-desc"
+                      >
+                        {{ source.description }}
+                      </span>
+                    </div>
+                    <div class="source-card-check">
+                      <svg
+                        v-if="selectedSourceId === source.id"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </Transition>
           </div>
         </div>
       </div>
@@ -393,12 +534,59 @@ function handleOverlayClick(e: MouseEvent) {
   background: white;
   border-radius: 16px;
   width: 90%;
-  max-width: 420px;
+  max-width: 560px;
   max-height: 80vh;
-  overflow-y: auto;
+  overflow: hidden;
   box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.15),
     0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.modal-viewport {
+  position: relative;
+  overflow: hidden;
+  max-height: 80vh;
+}
+
+.modal-view {
+  max-height: 80vh;
+  overflow-y: auto;
+  will-change: transform;
+}
+
+.slide-forward-enter-active,
+.slide-forward-leave-active,
+.slide-back-enter-active,
+.slide-back-leave-active {
+  transition:
+    transform 0.28s cubic-bezier(0.32, 0.72, 0.2, 1),
+    opacity 0.2s ease;
+}
+
+.slide-forward-leave-active,
+.slide-back-leave-active {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.slide-forward-enter-from {
+  transform: translateX(100%);
+  opacity: 0;
+}
+.slide-forward-leave-to {
+  transform: translateX(-20%);
+  opacity: 0;
+}
+
+.slide-back-enter-from {
+  transform: translateX(-20%);
+  opacity: 0;
+}
+.slide-back-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
 }
 
 .modal-header {
@@ -415,7 +603,8 @@ function handleOverlayClick(e: MouseEvent) {
   margin: 0;
 }
 
-.modal-close {
+.modal-close,
+.modal-back {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -429,9 +618,18 @@ function handleOverlayClick(e: MouseEvent) {
   transition: all 0.15s;
 }
 
-.modal-close:hover {
+.modal-close:hover,
+.modal-back:hover {
   background: #f1f5f9;
   color: #475569;
+}
+
+.modal-header .modal-title {
+  flex: 1;
+}
+
+.modal-header .modal-back + .modal-title {
+  text-align: center;
 }
 
 .preview-section {
@@ -647,46 +845,129 @@ function handleOverlayClick(e: MouseEvent) {
   color: #1e293b;
 }
 
-.translation-section {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 1.5rem 1.25rem;
+.source-section {
+  padding: 0 1rem 1rem;
 }
 
-.translation-label {
+.source-label {
+  display: block;
   font-size: 0.85rem;
   font-weight: 600;
   color: #475569;
+  padding: 0 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
-.translation-select {
-  padding: 0.4rem 2rem 0.4rem 0.75rem;
-  font-size: 0.85rem;
-  color: #1e293b;
-  background-color: #f8fafc;
+.source-trigger {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 10px;
+  background: #f8fafc;
   cursor: pointer;
-  outline: none;
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.75rem top 50%;
-  background-size: 0.65rem auto;
   transition: all 0.15s;
-  max-width: 200px;
-  text-overflow: ellipsis;
+  text-align: left;
 }
 
-.translation-select:hover {
-  background-color: #f1f5f9;
+.source-trigger:hover {
+  background: #f1f5f9;
   border-color: #cbd5e1;
 }
 
-.translation-select:focus {
-  border-color: #0ea5e9;
-  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
+.source-trigger-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.source-trigger-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.source-trigger-desc {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.source-trigger-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #94a3b8;
+  transition: transform 0.15s ease;
+}
+
+.source-trigger:hover .source-trigger-icon {
+  transform: translateX(2px);
+  color: #475569;
+}
+
+.source-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 1rem 1.25rem;
+}
+
+.source-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  width: 100%;
+}
+
+.source-card:hover {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.source-card--selected {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.source-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.source-card-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.source-card-desc {
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.source-card-check {
+  color: #0ea5e9;
+  width: 20px;
+  flex-shrink: 0;
+  padding-top: 2px;
 }
 
 .modal-enter-active,

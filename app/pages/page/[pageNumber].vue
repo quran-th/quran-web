@@ -23,9 +23,6 @@ const { fontVersion } = storeToRefs(fontSettings);
 // Load QCF fonts for the visible window of pages
 const { isFontLoaded } = useQcfFont(windowWords, fontVersion);
 
-// Settings modal
-const showSettingsModal = ref(false);
-
 const readingMode = ref<"mushaf" | "translation">("mushaf");
 
 const isUiVisible = ref(true);
@@ -130,8 +127,6 @@ useSeoMeta({
       :ui-visible="isUiVisible"
     />
 
-    <!-- Font Settings Modal -->
-    <SettingsReaderSettingsModal v-model:visible="showSettingsModal" />
   </div>
 </template>
 

@@ -63,9 +63,6 @@ const currentSourceName = computed(() => {
 // Initialize QCF font loading
 const { isFontLoaded } = useQcfFont(allWords, fontVersion);
 
-// Settings modal
-const showSettingsModal = ref(false);
-
 // Parse query parameters
 const pageParam = parseInt(route.query.page as string) || null;
 const ayahParam = parseInt(route.query.ayah as string) || null;
@@ -320,9 +317,6 @@ watch(
 //     router.push("/");
 //   }
 // }
-function handleSettingsClick() {
-  showSettingsModal.value = true;
-}
 // function handlePageChange(page: number) {
 //   router.push(`/page/${page}`);
 // }
@@ -398,6 +392,7 @@ useSeoMeta({
   ogDescription: pageDescription,
 })
 
+const baseUrl = useRequestURL().origin;
 const canonicalUrl = computed(() => {
   const pageQuery = currentPage.value > 1 ? `?page=${currentPage.value}` : "";
   return `${baseUrl}/surah/${surahId}${pageQuery}`;
@@ -503,26 +498,6 @@ useSchemaOrg([
                   · {{ currentSurah.verses_count }} อายะห์
                 </div>
               </div>
-              <button
-                class="flex h-9 w-9 items-center justify-center rounded-lg bg-transparent text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
-                title="ตั้งค่าการอ่าน"
-                @click="handleSettingsClick"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              </button>
             </div>
           </div>
 
@@ -552,7 +527,7 @@ useSchemaOrg([
           mushafPagesData.data &&
           mushafPagesData.data.length > 0
         "
-        class="fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-sm border-t border-slate-100 px-4 py-2.5 transition-transform duration-200 ease-out"
+        class="fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-xs border-t border-slate-100 px-4 py-2.5 transition-transform duration-200 ease-out"
         :class="isNavVisible ? 'translate-y-0' : 'md:translate-y-0 translate-y-full'"
       >
         <div class="container mx-auto max-w-6xl flex items-center justify-between">
@@ -623,8 +598,5 @@ useSchemaOrg([
         </div>
       </nav>
     </main>
-
-    <!-- Font Settings Modal -->
-    <SettingsReaderSettingsModal v-model:visible="showSettingsModal" />
   </div>
 </template>

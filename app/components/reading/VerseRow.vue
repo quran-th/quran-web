@@ -361,7 +361,7 @@ function openReport() {
 
     <!-- Separator line -->
     <div
-      class="mx-4 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent"
+      class="mx-4 h-px bg-linear-to-r from-transparent via-slate-200 to-transparent"
     />
 
     <!-- Report Modal (hidden for external translation sources) -->
