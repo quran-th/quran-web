@@ -200,6 +200,7 @@ function scrollToFirstVerse() {
 
 // Navigation loading state — shows spinner on clicked button until SSR page loads
 const navDirection = ref<"prev" | "next" | null>(null);
+const showSurahModal = ref(false);
 function onNavClick(dir: "prev" | "next") {
   navDirection.value = dir;
 }
@@ -466,17 +467,21 @@ useSchemaOrg([
       >
           <!-- Surah Header -->
           <div class="flex items-center justify-between border-b border-slate-200 pb-2">
-            <!-- Left: Surah name -->
-            <div>
+            <!-- Left: Surah name (clickable to open surah selection) -->
+            <button
+              class="text-left cursor-pointer group"
+              @click="showSurahModal = true"
+            >
               <div class="flex items-baseline gap-2.5">
-                <h2 class="text-base sm:text-lg font-bold tracking-tight text-slate-800">
+                <h2 class="text-base sm:text-lg font-bold tracking-tight text-slate-800 group-hover:text-sand-600 transition-colors">
                   {{ currentSurah.name_thai }} <span class="font-arabic">({{ currentSurah.name_arabic }})</span>
                 </h2>
+                <svg class="w-4 h-4 text-slate-400 group-hover:text-sand-500 transition-colors" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5" /><path d="m7 9 5-5 5 5" /></svg>
               </div>
               <span class="mt-1 text-sm text-slate-400">
                 {{ currentSurah.name_meaning_thai }}
               </span>
-            </div>
+            </button>
 
             <!-- Right: Surah info + settings -->
             <div class="flex items-start gap-3 shrink-0">
@@ -598,5 +603,12 @@ useSchemaOrg([
         </div>
       </nav>
     </main>
+
+    <ReadingSurahSelectionModal
+      :visible="showSurahModal"
+      :current-surah-id="currentSurah?.id"
+      @update:visible="showSurahModal = $event"
+      @select="router.push(`/surah/${$event}`)"
+    />
   </div>
 </template>
