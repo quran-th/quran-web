@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/quran-th/quran-web/compare/v1.12.1...v1.13.0) (2026-04-19)
+
+
+### Features
+
+* surah search ([aa9c8a6](https://github.com/quran-th/quran-web/commit/aa9c8a67afd3357075cd332015178557e0c68474))
+
 ## [1.12.1](https://github.com/quran-th/quran-web/compare/v1.12.0...v1.12.1) (2026-04-15)
 
 
