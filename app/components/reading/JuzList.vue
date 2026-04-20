@@ -13,16 +13,20 @@ onMounted(() => {
 })
 
 const juzItems = computed(() =>
-  juzs.value.map((juz) => {
-    const firstSurah = juz.surahs[0]
-    const lastSurah = juz.surahs[juz.surahs.length - 1]
+  juzs.value
+    .map((juz) => {
+      const firstSurah = juz.surahs[0]
+      const lastSurah = juz.surahs[juz.surahs.length - 1]
 
-    return {
-      ...juz,
-      firstSurah,
-      lastSurah,
-    }
-  })
+      if (!firstSurah || !lastSurah) return null
+
+      return {
+        ...juz,
+        firstSurah,
+        lastSurah,
+      }
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
 )
 </script>
 
@@ -31,7 +35,7 @@ const juzItems = computed(() =>
     <NuxtLink
       v-for="juz in juzItems"
       :key="juz.number"
-      :to="`/surah/${juz.firstSurah.id}`"
+      :to="`/surah/${juz.firstSurah!.id}`"
       class="group hover:border-sand-500 relative flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 transition-all hover:shadow-md"
     >
       <div class="flex items-center gap-4">
@@ -43,15 +47,15 @@ const juzItems = computed(() =>
         <div class="flex flex-col">
           <span class="group-hover:text-sand-600 font-medium text-slate-900 transition-colors">ญุซที่ {{ juz.number }}</span>
           <span class="text-xs text-slate-500">
-            {{ juz.firstSurah.name_thai }}
-            <template v-if="juz.firstSurah.id !== juz.lastSurah.id">
-              — {{ juz.lastSurah.name_thai }}
+            {{ juz.firstSurah!.name_thai }}
+            <template v-if="juz.firstSurah!.id !== juz.lastSurah!.id">
+              — {{ juz.lastSurah!.name_thai }}
             </template>
           </span>
         </div>
       </div>
       <div class="flex flex-col items-end gap-1">
-        <span class="font-arabic text-lg text-slate-800">{{ juz.firstSurah.name_arabic }}</span>
+        <span class="font-arabic text-lg text-slate-800">{{ juz.firstSurah!.name_arabic }}</span>
         <span class="text-xs text-slate-400">{{ juz.surahs.length }} ซูเราะห์ • {{ juz.verses_count }} อายะห์</span>
       </div>
     </NuxtLink>

@@ -190,9 +190,9 @@ if (ssrData.value && ssrData.value.success) {
   currentSourceId.value = data.sourceId;
 }
 
-function scrollToFirstVerse() {
+function scrollToSurahHeader() {
   nextTick(() => {
-    const el = document.getElementById("first-verse");
+    const el = document.getElementById("surah-header");
     if (!el) return;
     const top = el.getBoundingClientRect().top + window.scrollY - 72;
     window.scrollTo({ top, behavior: "smooth" });
@@ -252,7 +252,7 @@ onMounted(async () => {
       }
     });
   } else {
-    scrollToFirstVerse();
+    scrollToSurahHeader();
   }
 });
 
@@ -276,7 +276,7 @@ watch(
         limit,
         true,
       );
-      scrollToFirstVerse();
+      scrollToSurahHeader();
     }
   },
 );
@@ -467,7 +467,7 @@ useSchemaOrg([
         class="space-y-6"
       >
           <!-- Surah Header -->
-          <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+          <div id="surah-header" class="flex items-center justify-between border-b border-slate-200 pb-2">
             <!-- Left: Surah name (clickable to open surah selection) -->
             <button
               class="text-left cursor-pointer group"
