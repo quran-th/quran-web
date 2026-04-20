@@ -1,3 +1,10 @@
+## [1.14.1](https://github.com/quran-th/quran-web/compare/v1.14.0...v1.14.1) (2026-04-20)
+
+
+### Bug Fixes
+
+* focusing issue on /surah pages ([8cac995](https://github.com/quran-th/quran-web/commit/8cac9958c4e98866094d954fcf2e40a037d9f2b8))
+
 # [1.14.0](https://github.com/quran-th/quran-web/compare/v1.13.0...v1.14.0) (2026-04-20)
 
 
