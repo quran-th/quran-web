@@ -16,6 +16,7 @@ function openSettings() {
       class="container flex h-16 max-w-screen-2xl items-center px-4 md:px-8 mx-auto"
     >
       <NuxtLink class="flex items-center space-x-2" to="/">
+        <img src="/favicon.svg" alt="" class="h-8 w-auto">
         <span class="text-lg font-bold tracking-tight text-slate-900">
           อัลกุรอานแปลไทย
         </span>

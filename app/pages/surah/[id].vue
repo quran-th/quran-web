@@ -26,6 +26,7 @@ interface SurahData {
   name_simple: string;
   name_arabic: string;
   name_thai: string;
+  name_meaning_thai: string;
   revelation_place: string;
   verses_count: number;
   verses: Verse[];
