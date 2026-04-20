@@ -1,3 +1,15 @@
+# [1.14.0](https://github.com/quran-th/quran-web/compare/v1.13.0...v1.14.0) (2026-04-20)
+
+
+### Bug Fixes
+
+* search box auto zoom on iOS for below 16px text ([675c530](https://github.com/quran-th/quran-web/commit/675c53096114483dab4a4f09e0b6263bed12f548))
+
+
+### Features
+
+* icon and manifest enhancement ([4a1b929](https://github.com/quran-th/quran-web/commit/4a1b929fb84de01551d87cec09c4a736c08f58de))
+
 # [1.13.0](https://github.com/quran-th/quran-web/compare/v1.12.1...v1.13.0) (2026-04-19)
 
 
