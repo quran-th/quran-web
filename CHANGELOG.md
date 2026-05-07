@@ -1,3 +1,10 @@
+## [1.15.2](https://github.com/quran-th/quran-web/compare/v1.15.1...v1.15.2) (2026-05-07)
+
+
+### Bug Fixes
+
+* define proper FetchService type, remove inline casts ([4aace4d](https://github.com/quran-th/quran-web/commit/4aace4d805b8af7899afaa719abc01da3eec2d6e))
+
 ## [1.15.1](https://github.com/quran-th/quran-web/compare/v1.15.0...v1.15.1) (2026-05-07)
 
 
