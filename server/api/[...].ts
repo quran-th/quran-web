@@ -17,10 +17,14 @@ export default defineEventHandler(async (event) => {
 
     if (env?.QURAN_API) {
       const hasBody = !['GET', 'HEAD'].includes(event.method)
+      const headers = getRequestHeaders(event)
+      const filteredHeaders: Record<string, string> = Object.fromEntries(
+        Object.entries(headers).filter(([, v]) => v !== undefined)
+      ) as Record<string, string>
       return env.QURAN_API.fetch(
         new Request(new URL(path, 'https://quran-api.internal'), {
           method: event.method,
-          headers: getRequestHeaders(event),
+          headers: filteredHeaders,
           body: hasBody ? await readRawBody(event) : undefined,
         })
       )

@@ -34,7 +34,8 @@ function openSettings() {
 
       <div class="ml-auto flex items-center">
         <button
-          class="settings-pill"
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-[0.85rem] font-semibold text-slate-600 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900 active:scale-[0.97]"
           title="ตั้งค่าการอ่าน"
           @click="openSettings"
         >
@@ -48,6 +49,7 @@ function openSettings() {
             stroke-width="2"
             stroke-linecap="round"
             stroke-linejoin="round"
+            class="h-4 w-4 shrink-0"
           >
             <path
               d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
@@ -62,34 +64,3 @@ function openSettings() {
     <SettingsReaderSettingsModal v-model:visible="showSettingsModal" />
   </header>
 </template>
-
-<style scoped>
-.settings-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.9rem 0.45rem 0.8rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 9999px;
-  background: #f8fafc;
-  color: #475569;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.settings-pill:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-  color: #1e293b;
-}
-
-.settings-pill:active {
-  transform: scale(0.97);
-}
-
-.settings-pill svg {
-  flex-shrink: 0;
-}
-</style>
