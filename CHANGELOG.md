@@ -1,3 +1,10 @@
+# [1.15.0](https://github.com/quran-th/quran-web/compare/v1.14.1...v1.15.0) (2026-05-07)
+
+
+### Features
+
+* add PWA install modal ([83ccc3f](https://github.com/quran-th/quran-web/commit/83ccc3f16f5512f0c3a859c25df2841cf7e8895d))
+
 ## [1.14.1](https://github.com/quran-th/quran-web/compare/v1.14.0...v1.14.1) (2026-04-20)
 
 
