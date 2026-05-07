@@ -38,6 +38,7 @@
 	"devDependencies": {
 		"@nuxt/eslint": "^1.15.1",
 		"@types/node": "^25.3.0",
+		"@vite-pwa/nuxt": "^1.1.1",
 		"husky": "^9.1.7",
 		"lint-staged": "^16.4.0",
 		"nitro-cloudflare-dev": "^0.2.2",

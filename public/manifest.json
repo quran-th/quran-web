@@ -1,1 +1,28 @@
-{"theme_color":"#3d3d3d","background_color":"#ffffff","icons":[{"purpose":"maskable","sizes":"512x512","src":"icon512_maskable.png","type":"image/png"},{"purpose":"any","sizes":"512x512","src":"icon512_rounded.png","type":"image/png"}],"orientation":"any","display":"standalone","dir":"auto","lang":"th","name":"อัลกุรอาน","start_url":"https://read.quran.in.th","description":"อัลกุรอานพร้อมความหมายภาษาไทย","id":"read.quran.in.th"}
+{
+  "name": "อัลกุรอาน",
+  "short_name": "กุรอานไทย",
+  "description": "อัลกุรอานพร้อมความหมายภาษาไทย",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "dir": "auto",
+  "lang": "th",
+  "theme_color": "#3d3d3d",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/icon512_maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon512_rounded.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -4,5 +4,8 @@
     <main>
       <slot />
     </main>
+    <ClientOnly>
+      <PwaInstallModal />
+    </ClientOnly>
   </div>
 </template>

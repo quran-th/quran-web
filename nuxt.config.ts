@@ -25,7 +25,22 @@ export default defineNuxtConfig({
     "@nuxtjs/i18n",
     "@nuxt/fonts",
     '@nuxtjs/seo',
+    '@vite-pwa/nuxt',
   ],
+
+  pwa: {
+    registerType: 'autoUpdate',
+    // Keep using public/manifest.json (already linked from app.head); skip module-generated manifest.
+    manifest: false,
+    workbox: {
+      globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+      navigateFallback: null,
+    },
+    devOptions: {
+      enabled: true,
+      type: 'module',
+    },
+  },
 
   site: {
     url: 'https://read.quran.in.th',
