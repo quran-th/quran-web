@@ -1,3 +1,10 @@
+## [1.15.1](https://github.com/quran-th/quran-web/compare/v1.15.0...v1.15.1) (2026-05-07)
+
+
+### Bug Fixes
+
+* improve PWA install modal ([87c0a36](https://github.com/quran-th/quran-web/commit/87c0a36645dcee8abd2ec0edde63bcbcb3dba9c4))
+
 # [1.15.0](https://github.com/quran-th/quran-web/compare/v1.14.1...v1.15.0) (2026-05-07)
 
 
