@@ -14,7 +14,7 @@ const { canShow, platform, hasDeferredPrompt, triggerInstall, dismiss } = usePwa
       aria-modal="false"
       :aria-label="t('pwa_install.title')"
     >
-      <div class="pointer-events-auto relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-3 shadow-lg sm:p-4">
+      <div class="pointer-events-auto relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-3 shadow-lg sm:max-w-lg sm:p-4 lg:max-w-xl">
         <div class="flex items-center gap-3 sm:gap-4">
           <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-emerald-100 via-teal-100 to-sky-100 sm:h-14 sm:w-14">
             <img
@@ -49,7 +49,7 @@ const { canShow, platform, hasDeferredPrompt, triggerInstall, dismiss } = usePwa
 
         <div
           v-if="platform === 'ios'"
-          class="mt-3 text-center text-xs leading-snug text-slate-600"
+          class="mt-1.5 text-center text-xs leading-snug text-slate-600"
         >
           {{ t('pwa_install.ios_hint_prefix') }}
           <svg
@@ -70,8 +70,8 @@ const { canShow, platform, hasDeferredPrompt, triggerInstall, dismiss } = usePwa
           {{ t('pwa_install.ios_hint_suffix') }}
         </div>
         <div
-          v-else-if="!hasDeferredPrompt"
-          class="mt-3 text-center text-xs leading-snug text-slate-600"
+          v-else-if="platform !== 'ios' && !hasDeferredPrompt"
+          class="mt-1.5 text-center text-xs leading-snug text-slate-600"
         >
           {{ t('pwa_install.android_fallback_hint') }}
         </div>

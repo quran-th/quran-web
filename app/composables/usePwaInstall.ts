@@ -1,4 +1,4 @@
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 
 type Platform = 'ios' | 'android' | 'desktop' | 'unsupported'
 
@@ -84,52 +84,58 @@ function readPreviewOverride(): 'ios' | 'android' | 'fallback' | null {
   return null
 }
 
-export function usePwaInstall() {
-  onMounted(() => {
-    isStandalone.value = detectStandalone()
-    platform.value = detectPlatform()
-    dismissedRecently.value = readDismissed()
-    attachListeners()
-    ready.value = true
+let initialized = false
 
-    const preview = readPreviewOverride()
-    if (preview) {
-      isStandalone.value = false
-      dismissedRecently.value = false
+// Run once on the client at app boot (via plugins/pwa-install.client.ts).
+// Attaching `beforeinstallprompt` here — rather than inside a component
+// onMounted — guarantees the listener is in place before Chrome fires the
+// event, which can happen before any <ClientOnly> component hydrates.
+export function initPwaInstall(): void {
+  if (initialized || typeof window === 'undefined') return
+  initialized = true
+
+  isStandalone.value = detectStandalone()
+  platform.value = detectPlatform()
+  dismissedRecently.value = readDismissed()
+  attachListeners()
+  ready.value = true
+
+  const preview = readPreviewOverride()
+  if (preview) {
+    isStandalone.value = false
+    dismissedRecently.value = false
+    delayElapsed.value = true
+    if (preview === 'ios') {
+      platform.value = 'ios'
+      deferredPrompt.value = null
+    }
+    else if (preview === 'android') {
+      platform.value = 'android'
+      deferredPrompt.value = {
+        platforms: [],
+        userChoice: Promise.resolve({ outcome: 'dismissed', platform: 'web' }),
+        prompt: async () => {},
+      } as unknown as BeforeInstallPromptEvent
+    }
+    else {
+      platform.value = 'android'
+      deferredPrompt.value = null
+    }
+    return
+  }
+
+  if (delayTimer.id === null) {
+    delayTimer.id = setTimeout(() => {
       delayElapsed.value = true
-      if (preview === 'ios') {
-        platform.value = 'ios'
-        deferredPrompt.value = null
-      }
-      else if (preview === 'android') {
-        platform.value = 'android'
-        deferredPrompt.value = {
-          platforms: [],
-          userChoice: Promise.resolve({ outcome: 'dismissed', platform: 'web' }),
-          prompt: async () => {},
-        } as unknown as BeforeInstallPromptEvent
-      }
-      else {
-        platform.value = 'android'
-        deferredPrompt.value = null
-      }
-      return
-    }
+      delayTimer.id = null
+    }, SHOW_DELAY_MS)
+  }
+}
 
-    // Delay first appearance so users aren't interrupted on landing.
-    // Skip the timer if it's already running or elapsed (e.g. after a route change).
-    if (!delayElapsed.value && delayTimer.id === null) {
-      delayTimer.id = setTimeout(() => {
-        delayElapsed.value = true
-        delayTimer.id = null
-      }, SHOW_DELAY_MS)
-    }
-  })
-
-  onBeforeUnmount(() => {
-    // Listeners are global; leave attached so the deferred prompt is preserved
-    // across route changes / component re-mounts.
-  })
+export function usePwaInstall() {
+  // Safety net for callers that import the composable without the plugin.
+  // No-op once initialized.
+  initPwaInstall()
 
   const canShow = computed(() => {
     if (!ready.value) return false
