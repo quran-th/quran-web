@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/quran-th/quran-web/compare/v1.15.2...v1.16.0) (2026-10-19)
+
+
+### Features
+
+* PWA install steps modal with platform icons ([e3e3e2f](https://github.com/quran-th/quran-web/commit/e3e3e2f7559d63d421a4a1dfe2a6fecc9f55963d))
+
 ## [1.15.2](https://github.com/quran-th/quran-web/compare/v1.15.1...v1.15.2) (2026-05-07)
 
 
