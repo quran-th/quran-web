@@ -30,7 +30,7 @@ onMounted(() => {
       <NuxtLink
         v-for="surah in filteredSurahs"
         :key="surah.id"
-        :to="`/surah/${surah.id}`"
+        :to="`/${surah.id}`"
         class="group hover:border-sand-500 relative flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 transition-all hover:shadow-md"
       >
         <div class="flex items-center gap-4">

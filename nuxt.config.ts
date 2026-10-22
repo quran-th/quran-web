@@ -14,9 +14,14 @@ export default defineNuxtConfig({
     }
   },
 
-  routeRules: {
-    '/surah/**': { isr: 3600 },
-  },
+  // Surah reader lives at /1…/114 (+ /N/{ayah}); enumerated so ISR never
+  // covers /api, /page or static assets
+  routeRules: Object.fromEntries(
+    Array.from({ length: 114 }, (_, i) => i + 1).flatMap((id) => [
+      [`/${id}`, { isr: 3600 }],
+      [`/${id}/**`, { isr: 3600 }],
+    ]),
+  ),
 
   modules: [
     "nitro-cloudflare-dev",

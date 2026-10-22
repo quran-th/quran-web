@@ -4,7 +4,7 @@
  *
  * Supports two modes:
  * - 'page': Full Mushaf page view (/page/:pageNumber)
- * - 'surah': Surah reading view (/surah/:id)
+ * - 'surah': Surah reading view (/:id/:ayah?)
  */
 import { computed } from "vue";
 

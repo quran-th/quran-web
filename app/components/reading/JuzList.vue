@@ -20,10 +20,14 @@ const juzItems = computed(() =>
 
       if (!firstSurah || !lastSurah) return null
 
+      // Juz often begin mid-surah (juz 2 → 2:142); link straight to that ayah
+      const startAyah = parseInt(firstSurah.verses.split('-')[0] ?? '1') || 1
+
       return {
         ...juz,
         firstSurah,
         lastSurah,
+        href: startAyah > 1 ? `/${firstSurah.id}/${startAyah}` : `/${firstSurah.id}`,
       }
     })
     .filter((item): item is NonNullable<typeof item> => item !== null)
@@ -35,7 +39,7 @@ const juzItems = computed(() =>
     <NuxtLink
       v-for="juz in juzItems"
       :key="juz.number"
-      :to="`/surah/${juz.firstSurah!.id}`"
+      :to="juz.href"
       class="group hover:border-sand-500 relative flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 transition-all hover:shadow-md"
     >
       <div class="flex items-center gap-4">

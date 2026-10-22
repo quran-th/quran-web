@@ -4,6 +4,8 @@ import { storeToRefs } from "pinia";
 import type { QuranWord } from "~/types/quran";
 import ReportModal from "~/components/reading/ReportModal.vue";
 import { useFontSettingsStore } from "~/stores/fontSettingsStore";
+import { useRecitationStore, DEFAULT_RECITER_ID } from "~/stores/recitationStore";
+import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
 
 const fontSettings = useFontSettingsStore();
 const { fontScale } = storeToRefs(fontSettings);
@@ -35,6 +37,10 @@ interface Props {
   pageNumber?: number;
   isExternalSource?: boolean;
   disableActions?: boolean;
+  /** Play button drives word-highlight recitation (requires a page that hosts the player bar) */
+  enableRecitation?: boolean;
+  /** For the last verse before a Mushaf page pill, which already separates them */
+  hideSeparator?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -49,6 +55,8 @@ const emit = defineEmits<{
 const isCopied = ref(false);
 const isBookmarked = ref(false);
 const showReportModal = ref(false);
+// Mount the modal on first open — one instance per verse row adds up in a full surah
+const hasOpenedReport = ref(false);
 const hoveredFootnote = ref<string | null>(null);
 
 /** Split translation text to render (*N*) footnote markers as superscripts */
@@ -100,15 +108,47 @@ function toggleBookmark() {
   emit("bookmark", props.verse);
 }
 
+const recitation = useRecitationStore();
+const { status: recitationStatus, activeVerseKey } = storeToRefs(recitation);
+
+const verseKey = computed(() => `${props.surahNumber}:${props.verse.verseNumber}`);
+const isRecitingThisVerse = computed(
+  () =>
+    !!props.enableRecitation &&
+    recitationStatus.value !== "idle" &&
+    activeVerseKey.value === verseKey.value,
+);
+const isPlayDisabled = computed(() => !props.enableRecitation && props.disableActions);
+const isPlayingThisVerse = computed(
+  () => isRecitingThisVerse.value && recitationStatus.value === "playing",
+);
+
 function handlePlay() {
+  if (isPlayDisabled.value) return;
+  if (!props.enableRecitation) {
+    emit("play", props.verse);
+    return;
+  }
+  if (isRecitingThisVerse.value) {
+    recitation.togglePause();
+  } else {
+    recitation.playVerse(props.surahNumber, props.verse.verseNumber);
+  }
   emit("play", props.verse);
 }
 
+const readerSettings = useReaderSettingsStore();
+
+/** Clean share link: /2/255, with ?translation= / ?reciter= only when not the default */
 function buildShareUrl() {
-  const base = window.location.origin
-  const path = `/${props.surahNumber}:${props.verse.verseNumber}`
-  const params = props.sourceId ? `?t=${props.sourceId}` : ""
-  return `${base}${path}${params}`
+  const params = new URLSearchParams()
+  // Unknown default (sources not loaded yet) → keep the param rather than risk the wrong translation
+  const source = readerSettings.translationSources.find((s) => s.id === props.sourceId)
+  // API sends snake_case `is_default` (the camelCase field in TranslationSource is never populated)
+  if (props.sourceId && !source?.is_default) params.set("translation", String(props.sourceId))
+  if (recitation.reciterId !== DEFAULT_RECITER_ID) params.set("reciter", String(recitation.reciterId))
+  const query = params.toString()
+  return `${window.location.origin}/${props.surahNumber}/${props.verse.verseNumber}${query ? `?${query}` : ""}`
 }
 
 function handleShare() {
@@ -126,24 +166,46 @@ function handleShare() {
 }
 
 function openReport() {
+  hasOpenedReport.value = true;
   showReportModal.value = true;
 }
 </script>
 
 <template>
-  <div :id="`ayah-${verse.verseNumber}`" class="relative" :style="{ '--reader-scale': readerScale }">
+  <!-- content-visibility skips layout/paint for off-screen rows in long surahs -->
+  <div
+    :id="`ayah-${verse.verseNumber}`"
+    class="relative [content-visibility:auto] [contain-intrinsic-size:auto_360px]"
+    :style="{ '--reader-scale': readerScale }"
+  >
     <!-- Actions row: action icons on left, share and report on right -->
     <div class="flex items-center justify-between px-4 pt-4 pb-2">
       <!-- Left: Action icons -->
       <div class="flex items-center gap-2">
         <button
-          class="flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-slate-400 transition-all duration-200"
-          :class="disableActions ? 'cursor-not-allowed opacity-30' : 'hover:bg-slate-100 hover:text-slate-500'"
-          :disabled="disableActions"
-          title="เล่น"
-          @click="!disableActions && handlePlay()"
+          class="flex h-10 w-10 items-center justify-center rounded-lg transition-all duration-200"
+          :class="[
+            isRecitingThisVerse ? 'bg-amber-50 text-amber-600' : 'bg-transparent text-slate-400',
+            isPlayDisabled ? 'cursor-not-allowed opacity-30' : !isRecitingThisVerse && 'hover:bg-slate-100 hover:text-slate-500',
+          ]"
+          :disabled="isPlayDisabled"
+          :title="isPlayingThisVerse ? 'หยุดชั่วคราว' : 'ฟังเสียงอ่าน'"
+          @click="handlePlay"
         >
           <svg
+            v-if="isPlayingThisVerse"
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            stroke="none"
+          >
+            <rect x="6" y="4" width="4" height="16" rx="1" />
+            <rect x="14" y="4" width="4" height="16" rx="1" />
+          </svg>
+          <svg
+            v-else
             xmlns="http://www.w3.org/2000/svg"
             width="20"
             height="20"
@@ -372,12 +434,13 @@ function openReport() {
 
     <!-- Separator line -->
     <div
+      v-if="!hideSeparator"
       class="mx-4 h-px bg-linear-to-r from-transparent via-slate-200 to-transparent"
     />
 
     <!-- Report Modal (hidden for external translation sources) -->
     <ReportModal
-      v-if="!isExternalSource"
+      v-if="!isExternalSource && hasOpenedReport"
       :visible="showReportModal"
       :verse="verse"
       :surah-number="surahNumber"

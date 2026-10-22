@@ -258,7 +258,8 @@ export const useQuranStore = defineStore('quran', () => {
       const verses: QuranVerseEntry[] = await response.json()
       const wordMap = new Map<number, QuranWord[]>()
       for (const verse of verses) {
-        wordMap.set(verse.verse_number, verse.words)
+        // Surah JSON only carries verse_key per verse; recitation highlight matches on word.verse_key
+        wordMap.set(verse.verse_number, verse.words.map(w => ({ ...w, verse_key: verse.verse_key })))
       }
       verseWords.value = wordMap
     }
