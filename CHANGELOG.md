@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/quran-th/quran-web/compare/v1.16.0...v1.17.0) (2026-10-22)
+
+
+### Features
+
+* recitation player bar, ayah route, and reader updates ([29b477b](https://github.com/quran-th/quran-web/commit/29b477bb192b85873abba8abbe8f69b6208447e3))
+
 # [1.16.0](https://github.com/quran-th/quran-web/compare/v1.15.2...v1.16.0) (2026-10-19)
 
 
