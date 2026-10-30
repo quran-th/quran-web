@@ -4,4 +4,11 @@
   --font-sans: 'IBM Plex Sans Thai', ui-sans-serif, system-ui, sans-serif;
   --font-reading: 'Sarabun', 'IBM Plex Sans Thai', ui-sans-serif, system-ui, sans-serif;
   --font-arabic: 'UthmanicHafs', 'Amiri', serif;
+
+  /* Duration must match AUTO_NEXT_SECONDS in pages/[id]/[[ayah]].vue */
+  --animate-countdown-ring: countdown-ring 5s linear forwards;
+  @keyframes countdown-ring {
+    from { stroke-dashoffset: 0; }
+    to { stroke-dashoffset: 100; }
+  }
 }

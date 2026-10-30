@@ -36,6 +36,8 @@ export const useRecitationStore = defineStore('recitation', () => {
   const activeVerseKey = ref<string | null>(null)
   /** `${verseKey}:${position}` — single key so each word watches one ref */
   const activeWordKey = ref<string | null>(null)
+  /** Chapter whose audio played through to the end; cleared on the next play */
+  const completedChapter = ref<number | null>(null)
 
   let audio: HTMLAudioElement | null = null
   let segments: FlatSegment[] = []
@@ -92,7 +94,11 @@ export const useRecitationStore = defineStore('recitation', () => {
       if (status.value === 'playing') status.value = 'paused'
       stopTicking()
     })
-    audio.addEventListener('ended', stop)
+    audio.addEventListener('ended', () => {
+      const finished = chapter.value
+      stop()
+      completedChapter.value = finished
+    })
     return audio
   }
 
@@ -134,6 +140,7 @@ export const useRecitationStore = defineStore('recitation', () => {
 
   async function playVerse(chapterId: number, verseNumber: number) {
     if (!import.meta.client) return
+    completedChapter.value = null
     const reciter = reciterId.value
     const cached = resolvedTimings.get(`${reciter}:${chapterId}`)
     if (cached) {
@@ -230,6 +237,7 @@ export const useRecitationStore = defineStore('recitation', () => {
     chapter,
     activeVerseKey,
     activeWordKey,
+    completedChapter,
     fetchReciters,
     loadTimings,
     playVerse,

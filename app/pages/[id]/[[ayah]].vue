@@ -62,7 +62,12 @@ const {
 } = storeToRefs(quranStore);
 const { fontVersion } = storeToRefs(fontSettings);
 const { selectedSourceId, translationSources } = storeToRefs(readerSettings);
-const { activeVerseKey, status: recitationStatus, chapter: recitationChapter } = storeToRefs(recitation);
+const {
+  activeVerseKey,
+  status: recitationStatus,
+  chapter: recitationChapter,
+  completedChapter,
+} = storeToRefs(recitation);
 
 const isExternalSource = computed(() => {
   const src = translationSources.value.find((s) => s.id === currentSourceId.value);
@@ -458,6 +463,8 @@ function teardown() {
   if (isTornDown) return;
   isTornDown = true;
   recitation.stop();
+  // Only the timer: the card keeps its spinner while the next surah resolves
+  if (autoNextTimer) clearInterval(autoNextTimer);
   disposePin?.();
   sentinelObserver?.disconnect();
   window.removeEventListener("scroll", onScroll);
@@ -573,6 +580,45 @@ watch(activeVerseKey, async (key) => {
     await loadNextPage();
   }
   scrollToActiveVerse();
+});
+
+// Recitation reached the end of this surah: count down, then continue with the next one
+const AUTO_NEXT_SECONDS = 5;
+const autoNextCountdown = ref<number | null>(null);
+const nextSurahCard = ref<HTMLElement | null>(null);
+let autoNextTimer: ReturnType<typeof setInterval> | null = null;
+
+function cancelAutoNext() {
+  if (autoNextTimer) clearInterval(autoNextTimer);
+  autoNextTimer = null;
+  autoNextCountdown.value = null;
+}
+
+// Client-side push keeps the same <audio> element, which the browser already
+// let play, so ?play on the next page can start without another tap
+function playNextSurah() {
+  const next = nextSurah.value;
+  if (!next) return;
+  if (autoNextTimer) clearInterval(autoNextTimer);
+  autoNextTimer = null;
+  // 0 = navigating; teardown resets it once the route actually changes
+  autoNextCountdown.value = 0;
+  router.push({ path: `/${next.id}`, query: { play: null } });
+}
+
+watch(completedChapter, (finished) => {
+  if (finished !== surahId || !nextSurah.value || isTornDown) return;
+  recitation.loadTimings(nextSurah.value.id);
+  autoNextCountdown.value = AUTO_NEXT_SECONDS;
+  autoNextTimer = setInterval(() => {
+    autoNextCountdown.value = (autoNextCountdown.value ?? 1) - 1;
+    if (autoNextCountdown.value === 0) playNextSurah();
+  }, 1000);
+  nextTick(() => nextSurahCard.value?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+});
+
+watch(recitationStatus, (s) => {
+  if (s !== "idle") cancelAutoNext();
 });
 
 // Translation source change: reload every loaded Mushaf page in place.
@@ -859,22 +905,46 @@ useSchemaOrg([
           </a>
 
           <!-- End of surah -->
+          <template v-else-if="nextSurah">
           <a
-            v-else-if="nextSurah"
+            ref="nextSurahCard"
             :href="`/${nextSurah.id}`"
             class="group mt-4 flex items-center justify-between rounded-2xl border border-slate-200 px-5 py-4 transition-colors hover:border-slate-300 hover:bg-slate-50"
+            @click="autoNextCountdown !== null && ($event.preventDefault(), autoNextCountdown && playNextSurah())"
           >
             <div class="flex flex-col">
-              <span class="text-xs text-slate-400">ซูเราะห์ถัดไป</span>
+              <span class="text-xs text-slate-400">
+                <template v-if="autoNextCountdown === null">ซูเราะห์ถัดไป</template>
+                <template v-else-if="autoNextCountdown > 0">เล่นซูเราะห์ถัดไปใน {{ autoNextCountdown }} วินาที</template>
+                <template v-else>กำลังเปิดซูเราะห์ถัดไป…</template>
+              </span>
               <span class="text-base font-semibold text-slate-800">
                 {{ nextSurah.name_thai }} <span class="font-arabic">({{ nextSurah.name_arabic }})</span>
               </span>
               <span class="text-sm text-slate-400">{{ nextSurah.name_meaning_thai }}</span>
             </div>
-            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-white transition-colors group-hover:bg-slate-900">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+            <span class="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-800 text-white transition-colors group-hover:bg-slate-900">
+              <template v-if="autoNextCountdown">
+                <svg class="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 36 36" fill="none">
+                  <circle cx="18" cy="18" r="14" stroke="currentColor" stroke-width="2.5" class="opacity-25" />
+                  <circle cx="18" cy="18" r="14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" pathLength="100" stroke-dasharray="100" class="animate-countdown-ring" />
+                </svg>
+                <!-- pt-px: IBM Plex Sans Thai's tall ascent sits digits ~0.6px above center -->
+                <span class="pt-px text-xs leading-none font-bold tabular-nums">{{ autoNextCountdown }}</span>
+              </template>
+              <svg v-else-if="autoNextCountdown === 0" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="opacity-25" /><path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
             </span>
           </a>
+          <button
+            v-if="autoNextCountdown"
+            type="button"
+            class="mx-auto mt-2 block px-3 py-1 text-sm text-slate-400 hover:text-slate-600"
+            @click="cancelAutoNext"
+          >
+            ยกเลิกการเล่นต่อ
+          </button>
+          </template>
         </div>
     </main>
 
