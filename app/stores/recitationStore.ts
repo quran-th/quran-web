@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { Reciter, RecitationTimings } from '~/types/recitation'
+import { getReciterLabelTh } from '~/data/reciter-names-th'
+import { useQuranStore } from '~/stores/quranStore'
 
 export const DEFAULT_RECITER_ID = 7
 export const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const
@@ -136,6 +138,7 @@ export const useRecitationStore = defineStore('recitation', () => {
     audio.preload = 'auto'
     audio.defaultPlaybackRate = playbackRate.value
     audio.playbackRate = playbackRate.value
+    registerMediaSessionActions()
     audio.addEventListener('playing', () => {
       status.value = 'playing'
       startTicking()
@@ -356,6 +359,54 @@ export const useRecitationStore = defineStore('recitation', () => {
     const seg = segments[found]
     activeWordKey.value = seg ? `${seg.verseKey}:${seg.position}` : null
   }
+
+  /** Seeks to the ayah `delta` away from the current one (lock-screen next/previous). */
+  function jumpVerse(delta: number) {
+    if (!audio || verseStarts.length === 0) return
+    const from = verseIdx >= 0 ? verseIdx : 0
+    const target = Math.min(verseStarts.length - 1, Math.max(0, from + delta))
+    cancelGap()
+    audio.currentTime = verseStarts[target]! / 1000
+    verseIdx = -1
+    activeVerseKey.value = verseKeys[target] ?? null
+    if (audio.paused) audio.play().catch(() => { status.value = 'paused' })
+  }
+
+  function registerMediaSessionActions() {
+    if (!('mediaSession' in navigator)) return
+    const session = navigator.mediaSession
+    session.setActionHandler('play', () => { if (audio?.paused || gapTimer) togglePause() })
+    session.setActionHandler('pause', () => { if (!audio?.paused || gapTimer) togglePause() })
+    session.setActionHandler('stop', () => stop())
+    session.setActionHandler('previoustrack', () => jumpVerse(-1))
+    session.setActionHandler('nexttrack', () => jumpVerse(1))
+  }
+
+  /** Feeds the lock-screen / Control Center widget (iOS needs artwork here to show a logo). */
+  function updateMediaSession() {
+    if (!import.meta.client || !('mediaSession' in navigator)) return
+    if (status.value === 'idle' || chapter.value === null) {
+      navigator.mediaSession.metadata = null
+      navigator.mediaSession.playbackState = 'none'
+      return
+    }
+    const surah = useQuranStore().surahs.find(s => s.id === chapter.value)
+    const ayah = activeVerseKey.value?.split(':')[1]
+    const reciter = reciters.value.find(r => r.id === reciterId.value)
+    const origin = window.location.origin
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: [`ซูเราะห์ ${surah?.name_thai ?? chapter.value}`, ayah && `อายะห์ ${ayah}`].filter(Boolean).join(' · '),
+      artist: reciter ? getReciterLabelTh(reciter) : '',
+      album: 'อัลกุรอานแปลไทย',
+      artwork: [
+        { src: `${origin}/icon192_maskable.png`, sizes: '192x192', type: 'image/png' },
+        { src: `${origin}/icon512_maskable.png`, sizes: '512x512', type: 'image/png' },
+      ],
+    })
+    navigator.mediaSession.playbackState = status.value === 'playing' ? 'playing' : 'paused'
+  }
+
+  watch([status, chapter, activeVerseKey, reciterId, reciters], updateMediaSession)
 
   function setPlaybackRate(rate: number) {
     if (!(PLAYBACK_SPEEDS as readonly number[]).includes(rate)) return
