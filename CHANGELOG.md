@@ -1,3 +1,18 @@
+# [1.18.0](https://github.com/quran-th/quran-web/compare/v1.17.0...v1.18.0) (2026-11-01)
+
+
+### Bug Fixes
+
+* drop bismillah prefix from ayah 1 fallback, copy and share text ([3622b19](https://github.com/quran-th/quran-web/commit/3622b1950b8eed0b2d990aac89c5952eb81a8672))
+* **pwa:** auto-apply new releases and bust stale reciter list cache ([4d42e6f](https://github.com/quran-th/quran-web/commit/4d42e6ffd92cb0a92c9fdc121bc02eb79837086e))
+* **pwa:** opaque iOS icon, app name, media session artwork, 3-day reprompt ([e4b9376](https://github.com/quran-th/quran-web/commit/e4b9376b6739a27533ef17ad2bf9da68a1182489))
+
+
+### Features
+
+* auto-play next surah after recitation ends with countdown ([b948e9f](https://github.com/quran-th/quran-web/commit/b948e9f1912b401cb0994ab391a06bcbc56f1ae8))
+* playback settings, ayah-level reciters and word-highlight badge ([8fba813](https://github.com/quran-th/quran-web/commit/8fba813238ed8bb701a84bec37ef83e2c98583bd))
+
 # [1.17.0](https://github.com/quran-th/quran-web/compare/v1.16.0...v1.17.0) (2026-10-22)
 
 
