@@ -2,6 +2,8 @@ export interface Reciter {
   id: number;
   name: string;
   style: string;
+  /** false = ayah-level highlight only */
+  hasWordTimings: boolean;
 }
 
 /** [wordPosition, startMs, endMs] — absolute offsets in the surah audio */

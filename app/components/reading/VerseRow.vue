@@ -91,7 +91,7 @@ async function handleCopy() {
   try {
     const url = buildShareUrl()
     const sourceLine = props.sourceName ? `- ${props.sourceName}` : ""
-    const textToCopy = `${props.surahName || ""} (${props.surahNumber}:${props.verse.verseNumber})\n\n${props.verse.content}\n\n${props.verse.translation}\n${sourceLine} ${url}`;
+    const textToCopy = `${props.surahName || ""} (${props.surahNumber}:${props.verse.verseNumber})\n\n${arabicText.value}\n\n${props.verse.translation}\n${sourceLine} ${url}`;
     await navigator.clipboard.writeText(textToCopy);
     isCopied.value = true;
     emit("copy", props.verse);
@@ -112,6 +112,16 @@ const recitation = useRecitationStore();
 const { status: recitationStatus, activeVerseKey } = storeToRefs(recitation);
 
 const verseKey = computed(() => `${props.surahNumber}:${props.verse.verseNumber}`);
+
+// Stored text for ayah 1 of most surahs is prefixed with the bismillah, which the
+// reader shows as a separate header (and the QCF glyphs omit)
+const arabicText = computed(() => {
+  const { content, verseNumber } = props.verse;
+  if (verseNumber !== 1 || props.surahNumber === 1 || props.surahNumber === 9) return content;
+  const words = content.split(" ");
+  const firstWord = words[0]?.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "");
+  return firstWord === "بسم" && words.length > 4 ? words.slice(4).join(" ") : content;
+});
 const isRecitingThisVerse = computed(
   () =>
     !!props.enableRecitation &&
@@ -153,7 +163,7 @@ function buildShareUrl() {
 
 function handleShare() {
   const url = buildShareUrl()
-  const text = `${props.surahName || ""} (${props.surahNumber}:${props.verse.verseNumber})\n\n${props.verse.content}\n\n${props.verse.translation}`
+  const text = `${props.surahName || ""} (${props.surahNumber}:${props.verse.verseNumber})\n\n${arabicText.value}\n\n${props.verse.translation}`
 
   if (navigator.share) {
     navigator.share({ title: `${props.surahName} ${props.surahNumber}:${props.verse.verseNumber}`, text, url }).catch(() => {})
@@ -360,7 +370,7 @@ function openReport() {
         class="font-arabic rtl text-right text-2xl sm:text-3xl leading-loose text-slate-900"
         dir="rtl"
       >
-        {{ verse.content }}
+        {{ arabicText }}
       </div>
     </div>
 

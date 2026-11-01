@@ -9,7 +9,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const STORAGE_KEY = 'pwa-install-dismissed-at'
-const REPROMPT_AFTER_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
+const REPROMPT_AFTER_MS = 3 * 24 * 60 * 60 * 1000 // 3 days
 const SHOW_DELAY_MS = 10 * 1000 // 10 seconds on-page before prompting
 
 const deferredPrompt = ref<BeforeInstallPromptEvent | null>(null)

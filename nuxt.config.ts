@@ -40,6 +40,13 @@ export default defineNuxtConfig({
     workbox: {
       globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
       navigateFallback: null,
+      cleanupOutdatedCaches: true,
+      skipWaiting: true,
+      clientsClaim: true,
+    },
+    client: {
+      // Installed PWAs stay open for days; re-check for a new release hourly
+      periodicSyncForUpdates: 3600,
     },
     devOptions: {
       enabled: true,
@@ -130,7 +137,7 @@ export default defineNuxtConfig({
         { name: 'theme-color', content: '#3d3d3d' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
-        { name: 'apple-mobile-web-app-title', content: 'กุรอานไทย' },
+        { name: 'apple-mobile-web-app-title', content: 'อัลกุรอาน' },
       ],
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },

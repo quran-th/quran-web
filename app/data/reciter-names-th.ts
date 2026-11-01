@@ -17,24 +17,35 @@ const RECITER_NAMES_TH: Record<number, string> = {
   10: 'สะอูด อัช-ชุร็อยม์',
   97: 'ยาซิร อัด-ดูสะรีย์',
   161: 'เคาะลีฟะฮ์ อัฏ-ฏุนัยญีย์',
+  1133: 'มาฮิร อัล-มุอัยกิลีย์',
+  1030: 'สะอัด อัล-ฆอมิดีย์',
+  1043: 'เศาะลาห์ อัล-บุดัยร์',
+  1005: 'อะห์มัด บิน อะลี อัล-อัจญ์มีย์',
+  1076: 'อะลี ญาบิร',
+  1122: 'มะห์มูด อะลี อัล-บันนา',
+  1288: 'มุศเฏาะฟา อิสมาอีล',
+  1109: 'มุฮัมมัด อัยยูบ',
+  1086: 'นาศิร อัล-เกาะฏอมีย์',
+  1106: 'มุฮัมมัด อัฏ-เฏาะบะลาวีย์',
+  1081: 'ฟารีส อับบาด',
+  1012: 'อิดรีส อับกัร',
 }
 
 // Plain Thai meanings rather than transliterations (มุรัตตัล/มุญัววัด/มุอัลลิม),
 // which most readers don't recognise
 const RECITATION_STYLES_TH: Record<string, string> = {
-  Murattal: 'ทำนองปกติ',
   // Not "ไพเราะ" — that implies other styles aren't
   Mujawwad: 'การอ่านทำนอง',
   Muallim: 'ช้า สำหรับฝึกอ่าน',
 }
 
-/** Validates ?reciter= from shared links against reciters with word timings */
+/** Validates ?reciter= from shared links against the reciters we offer */
 export function isKnownReciter(id: number): boolean {
   return Number.isInteger(id) && id in RECITER_NAMES_TH
 }
 
 export function getReciterLabelTh(reciter: Reciter): string {
   const name = RECITER_NAMES_TH[reciter.id] ?? reciter.name
-  const style = RECITATION_STYLES_TH[reciter.style] ?? reciter.style
-  return `${name} (${style})`
+  const style = RECITATION_STYLES_TH[reciter.style]
+  return style ? `${name} (${style})` : name
 }
