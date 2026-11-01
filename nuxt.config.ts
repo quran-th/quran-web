@@ -40,6 +40,13 @@ export default defineNuxtConfig({
     workbox: {
       globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
       navigateFallback: null,
+      cleanupOutdatedCaches: true,
+      skipWaiting: true,
+      clientsClaim: true,
+    },
+    client: {
+      // Installed PWAs stay open for days; re-check for a new release hourly
+      periodicSyncForUpdates: 3600,
     },
     devOptions: {
       enabled: true,

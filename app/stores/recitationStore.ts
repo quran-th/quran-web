@@ -99,7 +99,7 @@ export const useRecitationStore = defineStore('recitation', () => {
   async function fetchReciters() {
     if (!import.meta.client || reciters.value.length > 0) return
     try {
-      const result = await $fetch<{ success: boolean; data: Reciter[] }>('/api/reciters')
+      const result = await $fetch<{ success: boolean; data: Reciter[] }>('/api/reciters?v=2')
       if (result.success) reciters.value = result.data
     }
     catch (e) {
