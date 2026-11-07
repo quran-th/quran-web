@@ -499,6 +499,7 @@ onMounted(async () => {
   if (isKnownReciter(reciterParam)) recitation.setReciter(reciterParam);
   // Prefetch so the play click can call audio.play() synchronously (iOS autoplay)
   recitation.loadTimings(surahId);
+  recitation.loadTranslation(surahId);
 
   // ?play starts recitation from the linked ayah. Browsers usually block
   // autoplay without a tap; the player bar then offers "แตะเพื่อเริ่มฟัง".
@@ -609,6 +610,7 @@ function playNextSurah() {
 watch(completedChapter, (finished) => {
   if (finished !== surahId || !nextSurah.value || isTornDown) return;
   recitation.loadTimings(nextSurah.value.id);
+  recitation.loadTranslation(nextSurah.value.id);
   autoNextCountdown.value = AUTO_NEXT_SECONDS;
   autoNextTimer = setInterval(() => {
     autoNextCountdown.value = (autoNextCountdown.value ?? 1) - 1;

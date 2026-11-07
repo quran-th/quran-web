@@ -23,3 +23,13 @@ export interface RecitationTimings {
   duration: number;
   verses: RecitationVerseTiming[];
 }
+
+export interface TranslationAudio {
+  set: string;
+  chapter: number;
+  audioUrl: string;
+  durationMs: number;
+  /** Absolute offsets in the surah's Thai audio */
+  ayahs: { ayah: number; startMs: number; endMs: number }[];
+  voice: { provider: string; model: string; voiceId: string };
+}
