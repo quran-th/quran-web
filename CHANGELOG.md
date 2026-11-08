@@ -1,3 +1,11 @@
+# [1.22.0](https://github.com/quran-th/quran-web/compare/v1.21.0...v1.22.0) (2026-11-08)
+
+
+### Features
+
+* tell open and installed apps when a new version is out ([b53e723](https://github.com/quran-th/quran-web/commit/b53e723215f8d98d04ee832257bf4100663d2801))
+* tell open and installed apps when a new version is out ([8c6d6f8](https://github.com/quran-th/quran-web/commit/8c6d6f89e96475e6c1296f2495a8cb2c88752174))
+
 # [1.21.0](https://github.com/quran-th/quran-web/compare/v1.20.3...v1.21.0) (2026-11-08)
 
 
