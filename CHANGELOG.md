@@ -1,3 +1,10 @@
+## [1.20.2](https://github.com/quran-th/quran-web/compare/v1.20.1...v1.20.2) (2026-11-08)
+
+
+### Bug Fixes
+
+* resume Arabic 400 ms before the next ayah's voice after Thai ([1e3301b](https://github.com/quran-th/quran-web/commit/1e3301b7ee32b9ed7cc06a340c77f866a7684a2d))
+
 ## [1.20.1](https://github.com/quran-th/quran-web/compare/v1.20.0...v1.20.1) (2026-11-08)
 
 
