@@ -1,3 +1,10 @@
+## [1.25.2](https://github.com/quran-th/quran-web/compare/v1.25.1...v1.25.2) (2026-11-08)
+
+
+### Bug Fixes
+
+* keep Thai translation audio and lock-screen controls working on iOS with the screen locked ([b3a49b1](https://github.com/quran-th/quran-web/commit/b3a49b1d544a5070f4f288228b189d9f8ccb4a98))
+
 ## [1.25.1](https://github.com/quran-th/quran-web/compare/v1.25.0...v1.25.1) (2026-11-08)
 
 
