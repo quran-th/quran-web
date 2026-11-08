@@ -166,7 +166,7 @@ export const useRecitationStore = defineStore('recitation', () => {
     if (!pending) {
       // v=2: response gained `pauses`; busts the 7-day browser cache of the old shape
       pending = $fetch<{ success: boolean; data: RecitationTimings }>(
-        `/api/recitations/${reciter}/${chapterId}/timings?v=2`,
+        `/api/recitations/${reciter}/${chapterId}/timings?v=3`,
       )
         .then((r) => {
           if (!r.success) return null
