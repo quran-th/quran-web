@@ -28,6 +28,8 @@ export interface RecitationTimings {
    * window means the ayahs are read joined. Absent until the reciter's audio has been measured.
    */
   pauses?: [number, number][];
+  // Measured quiet just before ayah 1's voice; absent when unmeasured or the voice runs straight in
+  head?: [number, number];
 }
 
 export interface TranslationAudio {
