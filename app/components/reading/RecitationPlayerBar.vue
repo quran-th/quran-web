@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useRecitationStore, PLAYBACK_SPEEDS, MAX_REPEAT, MAX_PAUSE_SECONDS } from "~/stores/recitationStore";
-import { getReciterLabelTh } from "~/data/reciter-names-th";
+import { getReciterLabelTh, reciterMatchesQuery } from "~/data/reciter-names-th";
 import WheelPicker from "~/components/reading/WheelPicker.vue";
 import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
 
@@ -120,6 +120,10 @@ const currentReciterLabel = computed(() => {
   return reciter ? getReciterLabelTh(reciter) : "";
 });
 
+const reciterQuery = ref("");
+const reciterSearchRef = ref<HTMLInputElement | null>(null);
+const filteredReciters = computed(() => reciters.value.filter((r) => reciterMatchesQuery(r, reciterQuery.value)));
+
 function selectReciter(id: number) {
   recitation.setReciter(id);
   settingsView.value = null;
@@ -135,8 +139,14 @@ function onDocumentKeydown(e: KeyboardEvent) {
   if (e.key === "Escape") settingsView.value = null;
 }
 
-watch(settingsView, () => {
+watch(settingsView, async (view) => {
   openField.value = null;
+  reciterQuery.value = "";
+  // Touch devices would pop the keyboard over the list, so only focus with a mouse
+  if (view === "qari" && window.matchMedia("(pointer: fine)").matches) {
+    await nextTick();
+    reciterSearchRef.value?.focus();
+  }
 });
 
 watch(status, (s) => {
@@ -259,8 +269,24 @@ onBeforeUnmount(() => {
                 {{ settingsView === "qari" ? "เลือกผู้อ่าน" : settingsView === "source" ? "เลือกคำแปล" : "ตัวเลือกการเล่น" }}
               </button>
 
-              <ul v-if="settingsView === 'qari'" role="listbox" aria-label="เลือกผู้อ่าน" class="max-h-72 overflow-y-auto py-1">
-                <li v-for="r in reciters" :key="r.id" role="option" :aria-selected="r.id === reciterId">
+              <div v-if="settingsView === 'qari'" class="border-b border-slate-100 px-3 py-2">
+                <div class="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-1.5 focus-within:ring-2 focus-within:ring-brand-500/30">
+                  <svg class="shrink-0 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                  <input
+                    ref="reciterSearchRef"
+                    v-model="reciterQuery"
+                    type="search"
+                    aria-label="ค้นหาผู้อ่าน"
+                    placeholder="ค้นหาชื่อ (ไทย / English / عربي)"
+                    class="min-w-0 flex-1 border-none bg-transparent text-base text-slate-700 outline-none placeholder:text-slate-400 sm:text-sm"
+                  >
+                </div>
+              </div>
+              <p v-if="settingsView === 'qari' && filteredReciters.length === 0" class="px-4 py-6 text-center text-sm text-slate-400">
+                ไม่พบผู้อ่านชื่อนี้
+              </p>
+              <ul v-if="settingsView === 'qari' && filteredReciters.length > 0" role="listbox" aria-label="เลือกผู้อ่าน" class="max-h-72 overflow-y-auto py-1">
+                <li v-for="r in filteredReciters" :key="r.id" role="option" :aria-selected="r.id === reciterId">
                   <button
                     class="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm transition-colors"
                     :class="r.id === reciterId ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50'"

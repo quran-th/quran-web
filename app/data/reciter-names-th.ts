@@ -121,6 +121,31 @@ export function isKnownReciter(id: number): boolean {
   return Number.isInteger(id) && id in RECITER_NAMES_TH
 }
 
+// Transliterations vary (AbdulBaset / Abdul Basit, อะฟาซีย์ / อะฟาซี, أ / ا), so search ignores
+// spacing, punctuation, English vowel variants, Arabic harakat and letter variants, and Thai tone marks
+function normalizeForSearch(text: string): string {
+  return text
+    .normalize('NFD')
+    .toLowerCase()
+    .replace(/[\u0300-\u036F]|[\u064B-\u065F]|\u0670|\u0640|[\u0E47-\u0E4E]/g, '')
+    .replace(/\u0671/g, '\u0627')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/[\s\-'`’.]/g, '')
+    // Basit/Baset, Husary/Hussary, Sudais/Sudays
+    .replace(/e/g, 'i')
+    .replace(/o/g, 'u')
+    .replace(/y/g, 'i')
+    .replace(/(.)\1+/g, '$1')
+}
+
+export function reciterMatchesQuery(reciter: Reciter, query: string): boolean {
+  const q = normalizeForSearch(query)
+  if (!q) return true
+  return [getReciterLabelTh(reciter), reciter.name, reciter.arabicName ?? '']
+    .some(name => normalizeForSearch(name).includes(q))
+}
+
 export function getReciterLabelTh(reciter: Reciter): string {
   const name = RECITER_NAMES_TH[reciter.id] ?? reciter.name
   const style = RECITATION_STYLES_TH[reciter.style]
