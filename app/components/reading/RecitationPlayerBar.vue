@@ -160,7 +160,10 @@ onBeforeUnmount(() => {
                 <svg class="shrink-0 text-slate-300" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
               </button>
               <div v-if="recitation.translationAudioEnabled" class="border-t border-slate-100 px-4 py-3">
-                <span id="translation-audio-label" class="block text-sm font-medium text-slate-700">เสียงคำแปลภาษาไทย</span>
+                <span class="flex items-center gap-2">
+                  <span id="translation-audio-label" class="text-sm font-medium text-slate-700">เสียงคำแปลภาษาไทย</span>
+                  <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-amber-700">Beta</span>
+                </span>
                 <div role="radiogroup" aria-labelledby="translation-audio-label" class="mt-2 grid grid-cols-2 gap-2">
                   <button
                     v-for="o in translationOptions"
@@ -172,7 +175,6 @@ onBeforeUnmount(() => {
                     @click="recitation.setTranslationAudio(o.value)"
                   >{{ o.label }}</button>
                 </div>
-                <p class="mt-2 text-xs text-slate-400">เสียงอ่านโดย AI · ข้อความจากตัฟซีรอัล-มุคตะศ็อร</p>
               </div>
               <button
                 class="flex w-full items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50"
