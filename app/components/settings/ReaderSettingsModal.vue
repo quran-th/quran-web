@@ -655,7 +655,7 @@ function pickSource(id: number) {
   width: 24px;
   height: 24px;
   border: 2.5px solid #e2e8f0;
-  border-top-color: #0ea5e9;
+  border-top-color: var(--color-brand-500);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -722,11 +722,11 @@ function pickSource(id: number) {
   color: #475569;
 }
 .tab--active {
-  background: #0ea5e9;
+  background: var(--color-brand-500);
   color: white;
 }
 .tab--active:hover {
-  background: #0284c7;
+  background: var(--color-brand-600);
   color: white;
 }
 
@@ -756,8 +756,8 @@ function pickSource(id: number) {
   border-color: #e2e8f0;
 }
 .option--selected {
-  background: #eff6ff;
-  border-color: #bfdbfe;
+  background: var(--color-brand-50);
+  border-color: var(--color-brand-200);
 }
 
 .option-info {
@@ -775,7 +775,7 @@ function pickSource(id: number) {
   color: #94a3b8;
 }
 .option-check {
-  color: #0ea5e9;
+  color: var(--color-brand-500);
   width: 24px;
   flex-shrink: 0;
 }
@@ -939,8 +939,8 @@ function pickSource(id: number) {
 }
 
 .source-card--selected {
-  background: #eff6ff;
-  border-color: #bfdbfe;
+  background: var(--color-brand-50);
+  border-color: var(--color-brand-200);
 }
 
 .source-card-info {
@@ -964,7 +964,7 @@ function pickSource(id: number) {
 }
 
 .source-card-check {
-  color: #0ea5e9;
+  color: var(--color-brand-500);
   width: 20px;
   flex-shrink: 0;
   padding-top: 2px;

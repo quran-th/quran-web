@@ -67,12 +67,8 @@ const {
   status: recitationStatus,
   chapter: recitationChapter,
   completedChapter,
+  reportHint,
 } = storeToRefs(recitation);
-
-const isExternalSource = computed(() => {
-  const src = translationSources.value.find((s) => s.id === currentSourceId.value);
-  return src?.isExternal ?? false;
-});
 
 const currentSourceName = computed(() => {
   const src = translationSources.value.find((s) => s.id === currentSourceId.value);
@@ -561,18 +557,23 @@ const isRecitingThisSurah = computed(
   () => recitationStatus.value !== "idle" && recitationChapter.value === surahId,
 );
 
-function scrollToActiveVerse() {
+function scrollToActiveVerse(force = false) {
   nextTick(() => {
     const verse = activeVerseKey.value?.split(":")[1];
     const el = verse ? document.getElementById(`ayah-${verse}`) : null;
     if (!el) return;
     const rect = el.getBoundingClientRect();
     // Only scroll when the verse has drifted out of the comfortable reading zone
-    if (rect.top < 72 || rect.top > window.innerHeight * 0.6) {
+    if (force || rect.top < 72 || rect.top > window.innerHeight * 0.6) {
       window.scrollTo({ top: rect.top + window.scrollY - 88, behavior: "smooth" });
     }
   });
 }
+
+// Bring the playing ayah's report flag into view for the hint
+watch(reportHint, (on) => {
+  if (on && isRecitingThisSurah.value) scrollToActiveVerse(true);
+});
 
 watch(activeVerseKey, async (key) => {
   if (!key || !isRecitingThisSurah.value) return;
@@ -647,6 +648,8 @@ watch(
       verses.value = results.flatMap((r) => r!.verses);
     }
     await nextTick();
+    // The new translation's length moves every row; the hint's ayah has to be found again
+    if (reportHint.value && isRecitingThisSurah.value) scrollToActiveVerse(true);
     loadMoreIfSentinelVisible();
   },
 );
@@ -887,7 +890,6 @@ useSchemaOrg([
               :is-font-loaded="isFontLoaded"
               :source-id="currentSourceId"
               :source-name="currentSourceName"
-              :is-external-source="isExternalSource"
               :disable-actions="true"
               :enable-recitation="true"
               :hide-separator="verseIndex === group.verses.length - 1 && groupIndex < loadedPageGroups.length - 1"

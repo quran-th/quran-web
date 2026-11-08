@@ -18,11 +18,6 @@ const { verses, loading, error } = storeToRefs(quranStore);
 const { selectedSourceId, translationSources } = storeToRefs(readerSettings);
 const { fontVersion } = storeToRefs(fontSettings);
 
-const isExternalSource = computed(() => {
-  const src = translationSources.value.find((s) => s.id === selectedSourceId.value);
-  return src?.isExternal ?? false;
-});
-
 const currentSourceName = computed(() => {
   const src = translationSources.value.find((s) => s.id === selectedSourceId.value);
   return src?.name ?? "";
@@ -120,7 +115,6 @@ const getWordsForVerse = (surahNumber: number, verseNumber: number) => {
         :is-font-loaded="isFontLoaded"
         :source-id="selectedSourceId"
         :source-name="currentSourceName"
-        :is-external-source="isExternalSource"
       />
     </div>
   </div>

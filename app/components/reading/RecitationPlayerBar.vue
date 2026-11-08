@@ -7,12 +7,55 @@ import WheelPicker from "~/components/reading/WheelPicker.vue";
 import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
 
 const recitation = useRecitationStore();
-const { status, activeVerseKey, reciterId, reciters, playbackRate, repeatCount, pauseSeconds, translationAudio, phase } =
-  storeToRefs(recitation);
+const {
+  status,
+  activeVerseKey,
+  reciterId,
+  reciters,
+  playbackRate,
+  repeatCount,
+  pauseSeconds,
+  translationAudio,
+  phase,
+  currentChapterHasTranslation,
+} = storeToRefs(recitation);
 
 const readerSettings = useReaderSettingsStore();
-const { selectedSourceId, translationSources } = storeToRefs(readerSettings);
+const { selectedSourceId, translationSources, mukhtasarSourceId } = storeToRefs(readerSettings);
 const selectedSource = computed(() => translationSources.value.find((s) => s.id === selectedSourceId.value));
+const switchesSource = computed(
+  () => mukhtasarSourceId.value !== undefined && selectedSourceId.value !== mukhtasarSourceId.value,
+);
+
+// The Thai audio reads Al-Mukhtasar, so the text on screen is switched to match it
+function enableTranslationAudio() {
+  recitation.setTranslationAudio("mukhtasar");
+  if (switchesSource.value) readerSettings.setTranslationSource(mukhtasarSourceId.value);
+  promoDismissed.value = true;
+}
+
+function enableFromPromo() {
+  enableTranslationAudio();
+  recitation.reportHint = true;
+}
+
+function toggleTranslationAudio() {
+  if (translationAudio.value === "mukhtasar") recitation.setTranslationAudio("off");
+  else enableTranslationAudio();
+}
+
+const promoDismissed = useCookie<boolean>("translation-audio-promo-dismissed", {
+  default: () => false,
+  maxAge: 60 * 60 * 24 * 365,
+});
+const showPromo = computed(
+  () =>
+    recitation.translationAudioEnabled &&
+    translationAudio.value === "off" &&
+    currentChapterHasTranslation.value &&
+    !promoDismissed.value &&
+    !settingsView.value,
+);
 
 function selectSource(id: number) {
   readerSettings.setTranslationSource(id);
@@ -181,7 +224,7 @@ onBeforeUnmount(() => {
                 role="switch"
                 :aria-checked="translationAudio === 'mukhtasar'"
                 class="flex w-full items-center justify-between gap-3 border-t border-slate-100 px-4 py-1.5 text-left outline-none transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400"
-                @click="recitation.setTranslationAudio(translationAudio === 'mukhtasar' ? 'off' : 'mukhtasar')"
+                @click="toggleTranslationAudio"
               >
                 <span class="flex items-center gap-2">
                   <span class="text-sm font-medium text-slate-700">เสียงคำแปลภาษาไทย</span>
@@ -274,6 +317,48 @@ onBeforeUnmount(() => {
                 </div>
               </div>
             </template>
+          </div>
+        </Transition>
+
+        <Transition
+          enter-from-class="translate-y-2 opacity-0"
+          leave-to-class="translate-y-2 opacity-0"
+          enter-active-class="transition duration-250 ease-out"
+          leave-active-class="transition duration-150 ease-in"
+        >
+          <div
+            v-if="showPromo"
+            role="status"
+            class="absolute inset-x-0 bottom-full mb-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-xl"
+          >
+            <div class="flex items-start gap-3">
+              <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" /></svg>
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  ฟังกุรอานพร้อมสรุปความหมายจากตัฟซีรอัล-มุคตะศ็อร ภาษาไทย
+                  <span class="rounded-full bg-amber-200/70 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-amber-800">Beta</span>
+                </p>
+                <p class="mt-1 text-xs leading-relaxed text-slate-600">
+                  ฟังคำแปลไทยต่อจากแต่ละอายะห์<template v-if="switchesSource"> และเปลี่ยนคำแปลเป็นอัล-มุคตะศ็อร</template>
+                </p>
+                <div class="mt-3 flex items-center gap-2">
+                  <button
+                    class="rounded-full bg-amber-600 px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-700"
+                    @click="enableFromPromo"
+                  >
+                    เปิดเสียงคำแปล
+                  </button>
+                  <button
+                    class="rounded-full px-3 py-1.5 text-xs font-medium text-slate-500 transition-colors hover:bg-amber-100 hover:text-slate-700"
+                    @click="promoDismissed = true"
+                  >
+                    ไม่ใช่ตอนนี้
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </Transition>
 

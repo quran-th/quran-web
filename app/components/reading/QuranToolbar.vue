@@ -310,7 +310,7 @@ function handleGoToPage(e: Event) {
 
 .toolbar-progress-fill {
   height: 100%;
-  background: #0ea5e9;
+  background: var(--color-brand-500);
   border-radius: 0 1px 1px 0;
   transition: width 0.3s ease;
 }

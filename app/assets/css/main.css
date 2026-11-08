@@ -12,3 +12,17 @@
     to { stroke-dashoffset: 100; }
   }
 }
+
+/* Static: scoped component CSS reads these through var(), which Tailwind cannot see */
+@theme static {
+  /* Logo green (#1fbc8d) — the accent for selected and primary states */
+  --color-brand-50: #ecfbf5;
+  --color-brand-100: #d2f5e7;
+  --color-brand-200: #a6ead1;
+  --color-brand-300: #6fdbb6;
+  --color-brand-400: #3bca9c;
+  --color-brand-500: #1fbc8d;
+  --color-brand-600: #179a74;
+  --color-brand-700: #157a5e;
+  --color-brand-800: #14614c;
+}

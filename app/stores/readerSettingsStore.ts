@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { TranslationSource } from '~/types/source'
 
 export const useReaderSettingsStore = defineStore('readerSettings', () => {
@@ -10,6 +10,8 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
 
   const selectedSourceId = ref<number | undefined>(sourceCookie.value)
   const translationSources = ref<TranslationSource[]>([])
+  /** The source the Thai translation audio reads from */
+  const mukhtasarSourceId = computed(() => translationSources.value.find((s) => s.name.includes('มุคตะศ็อร'))?.id)
 
   function setTranslationSource(id: number | undefined) {
     selectedSourceId.value = id
@@ -24,9 +26,8 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
       if (result.success) {
         translationSources.value = result.data
         // Not persisted to the cookie: only an explicit user choice should stick
-        if (selectedSourceId.value === undefined) {
-          const mukhtasar = result.data.find((s) => s.name.includes('มุคตะศ็อร'))
-          if (mukhtasar) selectedSourceId.value = mukhtasar.id
+        if (selectedSourceId.value === undefined && mukhtasarSourceId.value !== undefined) {
+          selectedSourceId.value = mukhtasarSourceId.value
         }
       }
     }
@@ -38,6 +39,7 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
   return {
     selectedSourceId,
     translationSources,
+    mukhtasarSourceId,
     setTranslationSource,
     fetchTranslationSources,
   }

@@ -35,7 +35,6 @@ interface Props {
   sourceId?: number;
   sourceName?: string;
   pageNumber?: number;
-  isExternalSource?: boolean;
   disableActions?: boolean;
   /** Play button drives word-highlight recitation (requires a page that hosts the player bar) */
   enableRecitation?: boolean;
@@ -109,7 +108,7 @@ function toggleBookmark() {
 }
 
 const recitation = useRecitationStore();
-const { status: recitationStatus, activeVerseKey } = storeToRefs(recitation);
+const { status: recitationStatus, activeVerseKey, reportHint } = storeToRefs(recitation);
 
 const verseKey = computed(() => `${props.surahNumber}:${props.verse.verseNumber}`);
 
@@ -129,6 +128,7 @@ const isRecitingThisVerse = computed(
     activeVerseKey.value === verseKey.value,
 );
 const isPlayDisabled = computed(() => !props.enableRecitation && props.disableActions);
+const showReportHint = computed(() => reportHint.value && isRecitingThisVerse.value);
 const isPlayingThisVerse = computed(
   () => isRecitingThisVerse.value && recitationStatus.value === "playing",
 );
@@ -176,6 +176,7 @@ function handleShare() {
 }
 
 function openReport() {
+  reportHint.value = false;
   hasOpenedReport.value = true;
   showReportModal.value = true;
 }
@@ -332,8 +333,8 @@ function openReport() {
           </svg>
         </button>
         <button
-          v-if="!isExternalSource"
-          class="flex items-center gap-1.5 rounded-lg bg-transparent px-2 py-1.5 text-sm text-slate-400 transition-all duration-200 hover:bg-amber-50 hover:text-amber-600"
+          class="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition-all duration-200 hover:bg-amber-50 hover:text-amber-600"
+          :class="showReportHint ? 'bg-amber-50 text-amber-700 ring-2 ring-amber-400' : 'bg-transparent text-slate-400'"
           :title="$t('report.button_tooltip')"
           @click="openReport"
         >
@@ -351,10 +352,34 @@ function openReport() {
             <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
             <line x1="4" x2="4" y1="22" y2="15" />
           </svg>
-          <span>{{ $t('report.button_message') }}</span>
+          <span class="hidden sm:inline">{{ $t('report.button_message') }}</span>
         </button>
       </div>
     </div>
+
+    <Transition
+      enter-from-class="-translate-y-1 opacity-0"
+      leave-to-class="-translate-y-1 opacity-0"
+      enter-active-class="transition duration-200 ease-out"
+      leave-active-class="transition duration-150 ease-in"
+    >
+      <div
+        v-if="showReportHint"
+        role="status"
+        class="absolute right-4 top-[3.75rem] z-10 w-64 rounded-xl bg-slate-800 p-3 text-white shadow-xl"
+      >
+        <span class="absolute -top-1.5 right-2.5 size-3 rotate-45 bg-slate-800 sm:right-12" />
+        <p class="relative text-sm leading-relaxed">หากพบปัญหาเสียงอ่าน หรือคำแปล <span class="whitespace-nowrap">กดแจ้งได้เลยที่นี่</span></p>
+        <div class="relative mt-2 flex justify-end">
+          <button
+            class="rounded-full bg-white/15 px-3 py-1 text-xs font-medium transition-colors hover:bg-white/25"
+            @click="reportHint = false"
+          >
+            รับทราบ
+          </button>
+        </div>
+      </div>
+    </Transition>
 
     <!-- Arabic row -->
     <div class="px-4 py-2">
@@ -448,9 +473,8 @@ function openReport() {
       class="mx-4 h-px bg-linear-to-r from-transparent via-slate-200 to-transparent"
     />
 
-    <!-- Report Modal (hidden for external translation sources) -->
     <ReportModal
-      v-if="!isExternalSource && hasOpenedReport"
+      v-if="hasOpenedReport"
       :visible="showReportModal"
       :verse="verse"
       :surah-number="surahNumber"
