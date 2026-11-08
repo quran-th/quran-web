@@ -1,3 +1,10 @@
+## [1.25.3](https://github.com/quran-th/quran-web/compare/v1.25.2...v1.25.3) (2026-11-08)
+
+
+### Bug Fixes
+
+* continue to the next surah on iOS when the screen is locked ([2a34d24](https://github.com/quran-th/quran-web/commit/2a34d24e8b764b4027da6d9eae780970f4cca739))
+
 ## [1.25.2](https://github.com/quran-th/quran-web/compare/v1.25.1...v1.25.2) (2026-11-08)
 
 
