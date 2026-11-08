@@ -1,3 +1,10 @@
+## [1.25.1](https://github.com/quran-th/quran-web/compare/v1.25.0...v1.25.1) (2026-11-08)
+
+
+### Bug Fixes
+
+* use a design-token clear button in the reciter search ([ea5d8ce](https://github.com/quran-th/quran-web/commit/ea5d8ce938f9c5b5e50145f1a2d5dbb8de7fb221))
+
 # [1.25.0](https://github.com/quran-th/quran-web/compare/v1.24.0...v1.25.0) (2026-11-08)
 
 
