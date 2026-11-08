@@ -1,3 +1,16 @@
+# [1.21.0](https://github.com/quran-th/quran-web/compare/v1.20.3...v1.21.0) (2026-11-08)
+
+
+### Bug Fixes
+
+* start ayah 1 inside its measured quiet; play through a short quiet after the last ayah ([6b6219c](https://github.com/quran-th/quran-web/commit/6b6219cec1025bb6205f167b801d06899d98a810))
+* start ayah 1 inside its measured quiet; play through a short quiet after the last ayah ([8b98e19](https://github.com/quran-th/quran-web/commit/8b98e19c3c380b6e06375321e8b743c2ab9af21c))
+
+
+### Features
+
+* toggle Thai translation audio with a speaker icon ([797b531](https://github.com/quran-th/quran-web/commit/797b53130e6e181b4fcb488fdefe148aec1fb16c))
+
 ## [1.20.3](https://github.com/quran-th/quran-web/compare/v1.20.2...v1.20.3) (2026-11-08)
 
 
