@@ -1,6 +1,7 @@
 export interface Reciter {
   id: number;
   name: string;
+  arabicName?: string;
   style: string;
   /** false = ayah-level highlight only */
   hasWordTimings: boolean;

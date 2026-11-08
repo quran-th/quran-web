@@ -266,7 +266,10 @@ onBeforeUnmount(() => {
                     :class="r.id === reciterId ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50'"
                     @click="selectReciter(r.id)"
                   >
-                    <span class="min-w-0 truncate">{{ getReciterLabelTh(r) }}</span>
+                    <span class="min-w-0">
+                      <span class="block truncate">{{ getReciterLabelTh(r) }}</span>
+                      <span v-if="r.arabicName" class="block truncate text-xs text-slate-400"><bdi lang="ar">{{ r.arabicName }}</bdi></span>
+                    </span>
                     <span class="flex shrink-0 items-center gap-2">
                       <span
                         v-if="r.hasWordTimings"
