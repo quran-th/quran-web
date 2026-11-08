@@ -1,3 +1,16 @@
+# [1.24.0](https://github.com/quran-th/quran-web/compare/v1.23.0...v1.24.0) (2026-11-08)
+
+
+### Bug Fixes
+
+* load Turnstile on the first open of the report modal ([2508386](https://github.com/quran-th/quran-web/commit/2508386d5a432040b7851d83d4f41286710c2834))
+
+
+### Features
+
+* offer Thai translation audio while reciting, and point to the report flag ([d915ccf](https://github.com/quran-th/quran-web/commit/d915ccf49ae33ba421ac497649785e7c8f95c34f))
+* show Thai names for 77 new reciters and an Arabic name line in the reciter list ([3714e58](https://github.com/quran-th/quran-web/commit/3714e585f779f6dcd8883ad885aa0fcf0f2ae9fb))
+
 # [1.23.0](https://github.com/quran-th/quran-web/compare/v1.22.0...v1.23.0) (2026-11-08)
 
 
