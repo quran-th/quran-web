@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { Reciter, RecitationTimings, TranslationAudio } from '~/types/recitation'
 import { getReciterLabelTh } from '~/data/reciter-names-th'
 import { useQuranStore } from '~/stores/quranStore'
@@ -125,6 +125,8 @@ export const useRecitationStore = defineStore('recitation', () => {
   const activeWordKey = ref<string | null>(null)
   /** Chapter whose audio played through to the end; cleared on the next play */
   const completedChapter = ref<number | null>(null)
+  /** Points out the playing ayah's report flag; set once, right after Thai audio is enabled from the promo */
+  const reportHint = ref(false)
   /** 'translation' while the Thai clip of the current ayah plays; the Arabic element is paused then */
   const phase = ref<PlaybackPhase>('arabic')
 
@@ -155,6 +157,11 @@ export const useRecitationStore = defineStore('recitation', () => {
   const translationCache = new Map<number, Promise<TranslationAudio | null>>()
   // null = chapter has no Thai audio
   const resolvedTranslations = new Map<number, TranslationAudio | null>()
+  /** Reactive mirror of resolvedTranslations: whether a chapter has Thai audio, once known */
+  const translationAvailability = ref<Record<number, boolean>>({})
+  const currentChapterHasTranslation = computed(() =>
+    chapter.value !== null && translationAvailability.value[chapter.value] === true,
+  )
   const timingsCache = new Map<string, Promise<RecitationTimings | null>>()
   // Resolved copies let playVerse start audio synchronously inside the click
   const resolvedTimings = new Map<string, RecitationTimings>()
@@ -196,18 +203,25 @@ export const useRecitationStore = defineStore('recitation', () => {
 
   /** Prefetch alongside timings so the Thai element can be unlocked inside the click. */
   function loadTranslation(chapterId: number): Promise<TranslationAudio | null> {
-    if (!translationAudioEnabled || translationAudio.value === 'off') return Promise.resolve(null)
+    if (translationAudio.value === 'off') return Promise.resolve(null)
+    return fetchTranslation(chapterId)
+  }
+
+  function fetchTranslation(chapterId: number): Promise<TranslationAudio | null> {
+    if (!translationAudioEnabled) return Promise.resolve(null)
     let pending = translationCache.get(chapterId)
     if (!pending) {
       pending = $fetch<{ success: boolean; data: TranslationAudio }>(`/api/translation-audio/${chapterId}`)
         .then((r) => {
           const data = r.success ? r.data : null
           resolvedTranslations.set(chapterId, data)
+          translationAvailability.value = { ...translationAvailability.value, [chapterId]: !!data }
           return data
         })
         .catch((e) => {
           if (e?.statusCode === 404) {
             resolvedTranslations.set(chapterId, null)
+            translationAvailability.value = { ...translationAvailability.value, [chapterId]: false }
             return null
           }
           console.error('Failed to fetch translation audio:', e)
@@ -566,6 +580,7 @@ export const useRecitationStore = defineStore('recitation', () => {
     audio?.pause()
     status.value = 'idle'
     chapter.value = null
+    reportHint.value = false
     activeVerseKey.value = null
     activeWordKey.value = null
     activeIndex = -1
@@ -785,7 +800,12 @@ export const useRecitationStore = defineStore('recitation', () => {
     translationAudio.value = next
     translationAudioCookie.value = next
     if (next === 'off') finishTranslation()
-    else if (chapter.value !== null) loadTranslation(chapter.value)
+    else if (chapter.value !== null) {
+      // Turned on mid-playback: unlock the Thai element while this click is still on the stack (iOS)
+      const thai = resolvedTranslations.get(chapter.value)
+      if (thai && status.value !== 'idle' && phase.value === 'arabic') unlockThaiAudio(thai)
+      else loadTranslation(chapter.value)
+    }
     // Boundaries depend on the setting; indices stay valid, only the stop points move
     computeBoundaries()
     if (verseIdx >= 0) {
@@ -794,9 +814,16 @@ export const useRecitationStore = defineStore('recitation', () => {
     }
   }
 
+  // Learn whether the playing surah has Thai audio even while it's off, so the player can offer it
+  watch(chapter, (id) => {
+    if (id !== null && translationAudio.value === 'off') fetchTranslation(id)
+  })
+
   return {
     translationAudioEnabled,
     translationAudio,
+    currentChapterHasTranslation,
+    reportHint,
     phase,
     reciterId,
     reciters,

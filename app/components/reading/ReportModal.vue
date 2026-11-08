@@ -45,7 +45,8 @@ type ReportCategory =
   | "typo"
   | "missing_words"
   | "wrong_translation"
-  | "footnote_issue";
+  | "footnote_issue"
+  | "audio_issue";
 
 const props = defineProps<Props>();
 const emit = defineEmits<{
@@ -83,14 +84,25 @@ const { diffTokens } = useDiff(currentTranslation, proposalText);
 const { validationErrors } = useFootnoteValidation(proposalText, footnotes);
 
 // Category definitions
-const categories: { key: ReportCategory; labelKey: string }[] = [
-  { key: "typo", labelKey: "report.category_typo" },
-  { key: "missing_words", labelKey: "report.category_missing_words" },
+// icon: SVG path data on a 24×24 stroked grid
+const categories: { key: ReportCategory; labelKey: string; icon: string[] }[] = [
+  { key: "typo", labelKey: "report.category_typo", icon: ["m6 16 6-12 6 12", "M8 12h8", "m16 20 2 2 4-4"] },
+  { key: "missing_words", labelKey: "report.category_missing_words", icon: ["M3 6h18", "M3 12h6", "M15 12h6", "M3 18h12"] },
   {
     key: "wrong_translation",
     labelKey: "report.category_wrong_translation",
+    icon: ["m5 8 6 6", "m4 14 6-6 2-3", "M2 5h12", "M7 2h1", "m22 22-5-10-5 10", "M14 18h6"],
   },
-  { key: "footnote_issue", labelKey: "report.category_footnote_issue" },
+  {
+    key: "footnote_issue",
+    labelKey: "report.category_footnote_issue",
+    icon: [
+      "m4 19 8-8",
+      "m12 19-8-8",
+      "M20 12h-4c0-1.5.442-2 1.5-2.5S20 8.334 20 7.002c0-.472-.17-.93-.484-1.29a2.105 2.105 0 0 0-2.617-.436c-.42.239-.738.614-.899 1.06",
+    ],
+  },
+  { key: "audio_issue", labelKey: "report.category_audio_issue", icon: ["M11 5 6 9H2v6h4l5 4V5z", "m22 9-6 6", "m16 9 6 6"] },
 ];
 
 const hasSuggestion = computed(() => {
@@ -402,23 +414,36 @@ async function handleSubmit() {
           <!-- Step 3: Form -->
           <template v-else>
             <div class="modal-body">
-              <!-- Issue categories (2-column grid) -->
               <div class="section">
-                <p class="section-label">{{ t("report.quick_description") }}</p>
-                <div class="categories">
+                <div class="flex flex-wrap justify-center gap-2">
                   <label
                     v-for="cat in categories"
                     :key="cat.key"
-                    class="category-item"
-                    :class="{ 'category-item--selected': selectedCategories.has(cat.key) }"
+                    class="relative flex basis-[calc((100%-1rem)/3)] cursor-pointer select-none flex-col items-center gap-1.5 rounded-xl border px-1.5 pb-2.5 pt-3 text-center transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-400"
+                    :class="selectedCategories.has(cat.key)
+                      ? 'border-brand-400 bg-brand-50 text-brand-700'
+                      : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50'"
                   >
                     <input
                       type="checkbox"
                       :checked="selectedCategories.has(cat.key)"
-                      class="category-checkbox"
+                      class="sr-only"
                       @change="toggleCategory(cat.key)"
                     >
-                    <span class="category-label">{{ t(cat.labelKey) }}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path v-for="d in cat.icon" :key="d" :d="d" />
+                    </svg>
+                    <span
+                      class="whitespace-pre-line text-xs leading-snug"
+                      :class="selectedCategories.has(cat.key) ? 'font-medium text-brand-800' : 'text-slate-700'"
+                    >{{ t(cat.labelKey) }}</span>
+                    <span
+                      v-if="selectedCategories.has(cat.key)"
+                      class="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-brand-500 text-white"
+                      aria-hidden="true"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
                   </label>
                 </div>
               </div>
@@ -697,48 +722,6 @@ async function handleSubmit() {
   margin: 0 0 0.75rem;
 }
 
-.categories {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-
-.category-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.15s;
-  user-select: none;
-}
-
-.category-item:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-}
-
-.category-item--selected {
-  background: #eff6ff;
-  border-color: #93c5fd;
-}
-
-.category-checkbox {
-  width: 18px;
-  height: 18px;
-  accent-color: #0ea5e9;
-  color: white;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.category-label {
-  font-size: 0.85rem;
-  color: #334155;
-}
-
 .suggest-toggle {
   display: flex;
   align-items: center;
@@ -758,7 +741,7 @@ async function handleSubmit() {
 }
 
 .suggest-toggle:hover {
-  color: #0ea5e9;
+  color: var(--color-brand-500);
 }
 
 .toggle-icon {
@@ -812,8 +795,8 @@ async function handleSubmit() {
 
 .proposal-textarea:focus {
   outline: none;
-  border-color: #0ea5e9;
-  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
+  border-color: var(--color-brand-500);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand-500) 10%, transparent);
 }
 
 .textarea-toolbar {
@@ -892,7 +875,7 @@ async function handleSubmit() {
 
 .footnote-input:focus {
   outline: none;
-  border-color: #0ea5e9;
+  border-color: var(--color-brand-500);
 }
 
 .footnote-remove {
@@ -989,8 +972,8 @@ async function handleSubmit() {
 
 .name-input:focus {
   outline: none;
-  border-color: #0ea5e9;
-  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
+  border-color: var(--color-brand-500);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand-500) 10%, transparent);
 }
 
 .success-screen {
@@ -1116,7 +1099,7 @@ async function handleSubmit() {
   padding: 8px 20px;
   border: none;
   border-radius: 8px;
-  background: #0ea5e9;
+  background: var(--color-brand-500);
   color: white;
   font-size: 0.85rem;
   font-weight: 600;
@@ -1133,7 +1116,7 @@ async function handleSubmit() {
 }
 
 .btn-submit:hover:not(:disabled) {
-  background: #0284c7;
+  background: var(--color-brand-600);
 }
 
 .btn-submit:disabled {
