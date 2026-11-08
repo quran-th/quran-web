@@ -1,3 +1,10 @@
+# [1.25.0](https://github.com/quran-th/quran-web/compare/v1.24.0...v1.25.0) (2026-11-08)
+
+
+### Features
+
+* search the reciter list by Thai, English or Arabic name ([ae09211](https://github.com/quran-th/quran-web/commit/ae092119c9ab9cfc37e834a671eda95abb4627ad))
+
 # [1.24.0](https://github.com/quran-th/quran-web/compare/v1.23.0...v1.24.0) (2026-11-08)
 
 
