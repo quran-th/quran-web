@@ -24,6 +24,9 @@ const BOUNDARY_LEAD_MS = { word: 80, ayah: 250 }
 const MIN_PAUSE_MS = 300
 const STOP_AFTER_SOUND_MS = 200
 const RESUME_GUARD_MS = 100
+// After a real stop the Arabic resumes this long before the next ayah's voice: a play() after the
+// Thai clip can drop its first ~100-250 ms on phones, which swallowed soft first letters (و, ف)
+const RESUME_LEAD_MS = 400
 // A resume or primed Thai seek within this distance is skipped: it is already in place
 const SEEK_SLACK_MS = 40
 
@@ -442,9 +445,16 @@ export const useRecitationStore = defineStore('recitation', () => {
       const stop = joined[i] ? next.from : p ? Math.min(p[0] + STOP_AFTER_SOUND_MS, p[1] - RESUME_GUARD_MS) : next.from - lead
       return Math.max(v.from, stop)
     })
-    // The next ayah continues (and a jump or repeat lands) where the previous one stopped,
-    // so the remaining silence is the lead-in and no seek is needed after the Thai clip
-    verseStarts = verses.map((v, i) => i === 0 ? Math.min(v.from, v.segments[0]?.[1] ?? Infinity) : verseEnds[i - 1]!)
+    // The next ayah continues (and a jump or repeat lands) where the previous one stopped. After a
+    // measured real stop it starts a little earlier inside the same silence, so the measured quiet
+    // before the voice is at least RESUME_LEAD_MS (never before the previous sound ended)
+    verseStarts = verses.map((v, i) => {
+      if (i === 0) return Math.min(v.from, v.segments[0]?.[1] ?? Infinity)
+      const end = verseEnds[i - 1]!
+      const p = pauses?.[i - 1]
+      if (!p || joined[i - 1]) return end
+      return Math.max(verses[i - 1]!.from, Math.min(end, Math.max(p[0], p[1] - RESUME_LEAD_MS)))
+    })
   }
 
   function seekTo(el: HTMLAudioElement, targetMs: number) {
@@ -648,7 +658,10 @@ export const useRecitationStore = defineStore('recitation', () => {
     }
 
     const idx = lastIndexAtOrBefore(verseStarts, ms)
-    if (idx !== verseIdx) {
+    // The next ayah's start can sit just before this one's stop (it resumes early in the
+    // silence), so playing through that overlap is not a jump
+    const inCurrent = verseIdx >= 0 && ms >= verseStarts[verseIdx]! && ms < verseEnds[verseIdx]!
+    if (idx !== verseIdx && !inCurrent) {
       verseIdx = idx
       runStart = idx
       repeatsLeft = repeatCount.value - 1
@@ -662,9 +675,10 @@ export const useRecitationStore = defineStore('recitation', () => {
     if (found === activeIndex) return
     const seg = segments[found]
     // QDC first-word segments begin up to ~100 ms before the ayah's `from`, so around a stop
-    // point the lookup can land on the next ayah's first word; the highlight must stay on the
-    // ayah being read (and on the one translated while its Thai clip plays)
-    if (seg && translationAudio.value !== 'off' && verseIdx >= 0 && verseKeys.indexOf(seg.verseKey) > verseIdx) return
+    // point the lookup can land on the next ayah's first word, and resuming early in the silence
+    // lands on the previous ayah's last one; the highlight must stay on the ayah being read (and
+    // on the one translated while its Thai clip plays)
+    if (seg && translationAudio.value !== 'off' && verseIdx >= 0 && verseKeys.indexOf(seg.verseKey) !== verseIdx) return
     activeIndex = found
     activeWordKey.value = seg ? `${seg.verseKey}:${seg.position}` : null
   }
