@@ -41,11 +41,6 @@ const playFields = computed(() => {
   }));
 });
 
-const translationOptions = [
-  { value: "off", label: "ปิด" },
-  { value: "mukhtasar", label: "อัล-มุคตะศ็อร" },
-] as const;
-
 const playSummary = computed(() => {
   const parts = [`${playbackRate.value}x`];
   if (repeatCount.value > 1) parts.push(`ซ้ำ ${repeatCount.value} รอบ`);
@@ -159,22 +154,22 @@ onBeforeUnmount(() => {
                 </span>
                 <svg class="shrink-0 text-slate-300" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
               </button>
-              <div v-if="recitation.translationAudioEnabled" class="border-t border-slate-100 px-4 py-3">
+              <div v-if="recitation.translationAudioEnabled" class="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
                 <span class="flex items-center gap-2">
                   <span id="translation-audio-label" class="text-sm font-medium text-slate-700">เสียงคำแปลภาษาไทย</span>
                   <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-amber-700">Beta</span>
                 </span>
-                <div role="radiogroup" aria-labelledby="translation-audio-label" class="mt-2 grid grid-cols-2 gap-2">
-                  <button
-                    v-for="o in translationOptions"
-                    :key="o.value"
-                    role="radio"
-                    :aria-checked="translationAudio === o.value"
-                    class="min-h-11 rounded-lg px-3 text-sm outline-none transition-colors focus-visible:bg-slate-100"
-                    :class="translationAudio === o.value ? 'bg-slate-800 text-white' :'bg-slate-100 text-slate-600'"
-                    @click="recitation.setTranslationAudio(o.value)"
-                  >{{ o.label }}</button>
-                </div>
+                <button
+                  role="switch"
+                  aria-labelledby="translation-audio-label"
+                  :aria-checked="translationAudio === 'mukhtasar'"
+                  class="flex size-11 shrink-0 items-center justify-center rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-amber-400"
+                  :class="translationAudio === 'mukhtasar' ? 'bg-amber-50 text-amber-700' : 'text-slate-400 hover:bg-slate-50'"
+                  @click="recitation.setTranslationAudio(translationAudio === 'mukhtasar' ? 'off' : 'mukhtasar')"
+                >
+                  <svg v-if="translationAudio === 'mukhtasar'" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" /></svg>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" /><line x1="22" y1="9" x2="16" y2="15" /><line x1="16" y1="9" x2="22" y2="15" /></svg>
+                </button>
               </div>
               <button
                 class="flex w-full items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50"

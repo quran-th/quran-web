@@ -27,12 +27,14 @@ const RESUME_GUARD_MS = 100
 // After a real stop the Arabic resumes this long before the next ayah's voice: a play() after the
 // Thai clip can drop its first ~100-250 ms on phones, which swallowed soft first letters (و, ف)
 const RESUME_LEAD_MS = 400
-// mp3quran puts ayah 1's `from` up to ~160 ms after the voice starts, and a cold play() can drop
-// its first instant; the quiet before ayah 1 is at least 400 ms in the files checked
+// Ayah 1 starts this long before its voice, inside the measured quiet before it (timings.head):
+// mp3quran puts `from` up to ~500 ms after the voice starts, and a cold play() can drop its first
+// instant. Without a measurement it starts this long before `from`.
 const FIRST_AYAH_LEAD_MS = 300
-// Soft endings (س, ه, a held نّ) fade under the quiet threshold, so the last ayah plays this far
-// into the measured quiet after it (or to where the next sound starts, if sooner)
+// Soft endings (س, ه, a held نّ) fade under the quiet threshold, so the last ayah plays through a
+// short quiet after it (up to where the next sound or the file end begins), or this far into a long one
 const LAST_AYAH_TAIL_MS = 800
+const LAST_AYAH_SHORT_QUIET_MS = 2000
 // A resume or primed Thai seek within this distance is skipped: it is already in place
 const SEEK_SLACK_MS = 40
 
@@ -175,7 +177,7 @@ export const useRecitationStore = defineStore('recitation', () => {
     if (!pending) {
       // v=2: response gained `pauses`; busts the 7-day browser cache of the old shape
       pending = $fetch<{ success: boolean; data: RecitationTimings }>(
-        `/api/recitations/${reciter}/${chapterId}/timings?v=3`,
+        `/api/recitations/${reciter}/${chapterId}/timings?v=4`,
       )
         .then((r) => {
           if (!r.success) return null
@@ -435,6 +437,8 @@ export const useRecitationStore = defineStore('recitation', () => {
     const verses = [...t.verses].sort((a, b) => a.from - b.from)
     // One window per boundary plus the quiet after the last ayah
     const pauses = translationAudio.value !== 'off' && t.pauses?.length === verses.length ? t.pauses : null
+    // Used with Thai on or off: it only moves where ayah 1 starts
+    const head = t.head ?? null
     joined = verses.map((_, i) => {
       const p = pauses?.[i]
       return i < verses.length - 1 && !!p && p[1] - p[0] < MIN_PAUSE_MS
@@ -446,7 +450,11 @@ export const useRecitationStore = defineStore('recitation', () => {
       const p = pauses?.[i]
       // mp3quran's last `to` can sit seconds before the sound stops; the measured tail is reliable
       // (a tail at the very end of the file leaves the finish to the 'ended' event)
-      if (!next) return p ? Math.max(v.from, Math.min(p[0] + LAST_AYAH_TAIL_MS, p[1])) : v.to
+      if (!next) {
+        if (!p) return v.to
+        const stop = p[1] - p[0] <= LAST_AYAH_SHORT_QUIET_MS ? p[1] - RESUME_GUARD_MS : p[0] + LAST_AYAH_TAIL_MS
+        return Math.max(v.from, p[0], stop)
+      }
       // A joined boundary is never stopped at; its end is only where the highlight moves on
       const stop = joined[i] ? next.from : p ? Math.min(p[0] + STOP_AFTER_SOUND_MS, p[1] - RESUME_GUARD_MS) : next.from - lead
       return Math.max(v.from, stop)
@@ -455,7 +463,11 @@ export const useRecitationStore = defineStore('recitation', () => {
     // measured real stop it starts a little earlier inside the same silence, so the measured quiet
     // before the voice is at least RESUME_LEAD_MS (never before the previous sound ended)
     verseStarts = verses.map((v, i) => {
-      if (i === 0) return Math.max(0, Math.min(v.from, v.segments[0]?.[1] ?? Infinity) - FIRST_AYAH_LEAD_MS)
+      if (i === 0) {
+        const from = Math.min(v.from, v.segments[0]?.[1] ?? Infinity)
+        // Never before the quiet starts: that would replay the end of a basmala read just before
+        return head ? Math.max(head[0], Math.min(from, head[1] - FIRST_AYAH_LEAD_MS)) : Math.max(0, from - FIRST_AYAH_LEAD_MS)
+      }
       const end = verseEnds[i - 1]!
       const p = pauses?.[i - 1]
       if (!p || joined[i - 1]) return end
