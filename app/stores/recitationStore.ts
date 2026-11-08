@@ -39,6 +39,7 @@ const LAST_AYAH_SHORT_QUIET_MS = 2000
 const SEEK_SLACK_MS = 40
 // An element still paused this long after play() was refused by the OS (see playElement)
 const PLAY_START_TIMEOUT_MS = 1000
+const LAST_CHAPTER = 114
 
 export type TranslationAudioSetting = 'off' | 'mukhtasar'
 export type PlaybackPhase = 'arabic' | 'translation'
@@ -266,9 +267,7 @@ export const useRecitationStore = defineStore('recitation', () => {
       if (phase.value === 'translation') return
       // The last ayah ends with the file, so repeats and its Thai clips must be handled here
       if (verseIdx >= 0 && (repeatsLeft > 0 || thaiForRun(runStart, verseIdx)) && applyVerseEnd()) return
-      const finished = chapter.value
-      stop()
-      completedChapter.value = finished
+      completeChapter()
     })
     return audio
   }
@@ -403,15 +402,36 @@ export const useRecitationStore = defineStore('recitation', () => {
     thaiAudio?.pause()
   }
 
+  /**
+   * Visible, the page shows a countdown and navigates to the next surah itself. Hidden (screen
+   * locked), its timers are frozen and iOS suspends a page that has gone silent, so the next surah
+   * must start here, inside the event that ended this one, while the OS audio session is still
+   * open: no idle state in between (it would clear the lock-screen widget) and no awaited fetch.
+   */
+  function completeChapter() {
+    const finished = chapter.value
+    if (finished === null) return
+    if (finished < LAST_CHAPTER && document.hidden) {
+      clearPlayback()
+      const next = finished + 1
+      const t = resolvedTimings.get(`${reciterId.value}:${next}`)
+      // Not prefetched: the start after the fetch may be refused by the OS and is then shown as
+      // paused and retried when the page is visible again (see playElement)
+      if (t) startFrom(t, 1)
+      else playVerse(next, 1)
+      return
+    }
+    stop()
+    completedChapter.value = finished
+  }
+
   function finishTranslation() {
     if (phase.value !== 'translation') return
     clearThaiTimer()
     thaiQueue = []
     phase.value = 'arabic'
     if (verseIdx >= verseStarts.length - 1) {
-      const finished = chapter.value
-      stop()
-      completedChapter.value = finished
+      completeChapter()
       return
     }
     verseIdx++
@@ -532,7 +552,9 @@ export const useRecitationStore = defineStore('recitation', () => {
   function startFrom(t: RecitationTimings, verseNumber: number) {
     applyTimings(t)
     cancelGap()
-    cancelTranslation()
+    clearThaiTimer()
+    thaiQueue = []
+    phase.value = 'arabic'
     verseIdx = -1
     runStart = -1
     const el = getAudio()
@@ -540,15 +562,24 @@ export const useRecitationStore = defineStore('recitation', () => {
 
     seekTo(el, verseStarts[verseKeys.indexOf(`${t.chapter}:${verseNumber}`)] ?? 0)
 
-    // iOS only lets an element play() later if it was started inside a user gesture,
-    // so the Thai element is primed here, while the click is still on the stack
-    const thai = translationAudio.value === 'mukhtasar' ? resolvedTranslations.get(t.chapter) : null
-    if (thai) unlockThaiAudio(thai)
-
     chapter.value = t.chapter
     status.value = 'loading'
     // Autoplay blocked (iOS when timings weren't prefetched) ends up as 'paused': the user can tap resume
     playElement(el)
+
+    // The Thai element only after the Arabic play(): when a surah ends with its Thai clip the clip
+    // can still be sounding here, and a background page may start an element only while one plays
+    // (see startTranslation). iOS lets an element play() later only if it was started inside a user
+    // gesture, so with Thai on the element is primed now, while the click is still on the stack.
+    const thai = translationAudio.value === 'mukhtasar' ? resolvedTranslations.get(t.chapter) : null
+    if (thai) unlockThaiAudio(thai)
+    else thaiAudio?.pause()
+
+    // Cached ahead so the next surah can start synchronously when this one ends on a locked screen
+    if (t.chapter < LAST_CHAPTER) {
+      loadTimings(t.chapter + 1)
+      loadTranslation(t.chapter + 1)
+    }
   }
 
   async function playVerse(chapterId: number, verseNumber: number) {
@@ -596,7 +627,9 @@ export const useRecitationStore = defineStore('recitation', () => {
     el.play().catch(onPlayRejected)
     startTimer = setTimeout(() => {
       startTimer = null
-      if (el.paused && el === activeElement() && status.value === 'playing' && !gapTimer) markSuspended()
+      // 'loading' too: an accepted play() clears `paused` at once, even while the file still loads
+      const starting = status.value === 'playing' || status.value === 'loading'
+      if (el.paused && el === activeElement() && starting && !gapTimer) markSuspended()
     }, PLAY_START_TIMEOUT_MS)
   }
 
@@ -659,22 +692,27 @@ export const useRecitationStore = defineStore('recitation', () => {
     else if (resumeOnVisible && status.value === 'paused') resume()
   }
 
-  function stop() {
+  /** Drops the position in the current surah; the elements and the status/chapter refs are left to the caller. */
+  function clearPlayback() {
     stopTicking()
     cancelGap()
     clearBoundary()
     clearStartTimer()
-    cancelTranslation()
-    audio?.pause()
     resumeOnVisible = false
-    status.value = 'idle'
-    chapter.value = null
     reportHint.value = false
     activeVerseKey.value = null
     activeWordKey.value = null
     activeIndex = -1
     verseIdx = -1
     runStart = -1
+  }
+
+  function stop() {
+    clearPlayback()
+    cancelTranslation()
+    audio?.pause()
+    status.value = 'idle'
+    chapter.value = null
   }
 
   function setReciter(id: number) {
@@ -892,6 +930,7 @@ export const useRecitationStore = defineStore('recitation', () => {
       const thai = resolvedTranslations.get(chapter.value)
       if (thai && status.value !== 'idle' && phase.value === 'arabic') unlockThaiAudio(thai)
       else loadTranslation(chapter.value)
+      if (chapter.value < LAST_CHAPTER) loadTranslation(chapter.value + 1)
     }
     // Boundaries depend on the setting; indices stay valid, only the stop points move
     computeBoundaries()

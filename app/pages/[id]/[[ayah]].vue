@@ -455,10 +455,11 @@ function onScroll() {
 
 // Runs as soon as navigation to another surah/route starts: the old instance
 // stays mounted (and reactive) until the next page resolves in <Suspense>
-function teardown() {
+function teardown(keepChapter?: number) {
   if (isTornDown) return;
   isTornDown = true;
-  recitation.stop();
+  // The surah being navigated to may already be playing: the store moves on by itself on a locked screen
+  if (recitation.chapter !== keepChapter) recitation.stop();
   // Only the timer: the card keeps its spinner while the next surah resolves
   if (autoNextTimer) clearInterval(autoNextTimer);
   disposePin?.();
@@ -469,10 +470,10 @@ function teardown() {
 }
 
 onBeforeRouteUpdate((to) => {
-  if (to.params.id !== String(surahId)) teardown();
+  if (to.params.id !== String(surahId)) teardown(Number(to.params.id));
 });
 onBeforeRouteLeave(() => teardown());
-onBeforeUnmount(teardown);
+onBeforeUnmount(() => teardown());
 
 onMounted(async () => {
   sentinelObserver = new IntersectionObserver(
@@ -618,6 +619,14 @@ watch(completedChapter, (finished) => {
     if (autoNextCountdown.value === 0) playNextSurah();
   }, 1000);
   nextTick(() => nextSurahCard.value?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+});
+
+// The store moved on to the next surah by itself (screen locked, see completeChapter): follow it.
+// No ?play, so the new page joins the running playback instead of restarting it; teardown sees
+// the destination surah already playing and leaves it alone.
+watch(recitationChapter, (id) => {
+  if (id === null || id === surahId || isTornDown) return;
+  router.push({ path: `/${id}` });
 });
 
 watch(recitationStatus, (s) => {
