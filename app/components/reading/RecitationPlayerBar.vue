@@ -60,8 +60,8 @@ function toggleSettings(view: SettingsView) {
 const playerRef = ref<HTMLElement | null>(null);
 
 const verseLabel = computed(() => {
-  if (phase.value === "translation") return "กำลังฟังคำแปล";
   const verse = activeVerseKey.value?.split(":")[1];
+  if (phase.value === "translation") return verse ? `กำลังฟังคำแปล อายะห์ ${verse}` : "กำลังฟังคำแปล";
   if (verse) return `อายะห์ ${verse}`;
   // Paused without an active verse = play() was blocked by autoplay policy
   return status.value === "loading" ? "กำลังโหลด…" : "แตะเพื่อเริ่มฟัง";
