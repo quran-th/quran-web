@@ -110,6 +110,8 @@ export default defineNuxtConfig({
       // Cloudflare Turnstile site key for anti-spam on public reports
       // Override with NUXT_PUBLIC_TURNSTILE_SITE_KEY env var in production
       turnstileSiteKey: '1x00000000000000000000AA',
+      // Thai translation audio in the player; override with NUXT_PUBLIC_TRANSLATION_AUDIO=true
+      translationAudio: false,
     },
   },
 

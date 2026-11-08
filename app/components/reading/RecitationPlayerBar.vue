@@ -6,7 +6,7 @@ import { getReciterLabelTh } from "~/data/reciter-names-th";
 import WheelPicker from "~/components/reading/WheelPicker.vue";
 
 const recitation = useRecitationStore();
-const { status, activeVerseKey, reciterId, reciters, playbackRate, repeatCount, pauseSeconds } =
+const { status, activeVerseKey, reciterId, reciters, playbackRate, repeatCount, pauseSeconds, translationAudio, phase } =
   storeToRefs(recitation);
 
 type SettingsView = "root" | "qari" | "play";
@@ -41,10 +41,16 @@ const playFields = computed(() => {
   }));
 });
 
+const translationOptions = [
+  { value: "off", label: "ปิด" },
+  { value: "mukhtasar", label: "อัล-มุคตะศ็อร" },
+] as const;
+
 const playSummary = computed(() => {
   const parts = [`${playbackRate.value}x`];
   if (repeatCount.value > 1) parts.push(`ซ้ำ ${repeatCount.value} รอบ`);
   if (pauseSeconds.value > 0) parts.push(`เว้น ${pauseSeconds.value} วิ`);
+  if (translationAudio.value === "mukhtasar") parts.push("คำแปล");
   return parts.join(" · ");
 });
 
@@ -54,6 +60,7 @@ function toggleSettings(view: SettingsView) {
 const playerRef = ref<HTMLElement | null>(null);
 
 const verseLabel = computed(() => {
+  if (phase.value === "translation") return "กำลังฟังคำแปล";
   const verse = activeVerseKey.value?.split(":")[1];
   if (verse) return `อายะห์ ${verse}`;
   // Paused without an active verse = play() was blocked by autoplay policy
@@ -152,6 +159,23 @@ onBeforeUnmount(() => {
                 </span>
                 <svg class="shrink-0 text-slate-300" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
               </button>
+              <div v-if="recitation.translationAudioEnabled" class="border-t border-slate-100 px-4 py-3">
+                <span class="flex items-center gap-2">
+                  <span id="translation-audio-label" class="text-sm font-medium text-slate-700">เสียงคำแปลภาษาไทย</span>
+                  <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-amber-700">Beta</span>
+                </span>
+                <div role="radiogroup" aria-labelledby="translation-audio-label" class="mt-2 grid grid-cols-2 gap-2">
+                  <button
+                    v-for="o in translationOptions"
+                    :key="o.value"
+                    role="radio"
+                    :aria-checked="translationAudio === o.value"
+                    class="min-h-11 rounded-lg px-3 text-sm outline-none transition-colors focus-visible:bg-slate-100"
+                    :class="translationAudio === o.value ? 'bg-slate-800 text-white' :'bg-slate-100 text-slate-600'"
+                    @click="recitation.setTranslationAudio(o.value)"
+                  >{{ o.label }}</button>
+                </div>
+              </div>
               <button
                 class="flex w-full items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50"
                 @click="settingsView = 'play'"
