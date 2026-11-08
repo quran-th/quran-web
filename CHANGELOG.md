@@ -1,3 +1,11 @@
+# [1.20.0](https://github.com/quran-th/quran-web/compare/v1.19.1...v1.20.0) (2026-11-08)
+
+
+### Features
+
+* enable Thai translation audio (beta) ([73aa769](https://github.com/quran-th/quran-web/commit/73aa76985d6e934328e55222ae87d0280f5d6cc8))
+* enable Thai translation audio (beta) ([cd27d77](https://github.com/quran-th/quran-web/commit/cd27d77dc986da9e65d1241ea1a7f901c1201284))
+
 ## [1.19.1](https://github.com/quran-th/quran-web/compare/v1.19.0...v1.19.1) (2026-11-08)
 
 
