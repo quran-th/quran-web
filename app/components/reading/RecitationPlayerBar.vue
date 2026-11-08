@@ -275,11 +275,21 @@ onBeforeUnmount(() => {
                   <input
                     ref="reciterSearchRef"
                     v-model="reciterQuery"
-                    type="search"
+                    type="text"
+                    enterkeyhint="search"
                     aria-label="ค้นหาผู้อ่าน"
                     placeholder="ค้นหาชื่อ (ไทย / English / عربي)"
                     class="min-w-0 flex-1 border-none bg-transparent text-base text-slate-700 outline-none placeholder:text-slate-400 sm:text-sm"
                   >
+                  <button
+                    v-if="reciterQuery"
+                    type="button"
+                    aria-label="ล้างคำค้นหา"
+                    class="-m-1 flex shrink-0 items-center justify-center rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600"
+                    @click="reciterQuery = ''; reciterSearchRef?.focus()"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                  </button>
                 </div>
               </div>
               <p v-if="settingsView === 'qari' && filteredReciters.length === 0" class="px-4 py-6 text-center text-sm text-slate-400">
