@@ -17,6 +17,13 @@ const TRANSLATION_STALL_MS = 5000
 // and ~400 ms in mp3quran files (their `from` is the previous sound end + 400 ms). A late
 // pause() (timers on a locked screen, output latency) then spills into silence, not speech.
 const BOUNDARY_LEAD_MS = { word: 80, ayah: 250 }
+// When the reciter's audio has been measured (timings.pauses), the stop goes inside the real
+// pause instead: this long after the sound ends, but with a guard before the next sound so a
+// late pause() never clips it. A quiet window under MIN_PAUSE_MS means the reciter joins the two
+// ayahs in one breath (waṣl): no stop there, the Thai clips of the whole run follow its real stop.
+const MIN_PAUSE_MS = 300
+const STOP_AFTER_SOUND_MS = 200
+const RESUME_GUARD_MS = 100
 // A resume or primed Thai seek within this distance is skipped: it is already in place
 const SEEK_SLACK_MS = 40
 
@@ -53,6 +60,12 @@ interface FlatSegment {
   position: number
   start: number
   end: number
+}
+
+interface ThaiClip {
+  verseKey: string
+  startMs: number
+  endMs: number
 }
 
 /**
@@ -114,7 +127,11 @@ export const useRecitationStore = defineStore('recitation', () => {
   let verseKeys: string[] = []
   let verseStarts: number[] = []
   let verseEnds: number[] = []
+  // joined[i]: verse i runs straight into i+1 with no stop; its end only moves the highlight
+  let joined: boolean[] = []
   let verseIdx = -1
+  // First verse of the breath group being played; repeats and the Thai clips cover runStart..verseIdx
+  let runStart = -1
   let repeatsLeft = 0
   let gapTimer: ReturnType<typeof setTimeout> | null = null
   // rAF is throttled when the screen locks, so the verse end is also timer-driven
@@ -122,6 +139,8 @@ export const useRecitationStore = defineStore('recitation', () => {
   let thaiAudio: HTMLAudioElement | null = null
   let thaiEndMs = 0
   let thaiTimer: ReturnType<typeof setTimeout> | null = null
+  // Clips still to play after the current one (one per ayah of the run, contiguous in the file)
+  let thaiQueue: ThaiClip[] = []
   const translationCache = new Map<number, Promise<TranslationAudio | null>>()
   // null = chapter has no Thai audio
   const resolvedTranslations = new Map<number, TranslationAudio | null>()
@@ -145,8 +164,9 @@ export const useRecitationStore = defineStore('recitation', () => {
     const key = `${reciter}:${chapterId}`
     let pending = timingsCache.get(key)
     if (!pending) {
+      // v=2: response gained `pauses`; busts the 7-day browser cache of the old shape
       pending = $fetch<{ success: boolean; data: RecitationTimings }>(
-        `/api/recitations/${reciter}/${chapterId}/timings`,
+        `/api/recitations/${reciter}/${chapterId}/timings?v=2`,
       )
         .then((r) => {
           if (!r.success) return null
@@ -207,8 +227,8 @@ export const useRecitationStore = defineStore('recitation', () => {
     })
     audio.addEventListener('ended', () => {
       if (phase.value === 'translation') return
-      // The last ayah ends with the file, so repeats and its Thai clip must be handled here
-      if (verseIdx >= 0 && (repeatsLeft > 0 || thaiForVerse(verseIdx)) && applyVerseEnd()) return
+      // The last ayah ends with the file, so repeats and its Thai clips must be handled here
+      if (verseIdx >= 0 && (repeatsLeft > 0 || thaiForRun(runStart, verseIdx)) && applyVerseEnd()) return
       const finished = chapter.value
       stop()
       completedChapter.value = finished
@@ -234,9 +254,9 @@ export const useRecitationStore = defineStore('recitation', () => {
       clearThaiTimer()
     })
     el.addEventListener('timeupdate', () => {
-      if (phase.value === 'translation' && !el.seeking && el.currentTime * 1000 >= thaiEndMs) finishTranslation()
+      if (phase.value === 'translation' && !el.seeking && el.currentTime * 1000 >= thaiEndMs) nextThaiClip()
     })
-    el.addEventListener('ended', finishTranslation)
+    el.addEventListener('ended', nextThaiClip)
     el.addEventListener('error', () => {
       if (phase.value !== 'translation') return
       console.error('Translation audio failed to play')
@@ -254,53 +274,86 @@ export const useRecitationStore = defineStore('recitation', () => {
   function armThaiEnd() {
     clearThaiTimer()
     if (!thaiAudio || thaiAudio.paused) return
-    const wait = Math.max(0, (thaiEndMs - thaiAudio.currentTime * 1000) / thaiAudio.playbackRate)
-    thaiTimer = setTimeout(finishTranslation, wait)
+    const remaining = thaiEndMs - thaiAudio.currentTime * 1000
+    // The audio clock trails the timer by tens of ms: re-check until the clip end is really reached
+    const wait = remaining / thaiAudio.playbackRate
+    thaiTimer = remaining > SEEK_SLACK_MS ? setTimeout(armThaiEnd, Math.max(50, wait)) : setTimeout(nextThaiClip, Math.max(0, wait))
   }
 
-  function thaiForVerse(idx: number) {
+  /** Thai clips for verses start..end (ayahs without a clip are skipped), or null if none. */
+  function thaiForRun(start: number, end: number) {
     if (translationAudio.value === 'off' || chapter.value === null) return null
     const t = resolvedTranslations.get(chapter.value)
-    const ayah = Number(verseKeys[idx]?.split(':')[1])
-    const entry = t?.ayahs.find(a => a.ayah === ayah)
-    return t && entry ? { t, entry } : null
+    if (!t) return null
+    const clips: ThaiClip[] = []
+    for (let i = Math.max(0, start); i <= end; i++) {
+      const verseKey = verseKeys[i]
+      const entry = t.ayahs.find(a => a.ayah === Number(verseKey?.split(':')[1]))
+      if (verseKey && entry) clips.push({ verseKey, startMs: entry.startMs, endMs: entry.endMs })
+    }
+    return clips.length > 0 ? { t, clips } : null
   }
 
   /**
-   * Seeks the idle Thai element to the current ayah's clip while the Arabic still plays, so
-   * play() at the boundary starts at once instead of seeking first (which eats the first
-   * tens of ms on iOS).
+   * Seeks the idle Thai element to the clip that will play first after the current run,
+   * while the Arabic still plays, so play() at the boundary starts at once instead of
+   * seeking first (which eats the first tens of ms on iOS).
    */
   function primeTranslation() {
     if (phase.value !== 'arabic') return
-    const thai = thaiForVerse(verseIdx)
+    const thai = thaiForRun(runStart, runStart)
     if (!thai) return
     const el = getThaiAudio()
     if (el.src !== thai.t.audioUrl) el.src = thai.t.audioUrl
-    seekTo(el, thai.entry.startMs)
+    seekTo(el, thai.clips[0]!.startMs)
   }
 
-  function startTranslation(t: TranslationAudio, entry: { startMs: number, endMs: number }) {
+  function startTranslation(t: TranslationAudio, clips: ThaiClip[]) {
     if (!audio) return
     phase.value = 'translation'
     status.value = 'playing'
     audio.pause()
     const el = getThaiAudio()
     if (el.src !== t.audioUrl) el.src = t.audioUrl
-    thaiEndMs = entry.endMs
-    seekTo(el, entry.startMs)
-    // Fallback if the clip never starts: never stall the reading
-    clearThaiTimer()
-    thaiTimer = setTimeout(finishTranslation, (entry.endMs - entry.startMs) / el.playbackRate + TRANSLATION_STALL_MS)
-    el.play().catch((e) => {
-      console.error('Translation audio failed to play:', e)
-      finishTranslation()
-    })
+    thaiQueue = [...clips]
+    nextThaiClip()
   }
 
-  /** Stops the Thai clip without resuming Arabic. */
+  /** Plays the next queued clip (highlight follows it); resumes the Arabic when the queue is empty. */
+  function nextThaiClip() {
+    if (phase.value !== 'translation') return
+    const clip = thaiQueue.shift()
+    if (!clip) {
+      finishTranslation()
+      return
+    }
+    const el = getThaiAudio()
+    // Whole-ayah highlight while its Thai plays: no single word is being read
+    activeVerseKey.value = clip.verseKey
+    activeWordKey.value = null
+    activeIndex = -1
+    thaiEndMs = clip.endMs
+    clearThaiTimer()
+    if (el.paused) {
+      seekTo(el, clip.startMs)
+      // Fallback if the clip never starts: never stall the reading
+      thaiTimer = setTimeout(nextThaiClip, (clip.endMs - clip.startMs) / el.playbackRate + TRANSLATION_STALL_MS)
+      el.play().catch((e) => {
+        console.error('Translation audio failed to play:', e)
+        finishTranslation()
+      })
+    }
+    else {
+      // Still playing from the previous clip, which this one follows in the file: no seek, and
+      // no 'playing' event will arm the end
+      armThaiEnd()
+    }
+  }
+
+  /** Stops the Thai clips without resuming Arabic. */
   function cancelTranslation() {
     clearThaiTimer()
+    thaiQueue = []
     if (phase.value === 'translation') {
       phase.value = 'arabic'
       thaiAudio?.pause()
@@ -317,6 +370,7 @@ export const useRecitationStore = defineStore('recitation', () => {
       return
     }
     verseIdx++
+    runStart = verseIdx
     repeatsLeft = repeatCount.value - 1
     resumeArabic(verseStarts[verseIdx]!, true)
   }
@@ -356,15 +410,41 @@ export const useRecitationStore = defineStore('recitation', () => {
     segmentStarts = segments.map(seg => seg.start)
     activeIndex = -1
 
+    verseKeys = [...t.verses].sort((a, b) => a.from - b.from).map(v => v.verseKey)
+    computeBoundaries()
+    verseIdx = -1
+    runStart = -1
+  }
+
+  /**
+   * Verse stop/start points. Measured pauses (joined runs, stops inside the real pause) are
+   * used only while Thai audio is on, so Arabic-only playback behaves exactly as before.
+   */
+  function computeBoundaries() {
+    const t = currentTimings
+    if (!t) return
     const verses = [...t.verses].sort((a, b) => a.from - b.from)
-    verseKeys = verses.map(v => v.verseKey)
+    // One window per boundary plus the quiet after the last ayah
+    const pauses = translationAudio.value !== 'off' && t.pauses?.length === verses.length ? t.pauses : null
+    joined = verses.map((_, i) => {
+      const p = pauses?.[i]
+      return i < verses.length - 1 && !!p && p[1] - p[0] < MIN_PAUSE_MS
+    })
     // Word segment ends are not usable as the sound end: they run up to 400 ms early or late
     const lead = verses.some(v => v.segments.length > 0) ? BOUNDARY_LEAD_MS.word : BOUNDARY_LEAD_MS.ayah
-    verseEnds = verses.map((v, i) => Math.max(v.from, (verses[i + 1]?.from ?? v.to) - lead))
+    verseEnds = verses.map((v, i) => {
+      const next = verses[i + 1]
+      const p = pauses?.[i]
+      // mp3quran's last `to` can sit seconds before the sound stops; the measured tail is reliable
+      // (a tail at the very end of the file leaves the finish to the 'ended' event)
+      if (!next) return p ? Math.max(v.from, Math.min(p[0] + STOP_AFTER_SOUND_MS, p[1])) : v.to
+      // A joined boundary is never stopped at; its end is only where the highlight moves on
+      const stop = joined[i] ? next.from : p ? Math.min(p[0] + STOP_AFTER_SOUND_MS, p[1] - RESUME_GUARD_MS) : next.from - lead
+      return Math.max(v.from, stop)
+    })
     // The next ayah continues (and a jump or repeat lands) where the previous one stopped,
     // so the remaining silence is the lead-in and no seek is needed after the Thai clip
     verseStarts = verses.map((v, i) => i === 0 ? Math.min(v.from, v.segments[0]?.[1] ?? Infinity) : verseEnds[i - 1]!)
-    verseIdx = -1
   }
 
   function seekTo(el: HTMLAudioElement, targetMs: number) {
@@ -388,6 +468,7 @@ export const useRecitationStore = defineStore('recitation', () => {
     cancelGap()
     cancelTranslation()
     verseIdx = -1
+    runStart = -1
     const el = getAudio()
     if (el.src !== t.audioUrl) el.src = t.audioUrl
 
@@ -461,6 +542,7 @@ export const useRecitationStore = defineStore('recitation', () => {
     activeWordKey.value = null
     activeIndex = -1
     verseIdx = -1
+    runStart = -1
   }
 
   function setReciter(id: number) {
@@ -524,21 +606,24 @@ export const useRecitationStore = defineStore('recitation', () => {
     const repeating = repeatsLeft > 0
     const isLast = verseIdx >= verseStarts.length - 1
     if (!repeating) {
-      const thai = thaiForVerse(verseIdx)
+      const thai = thaiForRun(runStart, verseIdx)
       if (thai) {
-        startTranslation(thai.t, thai.entry)
+        startTranslation(thai.t, thai.clips)
         return true
       }
     }
     if (!repeating && isLast) return false
 
-    const target = repeating ? verseStarts[verseIdx]! : verseEnds[verseIdx]!
+    // A repeat replays the whole breath group, not just the ayah it ended on
+    const target = repeating ? verseStarts[Math.max(0, runStart)]! : verseEnds[verseIdx]!
     if (!repeating && pauseSeconds.value === 0) return false
     if (repeating) {
       repeatsLeft--
+      verseIdx = Math.max(0, runStart)
     }
     else {
       verseIdx++
+      runStart = verseIdx
       repeatsLeft = repeatCount.value - 1
     }
     resumeArabic(target, false)
@@ -550,11 +635,22 @@ export const useRecitationStore = defineStore('recitation', () => {
     if (!audio || audio.paused || verseStarts.length === 0) return
     const ms = audio.currentTime * 1000
 
-    if (verseIdx >= 0 && ms >= verseEnds[verseIdx]! && applyVerseEnd()) return
+    if (verseIdx >= 0 && ms >= verseEnds[verseIdx]!) {
+      if (joined[verseIdx]) {
+        // Read in one breath with the next ayah: move the highlight on, keep the run open
+        verseIdx++
+        activeVerseKey.value = verseKeys[verseIdx] ?? null
+        armBoundary()
+      }
+      else if (applyVerseEnd()) {
+        return
+      }
+    }
 
     const idx = lastIndexAtOrBefore(verseStarts, ms)
     if (idx !== verseIdx) {
       verseIdx = idx
+      runStart = idx
       repeatsLeft = repeatCount.value - 1
       activeVerseKey.value = idx >= 0 ? verseKeys[idx]! : null
       armBoundary()
@@ -564,8 +660,12 @@ export const useRecitationStore = defineStore('recitation', () => {
     if (segments.length === 0) return
     const found = lastIndexAtOrBefore(segmentStarts, ms)
     if (found === activeIndex) return
-    activeIndex = found
     const seg = segments[found]
+    // QDC first-word segments begin up to ~100 ms before the ayah's `from`, so around a stop
+    // point the lookup can land on the next ayah's first word; the highlight must stay on the
+    // ayah being read (and on the one translated while its Thai clip plays)
+    if (seg && translationAudio.value !== 'off' && verseIdx >= 0 && verseKeys.indexOf(seg.verseKey) > verseIdx) return
+    activeIndex = found
     activeWordKey.value = seg ? `${seg.verseKey}:${seg.position}` : null
   }
 
@@ -654,6 +754,12 @@ export const useRecitationStore = defineStore('recitation', () => {
     translationAudioCookie.value = next
     if (next === 'off') finishTranslation()
     else if (chapter.value !== null) loadTranslation(chapter.value)
+    // Boundaries depend on the setting; indices stay valid, only the stop points move
+    computeBoundaries()
+    if (verseIdx >= 0) {
+      runStart = verseIdx
+      armBoundary()
+    }
   }
 
   return {

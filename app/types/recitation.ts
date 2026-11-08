@@ -22,6 +22,12 @@ export interface RecitationTimings {
   audioUrl: string;
   duration: number;
   verses: RecitationVerseTiming[];
+  /**
+   * Measured quiet window [startMs, endMs] at each boundary verses[i] -> verses[i+1], plus a
+   * final entry for the quiet after the last ayah (length verses.length). A short boundary
+   * window means the ayahs are read joined. Absent until the reciter's audio has been measured.
+   */
+  pauses?: [number, number][];
 }
 
 export interface TranslationAudio {
