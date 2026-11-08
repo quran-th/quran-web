@@ -4,6 +4,9 @@
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
+    <ClientOnly>
+      <UpdateBar />
+    </ClientOnly>
   </div>
 </template>
 
