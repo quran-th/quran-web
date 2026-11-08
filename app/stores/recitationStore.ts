@@ -37,6 +37,8 @@ const LAST_AYAH_TAIL_MS = 800
 const LAST_AYAH_SHORT_QUIET_MS = 2000
 // A resume or primed Thai seek within this distance is skipped: it is already in place
 const SEEK_SLACK_MS = 40
+// An element still paused this long after play() was refused by the OS (see playElement)
+const PLAY_START_TIMEOUT_MS = 1000
 
 export type TranslationAudioSetting = 'off' | 'mukhtasar'
 export type PlaybackPhase = 'arabic' | 'translation'
@@ -150,8 +152,12 @@ export const useRecitationStore = defineStore('recitation', () => {
   // rAF is throttled when the screen locks, so the verse end is also timer-driven
   let boundaryTimer: ReturnType<typeof setTimeout> | null = null
   let thaiAudio: HTMLAudioElement | null = null
+  let thaiUnlocked = false
   let thaiEndMs = 0
   let thaiTimer: ReturnType<typeof setTimeout> | null = null
+  let startTimer: ReturnType<typeof setTimeout> | null = null
+  // Playback the OS stopped while the user meant to keep listening; picked up when the page is visible again
+  let resumeOnVisible = false
   // Clips still to play after the current one (one per ayah of the run, contiguous in the file)
   let thaiQueue: ThaiClip[] = []
   const translationCache = new Map<number, Promise<TranslationAudio | null>>()
@@ -240,7 +246,13 @@ export const useRecitationStore = defineStore('recitation', () => {
     audio.defaultPlaybackRate = playbackRate.value
     audio.playbackRate = playbackRate.value
     registerMediaSessionActions()
+    document.addEventListener('visibilitychange', onVisibilityChange)
     audio.addEventListener('playing', () => {
+      // Only the active element may play: iOS restarts whatever it interrupted (call, route change)
+      if (phase.value === 'translation') {
+        audio?.pause()
+        return
+      }
       status.value = 'playing'
       startTicking()
       armBoundary()
@@ -269,7 +281,10 @@ export const useRecitationStore = defineStore('recitation', () => {
     el.defaultPlaybackRate = playbackRate.value
     el.playbackRate = playbackRate.value
     el.addEventListener('playing', () => {
-      if (phase.value !== 'translation') return
+      if (phase.value !== 'translation') {
+        el.pause()
+        return
+      }
       status.value = 'playing'
       armThaiEnd()
     })
@@ -336,12 +351,16 @@ export const useRecitationStore = defineStore('recitation', () => {
   function startTranslation(t: TranslationAudio, clips: ThaiClip[]) {
     if (!audio) return
     phase.value = 'translation'
+    // 'ended' pauses the element before this runs; playing stays the intent
     status.value = 'playing'
-    audio.pause()
     const el = getThaiAudio()
     if (el.src !== t.audioUrl) el.src = t.audioUrl
     thaiQueue = [...clips]
+    // Thai play() before the Arabic pause(): a background page is only allowed to start an element
+    // while it is still playing one (the OS audio session stays active, see playElement); the Arabic
+    // is inside the silence between ayahs here, so the few ms of overlap are inaudible
     nextThaiClip()
+    audio.pause()
   }
 
   /** Plays the next queued clip (highlight follows it); resumes the Arabic when the queue is empty. */
@@ -361,12 +380,12 @@ export const useRecitationStore = defineStore('recitation', () => {
     clearThaiTimer()
     if (el.paused) {
       seekTo(el, clip.startMs)
-      // Fallback if the clip never starts: never stall the reading
-      thaiTimer = setTimeout(nextThaiClip, (clip.endMs - clip.startMs) / el.playbackRate + TRANSLATION_STALL_MS)
-      el.play().catch((e) => {
-        console.error('Translation audio failed to play:', e)
-        finishTranslation()
-      })
+      // A clip that started but never reaches its end must not stall the reading. A clip that never
+      // started was refused by the OS and is left to playElement, which shows it as paused.
+      thaiTimer = setTimeout(() => {
+        if (!el.paused) nextThaiClip()
+      }, (clip.endMs - clip.startMs) / el.playbackRate + TRANSLATION_STALL_MS)
+      playElement(el)
     }
     else {
       // Still playing from the previous clip, which this one follows in the file: no seek, and
@@ -379,15 +398,16 @@ export const useRecitationStore = defineStore('recitation', () => {
   function cancelTranslation() {
     clearThaiTimer()
     thaiQueue = []
-    if (phase.value === 'translation') {
-      phase.value = 'arabic'
-      thaiAudio?.pause()
-    }
+    phase.value = 'arabic'
+    // Whatever the phase: a start the OS deferred can land after the phase has moved on
+    thaiAudio?.pause()
   }
 
   function finishTranslation() {
     if (phase.value !== 'translation') return
-    cancelTranslation()
+    clearThaiTimer()
+    thaiQueue = []
+    phase.value = 'arabic'
     if (verseIdx >= verseStarts.length - 1) {
       const finished = chapter.value
       stop()
@@ -397,7 +417,9 @@ export const useRecitationStore = defineStore('recitation', () => {
     verseIdx++
     runStart = verseIdx
     repeatsLeft = repeatCount.value - 1
+    // Arabic play() before the Thai pause(), for the same reason as in startTranslation
     resumeArabic(verseStarts[verseIdx]!, true)
+    thaiAudio?.pause()
   }
 
   /** Seeks Arabic to `target`, after the pause-between-ayahs gap if one is set. */
@@ -415,13 +437,13 @@ export const useRecitationStore = defineStore('recitation', () => {
       gapTimer = setTimeout(() => {
         gapTimer = null
         enterVerse()
-        audio?.play().catch(() => { status.value = 'paused' })
+        if (audio) playElement(audio)
       }, pauseSeconds.value * 1000)
       if (!wasPaused) audio.pause()
     }
     else {
       enterVerse()
-      if (audio.paused) audio.play().catch(() => { status.value = 'paused' })
+      if (audio.paused) playElement(audio)
       armBoundary()
     }
   }
@@ -498,11 +520,13 @@ export const useRecitationStore = defineStore('recitation', () => {
     }
   }
 
+  /** Must run inside a user gesture (tap or lock-screen command): iOS only lets such an element play() later. */
   function unlockThaiAudio(t: TranslationAudio) {
     const el = getThaiAudio()
-    el.src = t.audioUrl
+    if (el.src !== t.audioUrl) el.src = t.audioUrl
     el.play().catch(() => {})
     el.pause()
+    if (navigator.userActivation?.isActive !== false) thaiUnlocked = true
   }
 
   function startFrom(t: RecitationTimings, verseNumber: number) {
@@ -523,10 +547,8 @@ export const useRecitationStore = defineStore('recitation', () => {
 
     chapter.value = t.chapter
     status.value = 'loading'
-    el.play().catch(() => {
-      // Autoplay blocked (iOS when timings weren't prefetched) — user can tap resume
-      status.value = 'paused'
-    })
+    // Autoplay blocked (iOS when timings weren't prefetched) ends up as 'paused': the user can tap resume
+    playElement(el)
   }
 
   async function playVerse(chapterId: number, verseNumber: number) {
@@ -553,31 +575,98 @@ export const useRecitationStore = defineStore('recitation', () => {
     startFrom(t, verseNumber)
   }
 
+  /** The element that is meant to be sounding now. */
+  function activeElement() {
+    return phase.value === 'translation' ? thaiAudio : audio
+  }
+
+  function clearStartTimer() {
+    if (startTimer) clearTimeout(startTimer)
+    startTimer = null
+  }
+
+  /**
+   * play() that keeps `status` truthful. A background page may not start an element unless it is
+   * still playing another one: newer WebKit then rejects the promise and reverts the element to
+   * paused, older WebKit leaves the promise pending and the element paused with no event at all.
+   * Either way the element is still paused a moment later, which is what the timer checks.
+   */
+  function playElement(el: HTMLAudioElement) {
+    clearStartTimer()
+    el.play().catch(onPlayRejected)
+    startTimer = setTimeout(() => {
+      startTimer = null
+      if (el.paused && el === activeElement() && status.value === 'playing' && !gapTimer) markSuspended()
+    }, PLAY_START_TIMEOUT_MS)
+  }
+
+  function onPlayRejected(e: unknown) {
+    // AbortError: our own pause(), src change or stop() cut the start short and already set the state
+    if ((e as { name?: string } | null)?.name === 'AbortError' || status.value === 'idle') return
+    markSuspended()
+  }
+
+  /** The OS refused to play while the intent was to play: shown as paused, resumed on return if the page was hidden. */
+  function markSuspended() {
+    resumeOnVisible = document.hidden
+    status.value = 'paused'
+  }
+
+  function pause() {
+    if (status.value === 'idle') return
+    resumeOnVisible = false
+    cancelGap()
+    clearStartTimer()
+    // Both, not just the active one: iOS can leave the other running after an interruption
+    audio?.pause()
+    thaiAudio?.pause()
+    status.value = 'paused'
+  }
+
+  function resume() {
+    const el = activeElement()
+    if (!el || status.value === 'idle') return
+    resumeOnVisible = false
+    if (phase.value === 'arabic') {
+      // First gesture since a surah started after an awaited fetch: unlock the Thai element now
+      const thai = translationAudio.value === 'mukhtasar' && chapter.value !== null ? resolvedTranslations.get(chapter.value) : null
+      if (thai && !thaiUnlocked) unlockThaiAudio(thai)
+      // Paused inside the gap between ayahs: the next ayah was never entered
+      if (verseIdx >= 0) {
+        activeVerseKey.value = verseKeys[verseIdx] ?? null
+        primeTranslation()
+      }
+    }
+    if (el.paused) playElement(el)
+    else if (status.value !== 'loading') status.value = 'playing'
+  }
+
   function togglePause() {
     if (!audio) return
-    if (phase.value === 'translation' && thaiAudio) {
-      if (thaiAudio.paused) thaiAudio.play().catch(() => { status.value = 'paused' })
-      else thaiAudio.pause()
-      return
+    if (status.value === 'paused') resume()
+    else pause()
+  }
+
+  /** Back in view: exactly one element may play, and what the OS stopped behind our back is restarted. */
+  function onVisibilityChange() {
+    if (document.hidden || status.value === 'idle') return
+    const active = activeElement()
+    for (const el of [audio, thaiAudio]) {
+      if (el && el !== active && !el.paused) el.pause()
     }
-    if (gapTimer) {
-      cancelGap()
-      status.value = 'paused'
-    }
-    else if (audio.paused) {
-      audio.play().catch(() => { status.value = 'paused' })
-    }
-    else {
-      audio.pause()
-    }
+    if (!active) return
+    if (status.value === 'playing' && !gapTimer && active.paused) playElement(active)
+    else if (resumeOnVisible && status.value === 'paused') resume()
   }
 
   function stop() {
     stopTicking()
     cancelGap()
     clearBoundary()
+    clearStartTimer()
     cancelTranslation()
     audio?.pause()
+    resumeOnVisible = false
     status.value = 'idle'
     chapter.value = null
     reportHint.value = false
@@ -726,18 +815,16 @@ export const useRecitationStore = defineStore('recitation', () => {
     audio.currentTime = verseStarts[target]! / 1000
     verseIdx = -1
     activeVerseKey.value = verseKeys[target] ?? null
-    if (audio.paused) audio.play().catch(() => { status.value = 'paused' })
+    if (audio.paused) playElement(audio)
   }
 
   function registerMediaSessionActions() {
     if (!('mediaSession' in navigator)) return
     const session = navigator.mediaSession
-    session.setActionHandler('play', () => {
-      if (phase.value === 'translation' ? thaiAudio?.paused : (audio?.paused || gapTimer)) togglePause()
-    })
-    session.setActionHandler('pause', () => {
-      if (phase.value === 'translation' ? !thaiAudio?.paused : (!audio?.paused || gapTimer)) togglePause()
-    })
+    // Explicit, not toggles: iOS also fires these itself around interruptions, and the element's
+    // own paused flag can disagree with the intent while a start is pending or was refused
+    session.setActionHandler('play', () => resume())
+    session.setActionHandler('pause', () => pause())
     session.setActionHandler('stop', () => stop())
     session.setActionHandler('previoustrack', () => jumpVerse(-1))
     session.setActionHandler('nexttrack', () => jumpVerse(1))
