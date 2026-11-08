@@ -210,6 +210,50 @@ watch(
   }
 }
 
+/* Mobile: show at most 4 rows (fixed row height + 3 grid gaps + list padding) */
+@media (max-width: 639px) {
+  .surah-list {
+    --surah-row-h: 3.875rem;
+    flex: none;
+    max-height: calc(4 * var(--surah-row-h) + 3 * 6px + 1.5rem);
+  }
+
+  .surah-card {
+    height: var(--surah-row-h);
+    gap: 0.5rem;
+  }
+
+  /* Rows have a fixed height, so long names must truncate instead of wrapping */
+  .surah-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .surah-card-left,
+  .surah-info,
+  .surah-card-right {
+    min-width: 0;
+  }
+
+  .surah-card-left {
+    flex: 1 1 auto;
+  }
+
+  .surah-card-right {
+    flex: 0 1 auto;
+    max-width: 55%;
+  }
+
+  .surah-name-thai,
+  .surah-name-meaning,
+  .surah-name-arabic,
+  .surah-meta {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 .surah-card {
   display: flex;
   align-items: center;
