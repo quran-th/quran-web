@@ -1,3 +1,11 @@
+# [1.23.0](https://github.com/quran-th/quran-web/compare/v1.22.0...v1.23.0) (2026-11-08)
+
+
+### Features
+
+* pick the translation in the player settings; default to Mukhtasar ([0d5d9de](https://github.com/quran-th/quran-web/commit/0d5d9de44a6f99c9d172069e4a1eb68a2533f60e))
+* pick the translation in the player settings; default to Mukhtasar; whole audio-toggle row is tappable ([a4112cc](https://github.com/quran-th/quran-web/commit/a4112cc75f36139d5c658675c15a54fe2539102c))
+
 # [1.22.0](https://github.com/quran-th/quran-web/compare/v1.21.0...v1.22.0) (2026-11-08)
 
 
