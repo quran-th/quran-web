@@ -1,3 +1,11 @@
+# [1.19.0](https://github.com/quran-th/quran-web/compare/v1.18.0...v1.19.0) (2026-11-08)
+
+
+### Features
+
+* beta badge on Thai translation audio setting ([4ed4d3d](https://github.com/quran-th/quran-web/commit/4ed4d3d7a36d52b4b80f3282afc07ca1a4b2fba2))
+* Thai Mukhtasar translation audio between ayahs (flagged off) ([4d77393](https://github.com/quran-th/quran-web/commit/4d77393d485c95d9a75555b7ea7e201d2247cdef))
+
 # [1.18.0](https://github.com/quran-th/quran-web/compare/v1.17.0...v1.18.0) (2026-11-01)
 
 
