@@ -1,3 +1,10 @@
+## [1.25.4](https://github.com/quran-th/quran-web/compare/v1.25.3...v1.25.4) (2026-11-08)
+
+
+### Bug Fixes
+
+* avoid outlined action buttons and blank Arabic text while the page loads ([22e9f6b](https://github.com/quran-th/quran-web/commit/22e9f6b60d2e7238617d7adce0b882533e1b26fb))
+
 ## [1.25.3](https://github.com/quran-th/quran-web/compare/v1.25.2...v1.25.3) (2026-11-08)
 
 
