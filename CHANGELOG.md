@@ -1,3 +1,10 @@
+## [1.20.1](https://github.com/quran-th/quran-web/compare/v1.20.0...v1.20.1) (2026-11-08)
+
+
+### Bug Fixes
+
+* refetch recitation timings so new pause measurements apply ([c141728](https://github.com/quran-th/quran-web/commit/c1417285d5f9fb47a0573a2ac6327e9137ff5506))
+
 # [1.20.0](https://github.com/quran-th/quran-web/compare/v1.19.1...v1.20.0) (2026-11-08)
 
 
