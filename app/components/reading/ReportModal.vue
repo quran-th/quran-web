@@ -229,6 +229,7 @@ function loadTurnstileScript(): Promise<void> {
       "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
     script.async = true;
     script.onload = () => resolve();
+    script.onerror = () => resolve();
     document.head.appendChild(script);
   });
 }
@@ -249,6 +250,7 @@ watch(
       }
     }
   },
+  { immediate: true },
 );
 
 async function handleSubmit() {
