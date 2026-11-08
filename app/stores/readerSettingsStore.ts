@@ -23,6 +23,11 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
       const result = await $fetch<{ success: boolean; data: TranslationSource[] }>('/api/translation-sources')
       if (result.success) {
         translationSources.value = result.data
+        // Not persisted to the cookie: only an explicit user choice should stick
+        if (selectedSourceId.value === undefined) {
+          const mukhtasar = result.data.find((s) => s.name.includes('มุคตะศ็อร'))
+          if (mukhtasar) selectedSourceId.value = mukhtasar.id
+        }
       }
     }
     catch (e) {
