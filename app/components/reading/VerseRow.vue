@@ -8,7 +8,7 @@ import { useRecitationStore, DEFAULT_RECITER_ID } from "~/stores/recitationStore
 import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
 
 const fontSettings = useFontSettingsStore();
-const { fontScale } = storeToRefs(fontSettings);
+const { fontScale, isQcf } = storeToRefs(fontSettings);
 
 // Reader-mode scale: fontScale=3 is baseline (1.0), ±12% per step.
 const readerScale = computed(() => 1 + (fontScale.value - 3) * 0.12);
@@ -50,6 +50,14 @@ const emit = defineEmits<{
   copy: [verse: Verse];
   share: [verse: Verse];
 }>();
+
+// Glyph spans are invisible until their page font loads: keep the plain text up until then
+const glyphsReady = computed(() => {
+  if (!props.words?.length) return false;
+  if (!isQcf.value) return true;
+  const isLoaded = props.isFontLoaded;
+  return !!isLoaded && props.words.every((w) => isLoaded(w.page_number));
+});
 
 const isCopied = ref(false);
 const isBookmarked = ref(false);
@@ -194,7 +202,7 @@ function openReport() {
       <!-- Left: Action icons -->
       <div class="flex items-center gap-2">
         <button
-          class="flex h-10 w-10 items-center justify-center rounded-lg transition-all duration-200"
+          class="flex h-10 w-10 items-center justify-center rounded-lg appearance-none border-0 transition-colors duration-200"
           :class="[
             isRecitingThisVerse ? 'bg-amber-50 text-amber-600' : 'bg-transparent text-slate-400',
             isPlayDisabled ? 'cursor-not-allowed opacity-30' : !isRecitingThisVerse && 'hover:bg-slate-100 hover:text-slate-500',
@@ -231,7 +239,7 @@ function openReport() {
           </svg>
         </button>
         <button
-          class="flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-slate-400 transition-all duration-200"
+          class="flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-slate-400 appearance-none border-0 transition-colors duration-200"
           :class="[
             disableActions ? 'cursor-not-allowed opacity-30' : 'hover:bg-slate-100 hover:text-slate-500',
             isBookmarked && !disableActions ? 'bg-[#fbf8f3] text-[#cbbd93]' : '',
@@ -270,7 +278,7 @@ function openReport() {
           </svg>
         </button>
         <button
-          class="flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-500"
+          class="flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-slate-400 appearance-none border-0 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-500"
           :class="isCopied ? 'bg-green-100 text-green-500' : ''"
           :title="isCopied ? 'คัดลอกแล้ว' : 'คัดลอก'"
           @click="handleCopy"
@@ -310,7 +318,7 @@ function openReport() {
       <!-- Right: Share and report -->
       <div class="flex items-center gap-2">
         <button
-          class="flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-500"
+          class="flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-slate-400 appearance-none border-0 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-500"
           title="แชร์"
           @click="handleShare"
         >
@@ -333,7 +341,7 @@ function openReport() {
           </svg>
         </button>
         <button
-          class="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition-all duration-200 hover:bg-amber-50 hover:text-amber-600"
+          class="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm appearance-none border-0 transition-colors duration-200 hover:bg-amber-50 hover:text-amber-600"
           :class="showReportHint ? 'bg-amber-50 text-amber-700 ring-2 ring-amber-400' : 'bg-transparent text-slate-400'"
           :title="$t('report.button_tooltip')"
           @click="openReport"
@@ -385,7 +393,7 @@ function openReport() {
     <div class="px-4 py-2">
       <!-- QCF V2 glyph rendering (includes verse end marker) -->
       <QuranVerseText
-        v-if="words && words.length > 0"
+        v-if="glyphsReady"
         :words="words"
         :is-font-loaded="isFontLoaded ?? (() => false)"
       />
