@@ -1,6 +1,10 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import tailwindcss from "@tailwindcss/vite"
 
+// This build's id: an open page compares it with /api/version and offers the newer deploy
+// (components/UpdateBar.vue). Installed apps resume from memory and never reload on their own.
+const buildId = Date.now().toString(36)
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
@@ -112,6 +116,7 @@ export default defineNuxtConfig({
       turnstileSiteKey: '1x00000000000000000000AA',
       // Thai translation audio in the player (beta); turn off with NUXT_PUBLIC_TRANSLATION_AUDIO=false
       translationAudio: true,
+      buildId,
     },
   },
 

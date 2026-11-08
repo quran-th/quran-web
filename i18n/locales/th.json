@@ -238,5 +238,9 @@
     "makkiyah": "มักกียะฮ์",
     "madaniyah": "มะดะนียะฮ์",
     "ayah_count": "{count} อายะห์"
+  },
+  "app_update": {
+    "ready": "มีเวอร์ชันใหม่ของแอป",
+    "update": "อัปเดต"
   }
 }
