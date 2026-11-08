@@ -1,3 +1,10 @@
+## [1.19.1](https://github.com/quran-th/quran-web/compare/v1.19.0...v1.19.1) (2026-11-08)
+
+
+### Bug Fixes
+
+* Thai audio waits for the reciter's real stop on joined ayahs ([0e7131f](https://github.com/quran-th/quran-web/commit/0e7131f42d0d206cbe6928366d1093f8a3d84723))
+
 # [1.19.0](https://github.com/quran-th/quran-web/compare/v1.18.0...v1.19.0) (2026-11-08)
 
 
