@@ -4,12 +4,22 @@ import { storeToRefs } from "pinia";
 import { useRecitationStore, PLAYBACK_SPEEDS, MAX_REPEAT, MAX_PAUSE_SECONDS } from "~/stores/recitationStore";
 import { getReciterLabelTh } from "~/data/reciter-names-th";
 import WheelPicker from "~/components/reading/WheelPicker.vue";
+import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
 
 const recitation = useRecitationStore();
 const { status, activeVerseKey, reciterId, reciters, playbackRate, repeatCount, pauseSeconds, translationAudio, phase } =
   storeToRefs(recitation);
 
-type SettingsView = "root" | "qari" | "play";
+const readerSettings = useReaderSettingsStore();
+const { selectedSourceId, translationSources } = storeToRefs(readerSettings);
+const selectedSource = computed(() => translationSources.value.find((s) => s.id === selectedSourceId.value));
+
+function selectSource(id: number) {
+  readerSettings.setTranslationSource(id);
+  settingsView.value = "root";
+}
+
+type SettingsView = "root" | "qari" | "play" | "source";
 const settingsView = ref<SettingsView | null>(null);
 const speedOptions = PLAYBACK_SPEEDS.map((v) => ({ value: v as number, label: `${v}x` }));
 const repeatOptions = Array.from({ length: MAX_REPEAT }, (_, i) => ({ value: i + 1, label: `${i + 1}x` }));
@@ -92,6 +102,7 @@ watch(status, (s) => {
 
 onMounted(() => {
   recitation.fetchReciters();
+  readerSettings.fetchTranslationSources();
   document.addEventListener("pointerdown", onDocumentPointerDown);
   document.addEventListener("keydown", onDocumentKeydown);
 });
@@ -154,23 +165,36 @@ onBeforeUnmount(() => {
                 </span>
                 <svg class="shrink-0 text-slate-300" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
               </button>
-              <div v-if="recitation.translationAudioEnabled" class="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
+              <button
+                v-if="translationSources.length > 0"
+                class="flex w-full items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50"
+                @click="settingsView = 'source'"
+              >
+                <span class="min-w-0">
+                  <span class="block text-sm font-medium text-slate-700">คำแปล</span>
+                  <span class="block truncate text-xs text-slate-400">{{ selectedSource?.name || "ค่าเริ่มต้นของระบบ" }}</span>
+                </span>
+                <svg class="shrink-0 text-slate-300" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+              </button>
+              <button
+                v-if="recitation.translationAudioEnabled"
+                role="switch"
+                :aria-checked="translationAudio === 'mukhtasar'"
+                class="flex w-full items-center justify-between gap-3 border-t border-slate-100 px-4 py-1.5 text-left outline-none transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400"
+                @click="recitation.setTranslationAudio(translationAudio === 'mukhtasar' ? 'off' : 'mukhtasar')"
+              >
                 <span class="flex items-center gap-2">
-                  <span id="translation-audio-label" class="text-sm font-medium text-slate-700">เสียงคำแปลภาษาไทย</span>
+                  <span class="text-sm font-medium text-slate-700">เสียงคำแปลภาษาไทย</span>
                   <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-amber-700">Beta</span>
                 </span>
-                <button
-                  role="switch"
-                  aria-labelledby="translation-audio-label"
-                  :aria-checked="translationAudio === 'mukhtasar'"
-                  class="flex size-11 shrink-0 items-center justify-center rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-amber-400"
-                  :class="translationAudio === 'mukhtasar' ? 'bg-amber-50 text-amber-700' : 'text-slate-400 hover:bg-slate-50'"
-                  @click="recitation.setTranslationAudio(translationAudio === 'mukhtasar' ? 'off' : 'mukhtasar')"
+                <span
+                  class="flex size-11 shrink-0 items-center justify-center rounded-full transition-colors"
+                  :class="translationAudio === 'mukhtasar' ? 'bg-amber-50 text-amber-700' : 'text-slate-400'"
                 >
                   <svg v-if="translationAudio === 'mukhtasar'" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" /></svg>
                   <svg v-else xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" /><line x1="22" y1="9" x2="16" y2="15" /><line x1="16" y1="9" x2="22" y2="15" /></svg>
-                </button>
-              </div>
+                </span>
+              </button>
               <button
                 class="flex w-full items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50"
                 @click="settingsView = 'play'"
@@ -189,7 +213,7 @@ onBeforeUnmount(() => {
                 @click="settingsView = 'root'"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-                {{ settingsView === "qari" ? "เลือกผู้อ่าน" : "ตัวเลือกการเล่น" }}
+                {{ settingsView === "qari" ? "เลือกผู้อ่าน" : settingsView === "source" ? "เลือกคำแปล" : "ตัวเลือกการเล่น" }}
               </button>
 
               <ul v-if="settingsView === 'qari'" role="listbox" aria-label="เลือกผู้อ่าน" class="max-h-72 overflow-y-auto py-1">
@@ -207,6 +231,19 @@ onBeforeUnmount(() => {
                       >ไฮไลต์ทีละคำ</span>
                       <svg v-if="r.id === reciterId" class="shrink-0" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
+                  </button>
+                </li>
+              </ul>
+
+              <ul v-else-if="settingsView === 'source'" role="listbox" aria-label="เลือกคำแปล" class="max-h-72 overflow-y-auto py-1">
+                <li v-for="src in translationSources" :key="src.id" role="option" :aria-selected="src.id === selectedSourceId">
+                  <button
+                    class="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm transition-colors"
+                    :class="src.id === selectedSourceId ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50'"
+                    @click="selectSource(src.id)"
+                  >
+                    <span class="min-w-0 truncate">{{ src.name }}</span>
+                    <svg v-if="src.id === selectedSourceId" class="shrink-0" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                   </button>
                 </li>
               </ul>
