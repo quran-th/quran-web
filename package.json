@@ -1,6 +1,6 @@
 {
 	"name": "quran-web",
-	"version": "1.20.2",
+	"version": "1.20.3",
 	"type": "module",
 	"private": true,
 	"scripts": {

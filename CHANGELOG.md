@@ -1,3 +1,11 @@
+## [1.20.3](https://github.com/quran-th/quran-web/compare/v1.20.2...v1.20.3) (2026-11-08)
+
+
+### Bug Fixes
+
+* keep the first and last letters of a surah's recitation ([7a0d4bb](https://github.com/quran-th/quran-web/commit/7a0d4bb4e54dfaf79a876285211b5039d18318de))
+* keep the first and last letters of a surah's recitation ([ace0dd0](https://github.com/quran-th/quran-web/commit/ace0dd067dc2c2c2024e7978c8e878de22bb83f3))
+
 ## [1.20.2](https://github.com/quran-th/quran-web/compare/v1.20.1...v1.20.2) (2026-11-08)
 
 
