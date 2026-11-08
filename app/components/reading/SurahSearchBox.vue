@@ -28,7 +28,7 @@ defineExpose({ inputRef, focus })
 </script>
 
 <template>
-  <div ref="boxRef" class="flex items-center gap-2.5 px-4 py-3 rounded-full border-[2.5px] border-slate-200 bg-white transition-all focus-within:border-sky-500 focus-within:shadow-[0_0_0_3px_rgba(14,165,233,0.12)]">
+  <div ref="boxRef" class="flex items-center gap-2.5 px-4 py-3 rounded-full border-[2.5px] border-slate-200 bg-white transition-all focus-within:border-brand-500 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand-500)_12%,transparent)]">
     <svg
       class="text-slate-400 shrink-0"
       xmlns="http://www.w3.org/2000/svg"

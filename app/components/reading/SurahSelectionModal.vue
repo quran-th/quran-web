@@ -231,13 +231,13 @@ watch(
 }
 
 .surah-card--active {
-  background: #eff6ff;
-  border-color: #93c5fd;
+  background: var(--color-brand-50);
+  border-color: var(--color-brand-300);
 }
 
 .surah-card--active:hover {
-  background: #dbeafe;
-  border-color: #60a5fa;
+  background: var(--color-brand-100);
+  border-color: var(--color-brand-400);
 }
 
 .surah-card-left {
@@ -266,8 +266,8 @@ watch(
 }
 
 .surah-card--active .surah-number {
-  background: #bfdbfe;
-  color: #1d4ed8;
+  background: var(--color-brand-200);
+  color: var(--color-brand-700);
 }
 
 .surah-info {
