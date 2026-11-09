@@ -1,3 +1,16 @@
+# [1.26.0](https://github.com/quran-th/quran-web/compare/v1.25.4...v1.26.0) (2026-11-09)
+
+
+### Bug Fixes
+
+* label the ayah pause setting หยุดพักระหว่างอายะห์ ([d7f8620](https://github.com/quran-th/quran-web/commit/d7f862022e20e642bcb9464a81bff1dab9dfea18))
+* show at most 4 rows in the surah picker on mobile ([731c74c](https://github.com/quran-th/quran-web/commit/731c74c916211eaaa0eef0bdff6632a2f4ad1a8f))
+
+
+### Features
+
+* preview reciters with Al-Fatihah and sort them by Thai name ([b7d49c4](https://github.com/quran-th/quran-web/commit/b7d49c459c3b08e5e444c0b6660ca39d99459d21))
+
 ## [1.25.4](https://github.com/quran-th/quran-web/compare/v1.25.3...v1.25.4) (2026-11-08)
 
 
