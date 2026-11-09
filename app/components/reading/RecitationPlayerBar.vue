@@ -5,6 +5,7 @@ import { useRecitationStore, PLAYBACK_SPEEDS, MAX_REPEAT, MAX_PAUSE_SECONDS } fr
 import { getReciterLabelTh, reciterMatchesQuery } from "~/data/reciter-names-th";
 import WheelPicker from "~/components/reading/WheelPicker.vue";
 import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
+import { useReciterPreview } from "~/composables/useReciterPreview";
 
 const recitation = useRecitationStore();
 const {
@@ -122,9 +123,21 @@ const currentReciterLabel = computed(() => {
 
 const reciterQuery = ref("");
 const reciterSearchRef = ref<HTMLInputElement | null>(null);
-const filteredReciters = computed(() => reciters.value.filter((r) => reciterMatchesQuery(r, reciterQuery.value)));
+const filteredReciters = computed(() =>
+  reciters.value
+    .filter((r) => reciterMatchesQuery(r, reciterQuery.value))
+    .sort((a, b) => getReciterLabelTh(a).localeCompare(getReciterLabelTh(b), "th") || a.style.localeCompare(b.style, "en")),
+);
+
+const { previewId, previewLoading, togglePreview, stopPreview } = useReciterPreview(recitation.loadTimings);
+
+function onPreviewClick(id: number) {
+  if (status.value === "playing") recitation.togglePause();
+  togglePreview(id);
+}
 
 function selectReciter(id: number) {
+  stopPreview();
   recitation.setReciter(id);
   settingsView.value = null;
 }
@@ -140,6 +153,7 @@ function onDocumentKeydown(e: KeyboardEvent) {
 }
 
 watch(settingsView, async (view) => {
+  if (view !== "qari") stopPreview();
   openField.value = null;
   reciterQuery.value = "";
   // Touch devices would pop the keyboard over the list, so only focus with a mouse
@@ -151,6 +165,7 @@ watch(settingsView, async (view) => {
 
 watch(status, (s) => {
   if (s === "idle") settingsView.value = null;
+  if (s === "playing") stopPreview();
 });
 
 onMounted(() => {
@@ -237,7 +252,7 @@ onBeforeUnmount(() => {
                 @click="toggleTranslationAudio"
               >
                 <span class="flex items-center gap-2">
-                  <span class="text-sm font-medium text-slate-700">เสียงคำแปลภาษาไทย</span>
+                  <span class="text-sm font-medium text-slate-700">ฟังอรรถาธิบายฉบับย่อ</span>
                   <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-amber-700">Beta</span>
                 </span>
                 <span
@@ -296,10 +311,27 @@ onBeforeUnmount(() => {
                 ไม่พบผู้อ่านชื่อนี้
               </p>
               <ul v-if="settingsView === 'qari' && filteredReciters.length > 0" role="listbox" aria-label="เลือกผู้อ่าน" class="max-h-72 overflow-y-auto py-1">
-                <li v-for="r in filteredReciters" :key="r.id" role="option" :aria-selected="r.id === reciterId">
+                <li
+                  v-for="r in filteredReciters"
+                  :key="r.id"
+                  role="option"
+                  :aria-selected="r.id === reciterId"
+                  class="flex items-center transition-colors"
+                  :class="r.id === reciterId ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50'"
+                >
                   <button
-                    class="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm transition-colors"
-                    :class="r.id === reciterId ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50'"
+                    class="ml-2 flex size-9 shrink-0 items-center justify-center rounded-full transition-colors"
+                    :class="previewId === r.id ? 'bg-amber-100 text-amber-700' : 'text-slate-400 hover:bg-slate-200/70 hover:text-slate-700'"
+                    :aria-label="previewId === r.id ? 'หยุดตัวอย่าง' : `ฟังตัวอย่างเสียง ${getReciterLabelTh(r)}`"
+                    :title="previewId === r.id ? 'หยุดตัวอย่าง' : 'ฟังตัวอย่าง (อัล-ฟาติหะฮ์)'"
+                    @click="onPreviewClick(r.id)"
+                  >
+                    <svg v-if="previewId === r.id && previewLoading" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="opacity-25" /><path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
+                    <svg v-else-if="previewId === r.id" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" /></svg>
+                    <svg v-else xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="7 4 20 12 7 20 7 4" /></svg>
+                  </button>
+                  <button
+                    class="flex min-w-0 flex-1 items-center justify-between gap-3 py-2.5 pl-2 pr-4 text-left text-sm"
                     @click="selectReciter(r.id)"
                   >
                     <span class="min-w-0">
@@ -402,10 +434,10 @@ onBeforeUnmount(() => {
         </Transition>
 
         <div
-          class="flex items-center gap-3 rounded-full border border-slate-200 bg-white/95 py-2.5 pl-2.5 pr-2.5 shadow-lg backdrop-blur-xs"
+          class="flex items-center gap-3 rounded-full border border-slate-700 bg-slate-800/95 p-2.5 shadow-lg backdrop-blur-xs"
         >
           <button
-            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 text-white transition-colors hover:bg-slate-900"
+            class="flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-slate-900 transition-colors hover:bg-slate-200"
             :title="status === 'playing' ? 'หยุดชั่วคราว' : 'เล่นต่อ'"
             @click="recitation.togglePause()"
           >
@@ -420,22 +452,22 @@ onBeforeUnmount(() => {
             :aria-expanded="settingsView === 'qari'"
             @click="toggleSettings('qari')"
           >
-            <span class="text-sm font-medium text-slate-700">{{ verseLabel }}</span>
-            <span class="flex w-full items-center gap-1 text-xs text-slate-400 transition-colors group-hover:text-slate-600">
+            <span class="text-sm font-medium text-slate-100">{{ verseLabel }}</span>
+            <span class="flex w-full items-center gap-1 text-xs text-slate-400 transition-colors group-hover:text-slate-200">
               <span class="truncate">{{ currentReciterLabel }}</span>
               <svg class="shrink-0 transition-transform" :class="settingsView === 'qari' && 'rotate-180'" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6" /></svg>
             </span>
           </button>
 
           <button
-            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
-            :class="settingsView && 'bg-slate-100 text-slate-700'"
+            class="flex size-11 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-700 hover:text-white"
+            :class="settingsView && 'bg-slate-700 text-white'"
             title="ตั้งค่า"
             aria-label="ตั้งค่า"
             :aria-expanded="!!settingsView"
             @click="toggleSettings('root')"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="7" y2="7" /><line x1="4" x2="20" y1="17" y2="17" /><circle cx="9" cy="7" r="2.5" fill="white" /><circle cx="15" cy="17" r="2.5" fill="white" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="7" y2="7" /><line x1="4" x2="20" y1="17" y2="17" /><circle cx="9" cy="7" r="2.5" fill="currentColor" /><circle cx="15" cy="17" r="2.5" fill="currentColor" /></svg>
           </button>
         </div>
       </div>

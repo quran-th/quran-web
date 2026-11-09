@@ -804,7 +804,7 @@ useSchemaOrg([
       @page-change="handlePageChange"
     /> -->
 
-    <main class="container mx-auto max-w-6xl px-4 py-8 pb-20">
+    <main class="container mx-auto max-w-6xl px-4 py-8 pb-24">
       <!-- Error State -->
       <div
         v-if="fetchStatus === 'error'"
