@@ -87,7 +87,7 @@ const playFields = computed(() => {
   const fields: PlayField[] = [
     { key: "speed", title: "ความเร็ว", value: playbackRate.value, options: speedOptions, set: recitation.setPlaybackRate },
     { key: "repeat", title: "อ่านซ้ำแต่ละอายะห์", value: repeatCount.value, options: repeatOptions, set: recitation.setRepeatCount },
-    { key: "pause", title: "หยุดพักหลังแต่ละอายะห์", value: pauseSeconds.value, options: pauseOptions, set: recitation.setPauseSeconds },
+    { key: "pause", title: "หยุดพักระหว่างอายะห์", value: pauseSeconds.value, options: pauseOptions, set: recitation.setPauseSeconds },
   ];
   return fields.map((f) => ({
     ...f,
