@@ -120,10 +120,8 @@ const { data: mushafPagesData } = await useAsyncData(
 );
 
 // Fetch global surah page mapping for seamless cross-surah navigation
-const { data: globalPageMapping } = await useAsyncData<
-  Record<string, MushafPage[]>
->(`global-surah-page-mapping`, () =>
-  $fetch(
+const { data: globalPageMapping } = await useAsyncData(`global-surah-page-mapping`, () =>
+  $fetch<Record<string, MushafPage[]>>(
     `${useRuntimeConfig().public.assetsBaseUrl}/quran-pages/surah-page-mapping.json`,
   ),
 );

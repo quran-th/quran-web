@@ -393,7 +393,7 @@ function openReport() {
     <div class="px-4 py-2">
       <!-- QCF V2 glyph rendering (includes verse end marker) -->
       <QuranVerseText
-        v-if="glyphsReady"
+        v-if="glyphsReady && words"
         :words="words"
         :is-font-loaded="isFontLoaded ?? (() => false)"
       />
