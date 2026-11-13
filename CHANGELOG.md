@@ -1,3 +1,10 @@
+# [1.28.0](https://github.com/quran-th/quran-web/compare/v1.27.0...v1.28.0) (2026-11-13)
+
+
+### Features
+
+* show app version, commit and build time in the reading settings ([#17](https://github.com/quran-th/quran-web/issues/17)) ([6c6850a](https://github.com/quran-th/quran-web/commit/6c6850ae39b396d39b332c2cc9c9104d94e52760))
+
 # [1.27.0](https://github.com/quran-th/quran-web/compare/v1.26.0...v1.27.0) (2026-11-13)
 
 
