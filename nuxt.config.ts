@@ -1,5 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import tailwindcss from "@tailwindcss/vite"
+import { addVitePlugin } from "@nuxt/kit"
 
 // This build's id: an open page compares it with /api/version and offers the newer deploy
 // (components/UpdateBar.vue). Installed apps resume from memory and never reload on their own.
@@ -28,6 +29,9 @@ export default defineNuxtConfig({
   ),
 
   modules: [
+    // Not `vite.plugins`: Nuxt's schema bundles its own copy of Vite's types, which the installed
+    // Vite's plugin type does not match; @nuxt/kit takes the installed Vite's type
+    () => addVitePlugin(tailwindcss()),
     "nitro-cloudflare-dev",
     "@nuxt/eslint",
     "@pinia/nuxt",
@@ -155,8 +159,4 @@ export default defineNuxtConfig({
   },
 
   css: ['~/assets/css/main.css', '~/assets/css/fonts.css', '~/assets/css/mushaf-scales.css', '~/assets/css/surah-name-font.css'],
-
-  vite: {
-    plugins: [tailwindcss()],
-  },
 })

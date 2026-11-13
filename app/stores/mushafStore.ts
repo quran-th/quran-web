@@ -125,7 +125,7 @@ export const useMushafStore = defineStore('mushaf', () => {
     const seen = new Set<number>()
     for (const word of words) {
       if (word.verse_number === 1 && word.char_type_name === 'word' && word.verse_key) {
-        const surahId = parseInt(word.verse_key!.split(':')[0])
+        const surahId = parseInt(word.verse_key.split(':')[0] ?? '')
         if (!seen.has(surahId)) {
           seen.add(surahId)
           results.push({

@@ -6,6 +6,12 @@
  *
  * Dev: Falls back to HTTP proxy via NUXT_QURAN_API_URL (default: http://localhost:8787)
  */
+
+// nitro-cloudflare-dev types every env binding as `unknown`
+function isServiceBinding(value: unknown): value is { fetch: (request: Request) => Promise<Response> } {
+  return typeof value === 'object' && value !== null && 'fetch' in value && typeof value.fetch === 'function'
+}
+
 export default defineEventHandler(async (event) => {
   const path = event.path.replace(/^\/api/, '')
 
@@ -13,15 +19,15 @@ export default defineEventHandler(async (event) => {
   // Guarded by import.meta.dev because nitro-cloudflare-dev exposes a stub
   // QURAN_API Fetcher in dev that can't actually route to the local worker.
   if (!import.meta.dev) {
-    const env = event.context.cloudflare?.env
+    const binding = event.context.cloudflare?.env?.QURAN_API
 
-    if (env?.QURAN_API) {
+    if (isServiceBinding(binding)) {
       const hasBody = !['GET', 'HEAD'].includes(event.method)
       const headers = getRequestHeaders(event)
       const filteredHeaders: Record<string, string> = Object.fromEntries(
         Object.entries(headers).filter(([, v]) => v !== undefined)
       ) as Record<string, string>
-      return env.QURAN_API.fetch(
+      return binding.fetch(
         new Request(new URL(path, 'https://quran-api.internal'), {
           method: event.method,
           headers: filteredHeaders,

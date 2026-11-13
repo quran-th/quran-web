@@ -12,6 +12,11 @@
  *
  * On the client, falls back to the standard $fetch proxy.
  */
+// nitro-cloudflare-dev types every env binding as `unknown`
+function isServiceBinding(value: unknown): value is { fetch: (request: Request) => Promise<Response> } {
+  return typeof value === 'object' && value !== null && 'fetch' in value && typeof value.fetch === 'function'
+}
+
 export function useQuranApiFetch() {
   // Captured synchronously at setup time — gives us the original request event
   // with cloudflare.env. Must be called at the top level of setup, not inside
@@ -21,7 +26,7 @@ export function useQuranApiFetch() {
   return async <T>(path: string): Promise<T> => {
     if (import.meta.server && !import.meta.dev) {
       const binding = event?.context?.cloudflare?.env?.QURAN_API
-      if (binding) {
+      if (isServiceBinding(binding)) {
         const res = await binding.fetch(
           new Request(new URL(path, 'https://quran-api.internal')),
         )
