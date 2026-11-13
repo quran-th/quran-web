@@ -1,3 +1,10 @@
+# [1.27.0](https://github.com/quran-th/quran-web/compare/v1.26.0...v1.27.0) (2026-11-13)
+
+
+### Features
+
+* play per-ayah Thai translation audio and keep timings fresh ([#15](https://github.com/quran-th/quran-web/issues/15)) ([7c1e8c0](https://github.com/quran-th/quran-web/commit/7c1e8c0aa8267ccde0ea7188994c0f2b1f252bd8))
+
 # [1.26.0](https://github.com/quran-th/quran-web/compare/v1.25.4...v1.26.0) (2026-11-09)
 
 
