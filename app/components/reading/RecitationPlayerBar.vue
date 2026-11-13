@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from "vue";
 import { storeToRefs } from "pinia";
 import { useRecitationStore, PLAYBACK_SPEEDS, MAX_REPEAT, MAX_PAUSE_SECONDS } from "~/stores/recitationStore";
 import { getReciterLabelTh, reciterMatchesQuery } from "~/data/reciter-names-th";
@@ -19,7 +19,9 @@ const {
   translationAudio,
   phase,
   currentChapterHasTranslation,
+  translationAudioIssue,
 } = storeToRefs(recitation);
+const { t } = useI18n();
 
 const readerSettings = useReaderSettingsStore();
 const { selectedSourceId, translationSources, mukhtasarSourceId } = storeToRefs(readerSettings);
@@ -65,6 +67,15 @@ function selectSource(id: number) {
 
 type SettingsView = "root" | "qari" | "play" | "source";
 const settingsView = ref<SettingsView | null>(null);
+
+const showTranslationIssue = computed(
+  () => translationAudioIssue.value && translationAudio.value === "mukhtasar" && !settingsView.value,
+);
+// UpdateBar moves up while the notice shows, so the two never overlap
+const translationIssueShown = useState("translation-issue-shown", () => false);
+watchEffect(() => {
+  translationIssueShown.value = status.value !== "idle" && showTranslationIssue.value;
+});
 const speedOptions = PLAYBACK_SPEEDS.map((v) => ({ value: v as number, label: `${v}x` }));
 const repeatOptions = Array.from({ length: MAX_REPEAT }, (_, i) => ({ value: i + 1, label: `${i + 1}x` }));
 const pauseOptions = Array.from({ length: MAX_PAUSE_SECONDS + 1 }, (_, i) => ({
@@ -178,6 +189,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener("pointerdown", onDocumentPointerDown);
   document.removeEventListener("keydown", onDocumentKeydown);
+  translationIssueShown.value = false;
 });
 </script>
 
@@ -432,6 +444,15 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </Transition>
+
+        <div role="status" aria-live="polite" class="pointer-events-none absolute inset-x-0 bottom-full mb-2 flex justify-center px-2">
+          <p
+            v-if="showTranslationIssue"
+            class="rounded-2xl bg-slate-800/95 px-3 py-1.5 text-center text-xs text-slate-100 shadow-lg backdrop-blur-xs"
+          >
+            {{ t("recitation.translation_audio_unavailable") }}
+          </p>
+        </div>
 
         <div
           class="flex items-center gap-3 rounded-full border border-slate-700 bg-slate-800/95 p-2.5 shadow-lg backdrop-blur-xs"

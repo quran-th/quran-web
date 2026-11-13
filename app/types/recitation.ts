@@ -33,12 +33,25 @@ export interface RecitationTimings {
   head?: [number, number];
 }
 
+export interface TranslationAudioPart {
+  index: number;
+  audioUrl: string;
+  /** Where the part starts on the surah timeline */
+  startMs: number;
+  durationMs: number;
+  firstAyah: number;
+  lastAyah: number;
+}
+
 export interface TranslationAudio {
   set: string;
   chapter: number;
-  audioUrl: string;
+  /** Whole-surah file; deprecated, absent for surahs split into parts */
+  audioUrl?: string;
   durationMs: number;
-  /** Absolute offsets in the surah's Thai audio */
-  ayahs: { ayah: number; startMs: number; endMs: number }[];
+  /** Absolute offsets on the surah timeline; `part` indexes `parts` */
+  ayahs: { ayah: number; startMs: number; endMs: number; part?: number }[];
+  /** Absent (with `ayahs[].part`) in responses from before the audio was split */
+  parts?: TranslationAudioPart[];
   voice: { provider: string; model: string; voiceId: string };
 }

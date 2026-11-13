@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import type { Reciter, RecitationTimings, TranslationAudio } from '~/types/recitation'
+import type { Reciter, RecitationTimings, TranslationAudio, TranslationAudioPart } from '~/types/recitation'
 import { getReciterLabelTh } from '~/data/reciter-names-th'
 import { useQuranStore } from '~/stores/quranStore'
 
@@ -11,6 +11,23 @@ export const MAX_PAUSE_SECONDS = 5
 export const TRANSLATION_ARTIST = 'คำแปลอัล-มุคตะศ็อร (เสียง AI)'
 // Slack on top of the clip length before a stalled Thai element is abandoned
 const TRANSLATION_STALL_MS = 5000
+// Thai clips are regenerated often under the same file names (only `?v` changes), so metadata older
+// than the API's own cache lifetime is refetched before it starts playback
+const TRANSLATION_MAX_AGE_MS = 5 * 60 * 1000
+const TRANSLATION_REFETCH_TIMEOUT_MS = 8000
+// A failed refetch is retried this soon (the old metadata stays in use meanwhile)
+const TRANSLATION_RETRY_MS = 30_000
+// A part whose length in the browser differs from its metadata by more than this makes the metadata
+// suspect. Browsers measure mp3s differently from ffprobe (encoder delay and padding ~50 ms, Safari
+// estimating from the bitrate), so the call is made on the URL after a refetch, not on this number
+const PART_LENGTH_TOLERANCE_MS = 300
+// When that refetch fails, Thai is skipped only if the file is this far off: clearly misaligned
+const PART_LENGTH_BROKEN_MS = 1000
+// A clip waiting for that refetch plays anyway after this long
+const THAI_HOLD_MAX_MS = 1500
+// The reader's notice stays at least this long, and hides itself after the second
+const ISSUE_MIN_MS = 4000
+const ISSUE_MAX_MS = 8000
 // An ayah is stopped this far before the next ayah's `from`, inside the pause between them.
 // `from` sits 0–100 ms before the next sound in word-timed (QDC) files and up to ~180 ms
 // after it in some mp3quran files, while the quiet tail before `from` is ≥ 60 ms in QDC files
@@ -67,6 +84,31 @@ function lastIndexAtOrBefore(sorted: number[], value: number): number {
   return found
 }
 
+type ThaiAudio = TranslationAudio & { parts: TranslationAudioPart[]; partByIndex: Map<number, TranslationAudioPart> }
+
+/** Responses from before the split have no `parts`: their single file is one part starting at 0. */
+function withParts(t: TranslationAudio): ThaiAudio | null {
+  let parts = t.parts
+  if (!parts?.length) {
+    if (!t.audioUrl) return null
+    parts = [{
+      index: 0,
+      audioUrl: t.audioUrl,
+      startMs: 0,
+      durationMs: t.durationMs,
+      firstAyah: t.ayahs[0]?.ayah ?? 1,
+      lastAyah: t.ayahs.at(-1)?.ayah ?? 1,
+    }]
+  }
+  return { ...t, parts, partByIndex: new Map(parts.map(p => [p.index, p])) }
+}
+
+/** File of the part holding `ayah`, or of the first part. */
+function partUrl(t: ThaiAudio, ayah: number): string | undefined {
+  const entry = t.ayahs.find(a => a.ayah === ayah)
+  return (t.partByIndex.get(entry?.part ?? 0) ?? t.parts[0])?.audioUrl
+}
+
 type PlaybackStatus = 'idle' | 'loading' | 'playing' | 'paused'
 
 interface FlatSegment {
@@ -78,8 +120,12 @@ interface FlatSegment {
 
 interface ThaiClip {
   verseKey: string
+  /** The clip's part file; startMs/endMs are offsets inside it */
+  url: string
   startMs: number
   endMs: number
+  /** The part holds only this ayah, so it plays whole and its offsets cannot go stale */
+  soloPart: boolean
 }
 
 /**
@@ -153,17 +199,41 @@ export const useRecitationStore = defineStore('recitation', () => {
   // rAF is throttled when the screen locks, so the verse end is also timer-driven
   let boundaryTimer: ReturnType<typeof setTimeout> | null = null
   let thaiAudio: HTMLAudioElement | null = null
+  // Never played: loads the part file a back-to-back Thai clip will switch to, so the switch is quick
+  let thaiWarm: HTMLAudioElement | null = null
   let thaiUnlocked = false
   let thaiEndMs = 0
   let thaiTimer: ReturnType<typeof setTimeout> | null = null
   let startTimer: ReturnType<typeof setTimeout> | null = null
   // Playback the OS stopped while the user meant to keep listening; picked up when the page is visible again
   let resumeOnVisible = false
-  // Clips still to play after the current one (one per ayah of the run, contiguous in the file)
+  // Clips still to play after the current one (one per ayah of the run)
   let thaiQueue: ThaiClip[] = []
-  const translationCache = new Map<number, Promise<TranslationAudio | null>>()
+  let thaiCurrent: ThaiClip | null = null
+  // Clip at the head of thaiQueue waiting for fresh metadata before it starts (its offsets may be stale)
+  let thaiHeld: ThaiClip | null = null
+  const translationCache = new Map<number, Promise<ThaiAudio | null>>()
   // null = chapter has no Thai audio
-  const resolvedTranslations = new Map<number, TranslationAudio | null>()
+  const resolvedTranslations = new Map<number, ThaiAudio | null>()
+  const translationFetchedAt = new Map<number, number>()
+  const translationRequests = new Map<number, Promise<ThaiAudio | null>>()
+  // Chapters whose last refetch failed
+  const refreshFailed = new Set<number>()
+  // Last length-mismatch refetch per chapter (see forceRefetch)
+  const forcedRefetchAt = new Map<number, number>()
+  // Part URLs whose length did not match, until the refetch settles them
+  const suspectParts = new Map<string, { chapter: number; measuredMs: number; expectedMs: number; loadedAt: number }>()
+  // Same URL in fresh metadata: the difference is how this browser measures, not checked again
+  const trustedParts = new Set<string>()
+  // Refetch failed and the file is clearly off: skipped until a refetch succeeds (url → chapter)
+  const brokenParts = new Map<string, number>()
+  // When each element last started loading a file: only metadata fetched after that can vouch for it
+  const loadStartedAt = new WeakMap<HTMLAudioElement, number>()
+  /** Thai was skipped because its audio failed to load or play; cleared when Thai plays again */
+  const translationAudioIssue = ref(false)
+  let issueChapter: number | null = null
+  let issueShownAt = 0
+  let issueTimer: ReturnType<typeof setTimeout> | null = null
   /** Reactive mirror of resolvedTranslations: whether a chapter has Thai audio, once known */
   const translationAvailability = ref<Record<number, boolean>>({})
   const currentChapterHasTranslation = computed(() =>
@@ -209,35 +279,160 @@ export const useRecitationStore = defineStore('recitation', () => {
   }
 
   /** Prefetch alongside timings so the Thai element can be unlocked inside the click. */
-  function loadTranslation(chapterId: number): Promise<TranslationAudio | null> {
+  function loadTranslation(chapterId: number): Promise<ThaiAudio | null> {
     if (translationAudio.value === 'off') return Promise.resolve(null)
     return fetchTranslation(chapterId)
   }
 
-  function fetchTranslation(chapterId: number): Promise<TranslationAudio | null> {
+  /** Cached metadata, refetched once older than TRANSLATION_MAX_AGE_MS (or when `force`d). */
+  function fetchTranslation(chapterId: number, force = false): Promise<ThaiAudio | null> {
     if (!translationAudioEnabled) return Promise.resolve(null)
-    let pending = translationCache.get(chapterId)
-    if (!pending) {
-      pending = $fetch<{ success: boolean; data: TranslationAudio }>(`/api/translation-audio/${chapterId}`)
-        .then((r) => {
-          const data = r.success ? r.data : null
-          resolvedTranslations.set(chapterId, data)
-          translationAvailability.value = { ...translationAvailability.value, [chapterId]: !!data }
-          return data
-        })
-        .catch((e) => {
-          if (e?.statusCode === 404) {
-            resolvedTranslations.set(chapterId, null)
-            translationAvailability.value = { ...translationAvailability.value, [chapterId]: false }
-            return null
-          }
-          console.error('Failed to fetch translation audio:', e)
-          translationCache.delete(chapterId)
-          return null
-        })
-      translationCache.set(chapterId, pending)
+    const inFlight = translationRequests.get(chapterId)
+    if (inFlight) return inFlight
+    const cached = translationCache.get(chapterId)
+    if (cached && !force && Date.now() - (translationFetchedAt.get(chapterId) ?? 0) <= TRANSLATION_MAX_AGE_MS) return cached
+    const refresh = resolvedTranslations.has(chapterId)
+    const startedAt = Date.now()
+    translationFetchedAt.set(chapterId, startedAt)
+    const settle = (data: ThaiAudio | null, failed: boolean) => {
+      translationRequests.delete(chapterId)
+      if (refresh) applyFreshTranslation(chapterId, failed, startedAt)
+      return data
     }
+    // no-cache: the browser revalidates its HTTP copy, so the metadata is never older than the max age
+    const pending = $fetch<{ success: boolean; data: TranslationAudio }>(`/api/translation-audio/${chapterId}`, {
+      cache: 'no-cache',
+      timeout: TRANSLATION_REFETCH_TIMEOUT_MS,
+    })
+      .then((r) => {
+        const data = r.success ? withParts(r.data) : null
+        resolvedTranslations.set(chapterId, data)
+        translationAvailability.value = { ...translationAvailability.value, [chapterId]: !!data }
+        refreshFailed.delete(chapterId)
+        return settle(data, false)
+      })
+      .catch((e) => {
+        if (e?.statusCode === 404) {
+          resolvedTranslations.set(chapterId, null)
+          translationAvailability.value = { ...translationAvailability.value, [chapterId]: false }
+          refreshFailed.delete(chapterId)
+          return settle(null, false)
+        }
+        console.error('Failed to fetch translation audio:', e)
+        refreshFailed.add(chapterId)
+        // Retried this soon, not on every call; the old metadata, if any, stays in use meanwhile
+        translationFetchedAt.set(chapterId, Date.now() - TRANSLATION_MAX_AGE_MS + TRANSLATION_RETRY_MS)
+        return settle(resolvedTranslations.get(chapterId) ?? null, true)
+      })
+    translationRequests.set(chapterId, pending)
+    translationCache.set(chapterId, pending)
     return pending
+  }
+
+  /** One length-mismatch refetch per chapter per TRANSLATION_MAX_AGE_MS: no refetch loops. */
+  function forceRefetch(chapterId: number): boolean {
+    // One in flight may predate the file's load: its settle asks again if so (applyFreshTranslation)
+    if (translationRequests.has(chapterId)) return false
+    const last = forcedRefetchAt.get(chapterId)
+    if (last !== undefined && Date.now() - last <= TRANSLATION_MAX_AGE_MS) return false
+    forcedRefetchAt.set(chapterId, Date.now())
+    fetchTranslation(chapterId, true)
+    return true
+  }
+
+  /**
+   * Settles the parts whose length did not match, then hands fresh metadata to the idle Thai
+   * element (re-prime) or to the clips still queued; never to the clip that is playing.
+   */
+  function applyFreshTranslation(chapterId: number, failed: boolean, fetchStartedAt: number) {
+    const urls = new Set(resolvedTranslations.get(chapterId)?.parts.map(p => p.audioUrl))
+    let askedAgain = false
+    for (const [url, s] of suspectParts) {
+      if (s.chapter !== chapterId) continue
+      // Same URL in metadata fetched before the file started loading proves nothing: ask again
+      if (!failed && urls.has(url) && fetchStartedAt < s.loadedAt) {
+        askedAgain ||= forceRefetch(chapterId)
+        if (askedAgain) continue
+      }
+      suspectParts.delete(url)
+      // A new `?v` for that part means the old metadata was stale: the fresh clips play the new file
+      if (!urls.has(url)) continue
+      // Same URL: the metadata is current and the difference is how this browser measures the file
+      if (!failed) {
+        if (fetchStartedAt >= s.loadedAt) trustedParts.add(url)
+      }
+      else if (Math.abs(s.measuredMs - s.expectedMs) > PART_LENGTH_BROKEN_MS) brokenParts.set(url, chapterId)
+    }
+    // A file only judged broken because a refetch failed is vouched for by one that succeeded
+    if (!failed) {
+      for (const [url, c] of brokenParts) {
+        if (c !== chapterId || !urls.has(url)) continue
+        brokenParts.delete(url)
+        trustedParts.add(url)
+      }
+    }
+    if (chapterId !== chapter.value) return
+    if (phase.value === 'arabic') {
+      primeTranslation()
+      return
+    }
+    // thaiHeld, if any, is still at the head of the queue and is rebuilt with it
+    thaiQueue = thaiClips(thaiQueue.map(c => c.verseKey)) ?? []
+    warmThai(thaiQueue[0]?.url)
+    // Paused meanwhile: thaiHeld stays set, so resume() restarts through nextThaiClip
+    if (thaiHeld && status.value === 'playing') nextThaiClip()
+  }
+
+  /** A part's file length against its metadata, on loadedmetadata of the Thai or the warm element. */
+  function checkPartLength(el: HTMLAudioElement) {
+    const c = chapter.value
+    const url = el.src
+    if (c === null || trustedParts.has(url) || suspectParts.has(url) || brokenParts.has(url)) return
+    const t = resolvedTranslations.get(c)
+    const part = t?.parts.find(p => p.audioUrl === url)
+    const measuredMs = el.duration * 1000
+    if (!part || !Number.isFinite(measuredMs) || Math.abs(measuredMs - part.durationMs) <= PART_LENGTH_TOLERANCE_MS) return
+    suspectParts.set(url, { chapter: c, measuredMs, expectedMs: part.durationMs, loadedAt: loadStartedAt.get(el) ?? Date.now() })
+    // Already refetched just now: settle it on that result (it may predate this file's load)
+    if (!forceRefetch(c) && !translationRequests.has(c)) applyFreshTranslation(c, refreshFailed.has(c), 0)
+    // The clip this element just loaded must not start on offsets that may be stale
+    const current = thaiCurrent
+    const unsettled = suspectParts.has(url) || brokenParts.has(url)
+    if (unsettled && current && !current.soloPart && el === thaiAudio && phase.value === 'translation'
+      && current.url === url && !thaiHeld) {
+      thaiQueue.unshift(current)
+      nextThaiClip()
+    }
+  }
+
+  function reportTranslationIssue() {
+    // Once per chapter, so a run of broken ayahs does not flash it on and off
+    if (issueChapter === chapter.value) return
+    issueChapter = chapter.value
+    issueShownAt = Date.now()
+    translationAudioIssue.value = true
+    hideTranslationIssue(ISSUE_MAX_MS)
+  }
+
+  function hideTranslationIssue(afterMs: number) {
+    if (issueTimer) clearTimeout(issueTimer)
+    issueTimer = setTimeout(() => {
+      issueTimer = null
+      translationAudioIssue.value = false
+    }, afterMs)
+  }
+
+  /** Thai plays again: the notice goes, once it has been readable for ISSUE_MIN_MS. */
+  function settleTranslationIssue() {
+    if (!translationAudioIssue.value) return
+    hideTranslationIssue(Math.max(0, issueShownAt + ISSUE_MIN_MS - Date.now()))
+  }
+
+  function resetTranslationIssue() {
+    if (issueTimer) clearTimeout(issueTimer)
+    issueTimer = null
+    translationAudioIssue.value = false
+    issueChapter = null
   }
 
   function getAudio(): HTMLAudioElement {
@@ -266,7 +461,7 @@ export const useRecitationStore = defineStore('recitation', () => {
     audio.addEventListener('ended', () => {
       if (phase.value === 'translation') return
       // The last ayah ends with the file, so repeats and its Thai clips must be handled here
-      if (verseIdx >= 0 && (repeatsLeft > 0 || thaiForRun(runStart, verseIdx)) && applyVerseEnd()) return
+      if (verseIdx >= 0 && (repeatsLeft > 0 || thaiForRun(runStart, verseIdx, true)) && applyVerseEnd()) return
       completeChapter()
     })
     return audio
@@ -280,25 +475,39 @@ export const useRecitationStore = defineStore('recitation', () => {
     el.defaultPlaybackRate = playbackRate.value
     el.playbackRate = playbackRate.value
     el.addEventListener('playing', () => {
-      if (phase.value !== 'translation') {
+      // Held: an element iOS restarts by itself must not play on past the hold (see holdThaiClip)
+      if (phase.value !== 'translation' || thaiHeld) {
         el.pause()
         return
       }
       status.value = 'playing'
+      settleTranslationIssue()
       armThaiEnd()
     })
     el.addEventListener('pause', () => {
-      if (phase.value !== 'translation') return
+      // A clip ending with its part file pauses the element just before 'ended' moves on; a pause
+      // the src switch to the next part may report arrives after play() already restarted it; and a
+      // held clip pauses the element while the reading goes on
+      if (phase.value !== 'translation' || el.ended || !el.paused || thaiHeld) return
       if (status.value === 'playing') status.value = 'paused'
       clearThaiTimer()
     })
     el.addEventListener('timeupdate', () => {
-      if (phase.value === 'translation' && !el.seeking && el.currentTime * 1000 >= thaiEndMs) nextThaiClip()
+      // Below HAVE_METADATA the element is switching parts and currentTime is not the new clip's yet
+      if (phase.value === 'translation' && !thaiHeld && !el.seeking && el.readyState >= HTMLMediaElement.HAVE_METADATA
+        && el.currentTime * 1000 >= thaiEndMs) nextThaiClip()
     })
-    el.addEventListener('ended', nextThaiClip)
+    // The end timer or timeupdate may already have switched to the next part: that file has not ended
+    el.addEventListener('ended', () => {
+      if (el.ended) nextThaiClip()
+    })
+    el.addEventListener('loadstart', () => loadStartedAt.set(el, Date.now()))
+    el.addEventListener('loadedmetadata', () => checkPartLength(el))
+    // Retried on the next clip: prime and nextThaiClip reload an element in error
     el.addEventListener('error', () => {
       if (phase.value !== 'translation') return
       console.error('Translation audio failed to play')
+      reportTranslationIssue()
       finishTranslation()
     })
     return el
@@ -309,8 +518,19 @@ export const useRecitationStore = defineStore('recitation', () => {
     thaiTimer = null
   }
 
+  /** A clip that started but never reaches its end must not stall the reading. */
+  function armThaiStall(el: HTMLAudioElement, clipMs: number) {
+    thaiTimer = setTimeout(() => {
+      if (el.paused) return
+      reportTranslationIssue()
+      nextThaiClip()
+    }, clipMs / el.playbackRate + TRANSLATION_STALL_MS)
+  }
+
   // Timer-driven like armBoundary: timeupdate and rAF are throttled on a locked screen
   function armThaiEnd() {
+    // The timer is the hold's own while a clip is held
+    if (thaiHeld) return
     clearThaiTimer()
     if (!thaiAudio || thaiAudio.paused) return
     const remaining = thaiEndMs - thaiAudio.currentTime * 1000
@@ -319,18 +539,59 @@ export const useRecitationStore = defineStore('recitation', () => {
     thaiTimer = remaining > SEEK_SLACK_MS ? setTimeout(armThaiEnd, Math.max(50, wait)) : setTimeout(nextThaiClip, Math.max(0, wait))
   }
 
-  /** Thai clips for verses start..end (ayahs without a clip are skipped), or null if none. */
-  function thaiForRun(start: number, end: number) {
+  /** Thai clips for these verses from the current metadata (ayahs without a clip are skipped), or null if none. */
+  function thaiClips(keys: string[]): ThaiClip[] | null {
     if (translationAudio.value === 'off' || chapter.value === null) return null
     const t = resolvedTranslations.get(chapter.value)
     if (!t) return null
     const clips: ThaiClip[] = []
-    for (let i = Math.max(0, start); i <= end; i++) {
-      const verseKey = verseKeys[i]
-      const entry = t.ayahs.find(a => a.ayah === Number(verseKey?.split(':')[1]))
-      if (verseKey && entry) clips.push({ verseKey, startMs: entry.startMs, endMs: entry.endMs })
+    for (const verseKey of keys) {
+      const entry = t.ayahs.find(a => a.ayah === Number(verseKey.split(':')[1]))
+      const part = entry && t.partByIndex.get(entry.part ?? 0)
+      if (!entry || !part) continue
+      // A one-ayah part's file can run a few ms past endMs (encoder padding): the end timer hands
+      // over while it still plays, as with a whole-surah file, and 'ended' only backs it up
+      clips.push({
+        verseKey,
+        url: part.audioUrl,
+        startMs: entry.startMs - part.startMs,
+        endMs: entry.endMs - part.startMs,
+        soloPart: part.firstAyah === part.lastAyah,
+      })
     }
-    return clips.length > 0 ? { t, clips } : null
+    return clips.length > 0 ? clips : null
+  }
+
+  /**
+   * Thai clips for verses start..end, or null if none. With `report` (a run about to start) clips
+   * that cannot play are left out and the reader is told: broken parts, and the file the prime's
+   * reload left in error, so the Arabic goes on instead of pausing for a clip that fails at once.
+   */
+  function thaiForRun(start: number, end: number, report = false): ThaiClip[] | null {
+    const clips = thaiClips(verseKeys.slice(Math.max(0, start), end + 1)) ?? []
+    const failed = report && thaiAudio?.error ? thaiAudio.src : null
+    const playable = clips.filter(c => !brokenParts.has(c.url) && c.url !== failed)
+    if (report && playable.length < clips.length) reportTranslationIssue()
+    return playable.length > 0 ? playable : null
+  }
+
+  /** Starts loading a part file ahead of a switch to it; never more than one at a time. */
+  function warmThai(url: string | undefined) {
+    if (!url || thaiAudio?.src === url || thaiWarm?.src === url) return
+    if (!thaiWarm) {
+      const el = new Audio()
+      el.preload = 'auto'
+      el.addEventListener('loadstart', () => loadStartedAt.set(el, Date.now()))
+      el.addEventListener('loadedmetadata', () => checkPartLength(el))
+      thaiWarm = el
+    }
+    thaiWarm.src = url
+  }
+
+  function releaseWarm() {
+    if (!thaiWarm?.src) return
+    thaiWarm.removeAttribute('src')
+    thaiWarm.load()
   }
 
   /**
@@ -340,20 +601,24 @@ export const useRecitationStore = defineStore('recitation', () => {
    */
   function primeTranslation() {
     if (phase.value !== 'arabic') return
-    const thai = thaiForRun(runStart, runStart)
-    if (!thai) return
+    // Keeps a long session on fresh metadata; it reaches the clips at the next prime or run
+    if (chapter.value !== null) loadTranslation(chapter.value)
+    // A joined next ayah's clip follows this one back to back, maybe from another part
+    const clips = thaiForRun(runStart, joined[runStart] ? runStart + 1 : runStart)
+    if (!clips) return
     const el = getThaiAudio()
-    if (el.src !== thai.t.audioUrl) el.src = thai.t.audioUrl
-    seekTo(el, thai.clips[0]!.startMs)
+    const first = clips[0]!
+    // An element in error is reloaded: a failed file is retried on the next ayah
+    if (el.src !== first.url || el.error) el.src = first.url
+    seekTo(el, first.startMs)
+    warmThai(clips[1]?.url)
   }
 
-  function startTranslation(t: TranslationAudio, clips: ThaiClip[]) {
+  function startTranslation(clips: ThaiClip[]) {
     if (!audio) return
     phase.value = 'translation'
     // 'ended' pauses the element before this runs; playing stays the intent
     status.value = 'playing'
-    const el = getThaiAudio()
-    if (el.src !== t.audioUrl) el.src = t.audioUrl
     thaiQueue = [...clips]
     // Thai play() before the Arabic pause(): a background page is only allowed to start an element
     // while it is still playing one (the OS audio session stays active, see playElement); the Arabic
@@ -362,41 +627,83 @@ export const useRecitationStore = defineStore('recitation', () => {
     audio.pause()
   }
 
-  /** Plays the next queued clip (highlight follows it); resumes the Arabic when the queue is empty. */
-  function nextThaiClip() {
+  /**
+   * Plays the next queued clip (highlight follows it); resumes the Arabic when the queue is empty.
+   * `waited`: a held clip plays now, without waiting for fresh metadata any longer.
+   */
+  function nextThaiClip(waited = false) {
     if (phase.value !== 'translation') return
-    const clip = thaiQueue.shift()
+    thaiHeld = null
+    let clip = thaiQueue.shift()
+    while (clip && brokenParts.has(clip.url)) {
+      reportTranslationIssue()
+      clip = thaiQueue.shift()
+    }
     if (!clip) {
       finishTranslation()
       return
     }
+    // Its file did not match the metadata and fresh metadata is on its way. Only offsets inside a
+    // multi-ayah file can be stale (a one-ayah part plays whole). A hidden page plays it anyway: it
+    // may not restart the element after waiting (see playElement).
+    if (!waited && suspectParts.has(clip.url) && !clip.soloPart && chapter.value !== null
+      && translationRequests.has(chapter.value) && !document.hidden) {
+      holdThaiClip(clip)
+      return
+    }
+    thaiCurrent = clip
     const el = getThaiAudio()
     // Whole-ayah highlight while its Thai plays: no single word is being read
     activeVerseKey.value = clip.verseKey
     activeWordKey.value = null
     activeIndex = -1
+    // Still playing from the previous clip, which this one follows in the same file: no seek, and
+    // no 'playing' event will arm the end
+    const follows = !el.paused && el.src === clip.url && Math.abs(clip.startMs - thaiEndMs) <= SEEK_SLACK_MS
     thaiEndMs = clip.endMs
     clearThaiTimer()
-    if (el.paused) {
-      seekTo(el, clip.startMs)
-      // A clip that started but never reaches its end must not stall the reading. A clip that never
-      // started was refused by the OS and is left to playElement, which shows it as paused.
-      thaiTimer = setTimeout(() => {
-        if (!el.paused) nextThaiClip()
-      }, (clip.endMs - clip.startMs) / el.playbackRate + TRANSLATION_STALL_MS)
-      playElement(el)
-    }
-    else {
-      // Still playing from the previous clip, which this one follows in the file: no seek, and
-      // no 'playing' event will arm the end
+    if (follows) {
       armThaiEnd()
+      warmThai(thaiQueue[0]?.url)
+      return
     }
+    // A clip in another part than the one just played is switched to and restarted in this same task
+    // (the end timer, or the previous part's 'ended' event), so a locked screen never has a moment with
+    // no element playing, as in completeChapter. The pause, timeupdate and ended handlers ignore what
+    // the switch fires.
+    const switched = el.src !== clip.url || !!el.error
+    if (switched) el.src = clip.url
+    warmThai(thaiQueue[0]?.url)
+    // Seeking a playing element fires no 'playing' to arm the end
+    if (seekTo(el, clip.startMs) && !switched && !el.paused) el.addEventListener('seeked', armThaiEnd, { once: true })
+    // A clip that never started was refused by the OS and is left to playElement, which shows it as paused
+    armThaiStall(el, clip.endMs - clip.startMs)
+    playElement(el)
+  }
+
+  /**
+   * Pauses the Thai element on `clip` until applyFreshTranslation rebuilds the queue and goes on, or
+   * THAI_HOLD_MAX_MS passes and it plays as it is. resume() and a return to the page restart a held
+   * clip through nextThaiClip, never by playing the paused element.
+   */
+  function holdThaiClip(clip: ThaiClip) {
+    thaiHeld = clip
+    thaiQueue.unshift(clip)
+    clearThaiTimer()
+    clearStartTimer()
+    thaiAudio?.pause()
+    thaiTimer = setTimeout(() => {
+      thaiTimer = null
+      if (thaiHeld === clip && status.value === 'playing') nextThaiClip(true)
+    }, THAI_HOLD_MAX_MS)
   }
 
   /** Stops the Thai clips without resuming Arabic. */
   function cancelTranslation() {
     clearThaiTimer()
     thaiQueue = []
+    thaiHeld = null
+    releaseWarm()
     phase.value = 'arabic'
     // Whatever the phase: a start the OS deferred can land after the phase has moved on
     thaiAudio?.pause()
@@ -429,6 +736,7 @@ export const useRecitationStore = defineStore('recitation', () => {
     if (phase.value !== 'translation') return
     clearThaiTimer()
     thaiQueue = []
+    thaiHeld = null
     phase.value = 'arabic'
     if (verseIdx >= verseStarts.length - 1) {
       completeChapter()
@@ -531,19 +839,28 @@ export const useRecitationStore = defineStore('recitation', () => {
     })
   }
 
-  function seekTo(el: HTMLAudioElement, targetMs: number) {
+  /** True when it seeked now; false when already in place or deferred to loadedmetadata. */
+  function seekTo(el: HTMLAudioElement, targetMs: number): boolean {
     if (el.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      if (Math.abs(el.currentTime * 1000 - targetMs) <= SEEK_SLACK_MS) return false
+      el.currentTime = targetMs / 1000
+      return true
+    }
+    // A fresh part file opens at (about) the clip start already: no seek to wait for
+    el.addEventListener('loadedmetadata', () => {
       if (Math.abs(el.currentTime * 1000 - targetMs) > SEEK_SLACK_MS) el.currentTime = targetMs / 1000
-    }
-    else {
-      el.addEventListener('loadedmetadata', () => { el.currentTime = targetMs / 1000 }, { once: true })
-    }
+    }, { once: true })
+    return false
   }
 
-  /** Must run inside a user gesture (tap or lock-screen command): iOS only lets such an element play() later. */
-  function unlockThaiAudio(t: TranslationAudio) {
+  /**
+   * Must run inside a user gesture (tap or lock-screen command): iOS only lets such an element play() later.
+   * Loads the part of `ayah`, the one about to play, so the later prime finds it in place.
+   */
+  function unlockThaiAudio(t: ThaiAudio, ayah: number) {
     const el = getThaiAudio()
-    if (el.src !== t.audioUrl) el.src = t.audioUrl
+    const url = partUrl(t, ayah)
+    if (url && el.src !== url) el.src = url
     el.play().catch(() => {})
     el.pause()
     if (navigator.userActivation?.isActive !== false) thaiUnlocked = true
@@ -572,8 +889,10 @@ export const useRecitationStore = defineStore('recitation', () => {
     // (see startTranslation). iOS lets an element play() later only if it was started inside a user
     // gesture, so with Thai on the element is primed now, while the click is still on the stack.
     const thai = translationAudio.value === 'mukhtasar' ? resolvedTranslations.get(t.chapter) : null
-    if (thai) unlockThaiAudio(thai)
+    if (thai) unlockThaiAudio(thai, verseNumber)
     else thaiAudio?.pause()
+    // Starting with metadata older than its max age: the refetch reaches the clips before the first run
+    loadTranslation(t.chapter)
 
     // Cached ahead so the next surah can start synchronously when this one ends on a locked screen
     if (t.chapter < LAST_CHAPTER) {
@@ -595,7 +914,8 @@ export const useRecitationStore = defineStore('recitation', () => {
 
     status.value = 'loading'
     chapter.value = chapterId
-    const translation = translationAudio.value === 'mukhtasar' ? loadTranslation(chapterId) : null
+    // Waited for only when there is no metadata yet; a refresh of what is there applies later
+    const translation = translationAudio.value === 'mukhtasar' && !resolvedTranslations.has(chapterId) ? loadTranslation(chapterId) : null
     const t = await loadTimings(chapterId, reciter)
     if (translation) await translation
     // Bail if the user stopped or switched surah while the fetch was in flight
@@ -663,12 +983,19 @@ export const useRecitationStore = defineStore('recitation', () => {
     if (phase.value === 'arabic') {
       // First gesture since a surah started after an awaited fetch: unlock the Thai element now
       const thai = translationAudio.value === 'mukhtasar' && chapter.value !== null ? resolvedTranslations.get(chapter.value) : null
-      if (thai && !thaiUnlocked) unlockThaiAudio(thai)
+      if (thai && !thaiUnlocked) unlockThaiAudio(thai, Number(verseKeys[verseIdx]?.split(':')[1]))
+      if (chapter.value !== null) loadTranslation(chapter.value)
       // Paused inside the gap between ayahs: the next ayah was never entered
       if (verseIdx >= 0) {
         activeVerseKey.value = verseKeys[verseIdx] ?? null
         primeTranslation()
       }
+    }
+    // A held clip starts through nextThaiClip: the paused element still has the previous position
+    else if (thaiHeld) {
+      status.value = 'playing'
+      nextThaiClip(true)
+      return
     }
     if (el.paused) playElement(el)
     else if (status.value !== 'loading') status.value = 'playing'
@@ -688,7 +1015,7 @@ export const useRecitationStore = defineStore('recitation', () => {
       if (el && el !== active && !el.paused) el.pause()
     }
     if (!active) return
-    if (status.value === 'playing' && !gapTimer && active.paused) playElement(active)
+    if (status.value === 'playing' && !gapTimer && !thaiHeld && active.paused) playElement(active)
     else if (resumeOnVisible && status.value === 'paused') resume()
   }
 
@@ -776,9 +1103,9 @@ export const useRecitationStore = defineStore('recitation', () => {
     const repeating = repeatsLeft > 0
     const isLast = verseIdx >= verseStarts.length - 1
     if (!repeating) {
-      const thai = thaiForRun(runStart, verseIdx)
-      if (thai) {
-        startTranslation(thai.t, thai.clips)
+      const clips = thaiForRun(runStart, verseIdx, true)
+      if (clips) {
+        startTranslation(clips)
         return true
       }
     }
@@ -924,12 +1251,15 @@ export const useRecitationStore = defineStore('recitation', () => {
     const next = translationAudioEnabled && value === 'mukhtasar' ? 'mukhtasar' : 'off'
     translationAudio.value = next
     translationAudioCookie.value = next
-    if (next === 'off') finishTranslation()
+    if (next === 'off') {
+      finishTranslation()
+      resetTranslationIssue()
+    }
     else if (chapter.value !== null) {
       // Turned on mid-playback: unlock the Thai element while this click is still on the stack (iOS)
       const thai = resolvedTranslations.get(chapter.value)
-      if (thai && status.value !== 'idle' && phase.value === 'arabic') unlockThaiAudio(thai)
-      else loadTranslation(chapter.value)
+      if (thai && status.value !== 'idle' && phase.value === 'arabic') unlockThaiAudio(thai, Number(activeVerseKey.value?.split(':')[1]))
+      loadTranslation(chapter.value)
       if (chapter.value < LAST_CHAPTER) loadTranslation(chapter.value + 1)
     }
     // Boundaries depend on the setting; indices stay valid, only the stop points move
@@ -942,12 +1272,15 @@ export const useRecitationStore = defineStore('recitation', () => {
 
   // Learn whether the playing surah has Thai audio even while it's off, so the player can offer it
   watch(chapter, (id) => {
+    // Not a notice the new chapter already reported in the same tick
+    if (issueChapter !== id) resetTranslationIssue()
     if (id !== null && translationAudio.value === 'off') fetchTranslation(id)
   })
 
   return {
     translationAudioEnabled,
     translationAudio,
+    translationAudioIssue,
     currentChapterHasTranslation,
     reportHint,
     phase,
