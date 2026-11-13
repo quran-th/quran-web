@@ -31,6 +31,20 @@ const fontSettings = useFontSettingsStore();
 const { quranFont, fontScale, fontCategory, fontVersion, isQcf } =
   storeToRefs(fontSettings);
 
+const { appVersion, commitHash, builtAt } = useRuntimeConfig().public;
+// Bangkok time in a fixed format, so server and client render the same text
+const buildDate = new Date(Number(builtAt)).toLocaleString("sv-SE", {
+  timeZone: "Asia/Bangkok",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+const buildInfo = [appVersion && `v${appVersion}`, commitHash, buildDate]
+  .filter(Boolean)
+  .join(" · ");
+
 const readerSettings = useReaderSettingsStore();
 const { selectedSourceId, translationSources } = storeToRefs(readerSettings);
 
@@ -424,6 +438,13 @@ function pickSource(id: number) {
               </div>
             </div>
                 </div>
+
+                <p
+                  class="mt-4 select-text text-center font-mono text-[11px] text-slate-400"
+                  dir="ltr"
+                >
+                  {{ buildInfo }}
+                </p>
               </div>
 
               <!-- Source Selection View -->

@@ -1,9 +1,23 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { execSync } from "node:child_process"
+import { readFileSync } from "node:fs"
 import tailwindcss from "@tailwindcss/vite"
 
 // This build's id: an open page compares it with /api/version and offers the newer deploy
 // (components/UpdateBar.vue). Installed apps resume from memory and never reload on their own.
-const buildId = Date.now().toString(36)
+const builtAt = Date.now()
+const buildId = builtAt.toString(36)
+
+// Shown in the settings modal so a reader (or we) can tell which build an installed app runs
+const appVersion: string = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version
+function commitHash(): string {
+  try {
+    return execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim()
+  }
+  catch {
+    return process.env.GITHUB_SHA?.slice(0, 7) ?? ""
+  }
+}
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -117,6 +131,9 @@ export default defineNuxtConfig({
       // Thai translation audio in the player (beta); turn off with NUXT_PUBLIC_TRANSLATION_AUDIO=false
       translationAudio: true,
       buildId,
+      appVersion,
+      commitHash: commitHash(),
+      builtAt,
     },
   },
 
