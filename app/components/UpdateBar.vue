@@ -10,6 +10,8 @@ const EVERY_MS = 10 * 60_000
 const { t } = useI18n()
 const build = String(useRuntimeConfig().public.buildId ?? '')
 const recitation = useRecitationStore()
+// Set by RecitationPlayerBar while its Thai audio notice shows above the player
+const translationIssueShown = useState('translation-issue-shown', () => false)
 const stale = ref(false)
 
 let last = Date.now()
@@ -72,7 +74,7 @@ onBeforeUnmount(() => {
       v-if="stale"
       role="status"
       class="fixed inset-x-4 z-40 mx-auto flex max-w-md items-center gap-3 rounded-2xl bg-slate-800 py-2 pl-4 pr-2 text-white shadow-xl"
-      :class="recitation.status === 'idle' ? 'bottom-[calc(1rem+env(safe-area-inset-bottom))]' : 'bottom-24'"
+      :class="recitation.status === 'idle' ? 'bottom-[calc(1rem+env(safe-area-inset-bottom))]' : translationIssueShown ? 'bottom-40' : 'bottom-24'"
     >
       <span class="min-w-0 flex-1 text-sm font-medium">{{ t('app_update.ready') }}</span>
       <button
