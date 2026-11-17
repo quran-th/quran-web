@@ -1,3 +1,9 @@
+# [1.29.0](https://github.com/quran-th/quran-web/compare/v1.28.0...v1.29.0) (2026-11-17)
+
+### Features
+
+* show surah name and meaning on the recitation player bar ([618456c](https://github.com/quran-th/quran-web/commit/618456c6b76ced9222ed62bc40ce1f69325c46a2))
+
 # [1.28.0](https://github.com/quran-th/quran-web/compare/v1.27.0...v1.28.0) (2026-11-13)
 
 
