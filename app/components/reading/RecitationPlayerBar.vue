@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect
 import { storeToRefs } from "pinia";
 import { useRecitationStore, PLAYBACK_SPEEDS, MAX_REPEAT, MAX_PAUSE_SECONDS } from "~/stores/recitationStore";
 import { getReciterLabelTh, reciterMatchesQuery } from "~/data/reciter-names-th";
+import MarqueeText from "~/components/reading/MarqueeText.vue";
 import WheelPicker from "~/components/reading/WheelPicker.vue";
 import { useQuranStore } from "~/stores/quranStore";
 import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
@@ -483,7 +484,7 @@ onBeforeUnmount(() => {
             :aria-expanded="settingsView === 'qari'"
             @click="toggleSettings('qari')"
           >
-            <span class="w-full truncate text-sm font-medium text-slate-100">{{ [surahLabel, verseLabel].filter(Boolean).join(" · ") }}</span>
+            <MarqueeText class="text-sm font-medium text-slate-100" :text="[surahLabel, verseLabel].filter(Boolean).join(' · ')" />
             <span class="flex w-full items-center gap-1 text-xs text-slate-400 transition-colors group-hover:text-slate-200">
               <span class="truncate">{{ currentReciterLabel }}</span>
               <svg class="shrink-0 transition-transform" :class="settingsView === 'qari' && 'rotate-180'" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6" /></svg>
