@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import { useRecitationStore, PLAYBACK_SPEEDS, MAX_REPEAT, MAX_PAUSE_SECONDS } from "~/stores/recitationStore";
 import { getReciterLabelTh, reciterMatchesQuery } from "~/data/reciter-names-th";
 import WheelPicker from "~/components/reading/WheelPicker.vue";
+import { useQuranStore } from "~/stores/quranStore";
 import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
 import { useReciterPreview } from "~/composables/useReciterPreview";
 
@@ -11,6 +12,7 @@ const recitation = useRecitationStore();
 const {
   status,
   activeVerseKey,
+  chapter,
   reciterId,
   reciters,
   playbackRate,
@@ -119,6 +121,13 @@ function toggleSettings(view: SettingsView) {
 }
 const playerRef = ref<HTMLElement | null>(null);
 
+const quran = useQuranStore();
+const surahLabel = computed(() => {
+  const surah = quran.surahs.find((s) => s.id === chapter.value);
+  if (!surah) return "";
+  return surah.name_meaning_thai ? `${surah.name_thai} (${surah.name_meaning_thai})` : surah.name_thai;
+});
+
 const verseLabel = computed(() => {
   const verse = activeVerseKey.value?.split(":")[1];
   if (phase.value === "translation") return verse ? `กำลังฟังคำแปล อายะห์ ${verse}` : "กำลังฟังคำแปล";
@@ -181,6 +190,7 @@ watch(status, (s) => {
 
 onMounted(() => {
   recitation.fetchReciters();
+  if (!quran.surahs.length) quran.fetchSurahs();
   readerSettings.fetchTranslationSources();
   document.addEventListener("pointerdown", onDocumentPointerDown);
   document.addEventListener("keydown", onDocumentKeydown);
@@ -473,7 +483,7 @@ onBeforeUnmount(() => {
             :aria-expanded="settingsView === 'qari'"
             @click="toggleSettings('qari')"
           >
-            <span class="text-sm font-medium text-slate-100">{{ verseLabel }}</span>
+            <span class="w-full truncate text-sm font-medium text-slate-100">{{ [surahLabel, verseLabel].filter(Boolean).join(" · ") }}</span>
             <span class="flex w-full items-center gap-1 text-xs text-slate-400 transition-colors group-hover:text-slate-200">
               <span class="truncate">{{ currentReciterLabel }}</span>
               <svg class="shrink-0 transition-transform" :class="settingsView === 'qari' && 'rotate-180'" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6" /></svg>
