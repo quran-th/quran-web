@@ -1,3 +1,9 @@
+# [1.30.0](https://github.com/quran-th/quran-web/compare/v1.29.0...v1.30.0) (2026-11-17)
+
+### Features
+
+* slide the player bar title when it overflows ([bb21941](https://github.com/quran-th/quran-web/commit/bb21941e3e18af5621501f3da611cb271656b5fc))
+
 # [1.29.0](https://github.com/quran-th/quran-web/compare/v1.28.0...v1.29.0) (2026-11-17)
 
 ### Features
