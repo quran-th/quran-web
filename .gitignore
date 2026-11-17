@@ -28,3 +28,6 @@ logs
 .wrangler
 .dev.vars*
 !.dev.vars.example
+
+# Local feature video render tool
+tools/feature-video
