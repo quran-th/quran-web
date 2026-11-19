@@ -39,6 +39,7 @@ interface Props {
   surahNumber: number;
   surahName?: string;
   sourceId?: number;
+  initialCategories?: string[];
 }
 
 type ReportCategory =
@@ -165,7 +166,7 @@ function removeFootnote(index: number) {
 }
 
 function resetForm() {
-  selectedCategories.value = new Set();
+  selectedCategories.value = new Set((props.initialCategories ?? []) as ReportCategory[]);
   showSuggestEdit.value = false;
   proposalText.value = props.verse.translation || "";
   footnotes.value = (props.verse.footnotes || []).map((fn) => ({

@@ -6,7 +6,7 @@
  * translation in a bottom sheet on demand.
  */
 import { storeToRefs } from "pinia";
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { useMushafStore } from "~/stores/mushafStore";
 import { useFontSettingsStore } from "~/stores/fontSettingsStore";
 import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
@@ -16,6 +16,7 @@ import ReportModal from "~/components/reading/ReportModal.vue";
 import { useQcfFont } from "~/composables/useQcfFont";
 import { flipPage } from "~/composables/usePageFlip";
 import { useSpreadMode } from "~/composables/useSpreadMode";
+import { useFootnotePopover } from "~/composables/useFootnotePopover";
 
 // Mushaf uses its own full-screen layout; a fixed key keeps the reader mounted across page turns so the view transition survives the URL sync
 definePageMeta({ layout: false, key: "mushaf-page" });
@@ -92,6 +93,15 @@ const showSettings = ref(false);
 const showReport = ref(false);
 const reportVerse = ref<Verse | null>(null);
 const reportSurah = ref(1);
+const reportCategories = ref<string[]>([]);
+const { footnotePopoverOpen } = useFootnotePopover();
+
+provide("openReport", (verse: Verse, categories: string[] = []) => {
+  reportVerse.value = verse;
+  reportSurah.value = verse.surahNumber ?? reportSurah.value;
+  reportCategories.value = categories;
+  showReport.value = true;
+});
 
 const firstKey = computed(() => mushafStore.currentPageVerseKeys[0]);
 const firstVerse = computed(() => {
@@ -134,6 +144,7 @@ async function handleReport() {
     if (!verse) return;
     reportVerse.value = verse;
     reportSurah.value = firstVerse.value.surah;
+    reportCategories.value = [];
     showReport.value = true;
   }
   catch (e) {
@@ -224,7 +235,7 @@ useSeoMeta({
       :is-font-loaded="isFontLoaded"
       :ui-visible="isUiVisible"
       :spread="isSpread"
-      :nav-locked="sheetOpen || showSettings || showReport"
+      :nav-locked="sheetOpen || showSettings || showReport || footnotePopoverOpen"
       @open-translation="openSheet"
     />
 
@@ -242,6 +253,7 @@ useSeoMeta({
       :verse="reportVerse"
       :surah-number="reportSurah"
       :source-id="selectedSourceId"
+      :initial-categories="reportCategories"
     />
     <ClientOnly>
       <ReadingRecitationPlayerBar />
