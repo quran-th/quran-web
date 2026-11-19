@@ -13,7 +13,7 @@ import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
 import { useRecitationStore } from "~/stores/recitationStore";
 import type { Verse } from "~/stores/quranStore";
 import type BookSpread from "~/components/book/BookSpread.vue";
-import type { BookPosition } from "~/components/book/BookSpread.vue";
+import type { BookLanding, BookPosition } from "~/components/book/BookSpread.vue";
 import ReportModal from "~/components/reading/ReportModal.vue";
 import { useQcfFont } from "~/composables/useQcfFont";
 import { MUSHAF_LOCKED_FONT } from "~/composables/useQuranFont";
@@ -74,6 +74,8 @@ const mode = computed<SpreadMode>(() => (isSpread.value && requestedMode.value =
 // The shared reading position. Only the visible layer moves it, so switching
 // modes back and forth never drifts: the hidden layer just follows along.
 const position = ref<VersePosition | null>(parseVerseKey(route.query.ayah));
+// 1 when the surah's first page was already read on the left of the previous surah's last spread
+const bookLeadingPages = ref(0);
 
 const sheetOpen = ref(false);
 const sheetVerseKey = ref<string | undefined>();
@@ -130,7 +132,10 @@ const firstKey = computed(() => mushafStore.currentPageVerseKeys[0]);
 const firstVerse = computed(() => parseVerseKey(firstKey.value));
 
 watch(firstVerse, (verse) => {
-  if (verse && (mode.value === "mushaf" || !position.value)) position.value = verse;
+  if (verse && (mode.value === "mushaf" || !position.value)) {
+    position.value = verse;
+    bookLeadingPages.value = 0;
+  }
 }, { immediate: true });
 
 // ── Book layer ──
@@ -153,6 +158,20 @@ const bookSurah = computed(() => {
     : null;
 });
 
+const bookNextSurah = computed(() => {
+  const id = position.value?.surah;
+  const surah = id ? quranStore.surahs.find(s => s.id === id + 1) : undefined;
+  return surah
+    ? {
+        surahNumber: surah.id,
+        nameArabic: surah.name_arabic,
+        nameThai: surah.name_thai,
+        revelationPlace: surah.revelation_place,
+        versesCount: surah.verses_count,
+      }
+    : null;
+});
+
 function handleBookPosition(next: BookPosition) {
   bookPosition.value = next;
   if (mode.value !== "book") return;
@@ -160,17 +179,20 @@ function handleBookPosition(next: BookPosition) {
   if (next.page && !mushafStore.spreadPages.includes(next.page)) mushafStore.loadWindow(next.page);
 }
 
-function handleBookCross(direction: "next" | "prev") {
-  const surah = (position.value?.surah ?? 0) + (direction === "next" ? 1 : -1);
+function handleBookCross(direction: "next" | "prev", landing?: BookLanding) {
+  const step = direction === "next" ? (landing?.surahStep ?? 1) : -1;
+  const surah = (position.value?.surah ?? 0) + step;
   const target = quranStore.surahs.find(s => s.id === surah);
   if (!target) return;
   bookPosition.value = null;
-  position.value = { surah, verse: direction === "next" ? 1 : target.verses_count };
+  bookLeadingPages.value = direction === "next" ? (landing?.leadingPages ?? 0) : 0;
+  position.value = { surah, verse: direction === "next" ? (landing?.verse ?? 1) : target.verses_count };
 }
 
 async function goToSurah(surah: number) {
   if (mode.value === "book") {
     bookPosition.value = null;
+    bookLeadingPages.value = 0;
     position.value = { surah, verse: 1 };
     return;
   }
@@ -395,9 +417,9 @@ useSeoMeta({
       <template #aside>
         <Transition
           enter-active-class="transition duration-300 ease-out motion-reduce:transition-none"
-          enter-from-class="-translate-y-6 opacity-0"
-          leave-active-class="transition duration-200 ease-in motion-reduce:transition-none"
-          leave-to-class="-translate-y-6 opacity-0"
+          enter-from-class="-translate-x-full opacity-0"
+          leave-active-class="transition duration-300 ease-in-out motion-reduce:transition-none"
+          leave-to-class="-translate-x-full opacity-0"
         >
           <ReadingSurahIndex
             v-if="isSpread && indexOpen"
@@ -418,6 +440,8 @@ useSeoMeta({
           :source-id="selectedSourceId && selectedSourceId > 0 ? selectedSourceId : undefined"
           :anchor-verse="position.verse"
           :surah="bookSurah"
+          :next-surah="bookNextSurah"
+          :leading-pages="bookLeadingPages"
           :active="mode === 'book'"
           :nav-locked="modalOpen"
           @position="handleBookPosition"

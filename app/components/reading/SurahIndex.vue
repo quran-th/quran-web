@@ -49,14 +49,14 @@ watch(() => props.currentSurah, async () => {
         <button
           type="button"
           :aria-current="surah.id === currentSurah ? 'true' : undefined"
-          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-paper-tint"
+          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left outline-none transition-colors hover:bg-paper-tint focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sage-500"
           :class="surah.id === currentSurah ? 'bg-paper-tint' : ''"
           @click="emit('select', surah.id)"
         >
           <span class="w-7 shrink-0 text-sm font-semibold tabular-nums text-sage-600">{{ surah.id }}</span>
           <span class="min-w-0 flex-1">
             <span class="block truncate text-[15px]" :class="surah.id === currentSurah ? 'font-semibold text-ink' : 'text-ink-soft'">{{ surah.name_thai }}</span>
-            <span class="block text-xs text-ink-muted">{{ surah.verses_count }} อายะห์</span>
+            <span class="block truncate text-xs text-ink-muted">{{ surah.name_meaning_thai }}</span>
           </span>
           <span dir="rtl" lang="ar" class="shrink-0 font-arabic text-lg text-ink-icon">{{ surah.name_arabic }}</span>
         </button>
