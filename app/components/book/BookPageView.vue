@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { BookPage } from "~/composables/bookPagination";
 import type { BookVerse } from "~/composables/useBookVerses";
 
@@ -44,6 +44,33 @@ const verseRange = computed(() => {
 });
 
 const overflow = computed(() => props.page?.overflow ?? false);
+
+// Pagination reserves room for clamped footnotes; show them in full whenever the
+// slack below the verses holds the whole text, and clamp only when it does not.
+const footArea = ref<HTMLElement | null>(null);
+const fitsInFull = ref(true);
+
+async function measureFootnotes() {
+  fitsInFull.value = true;
+  await nextTick();
+  const el = footArea.value;
+  if (!el || overflow.value) return;
+  fitsInFull.value = el.scrollHeight <= el.clientHeight + 1;
+}
+
+let footObserver: ResizeObserver | null = null;
+onMounted(() => {
+  // The area is flex-sized by the page, not by its content, so measuring can't loop
+  footObserver = new ResizeObserver(() => measureFootnotes());
+  if (footArea.value) footObserver.observe(footArea.value);
+  measureFootnotes();
+});
+onBeforeUnmount(() => footObserver?.disconnect());
+watch(footnotes, measureFootnotes);
+watch(footArea, (el, old) => {
+  if (old) footObserver?.unobserve(old);
+  if (el) footObserver?.observe(el);
+});
 </script>
 
 <template>
@@ -70,6 +97,7 @@ const overflow = computed(() => props.page?.overflow ?? false);
 
       <div
         v-if="footnotes.length"
+        ref="footArea"
         class="flex flex-col"
         :class="overflow ? 'shrink-0' : 'scrollbar-dot min-h-0 flex-1 overflow-y-auto'"
       >
@@ -80,7 +108,7 @@ const overflow = computed(() => props.page?.overflow ?? false);
             data-footnote
             :number="f.number"
             :text="f.text"
-            :expanded="expandedFootnote === `${side}:${f.number}`"
+            :expanded="fitsInFull || overflow || expandedFootnote === `${side}:${f.number}`"
             @toggle="$emit('toggleFootnote', `${side}:${f.number}`)"
           />
         </div>
