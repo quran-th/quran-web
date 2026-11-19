@@ -1,11 +1,13 @@
 <script setup lang="ts">
 /**
- * MushafReader — full-width reader with overlay navigation arrows.
+ * MushafReader — full-width reader with fullscreen button.
  *
  * Keyboard: ArrowRight → prev page, ArrowLeft → next page (RTL).
+ * In spread mode a page turn moves a whole two-page spread.
  */
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useMushafStore } from '~/stores/mushafStore'
+import { useReaderSettingsStore } from '~/stores/readerSettingsStore'
 import {
   toggleFullscreen as toggleFullscreenHelper,
   getFullscreenElement,
@@ -14,19 +16,33 @@ import {
 interface Props {
   isFontLoaded: (pageNumber: number) => boolean
   uiVisible?: boolean
+  spread?: boolean
+  /** Blocks keyboard and swipe page turns (e.g. while the translation sheet is open) */
+  navLocked?: boolean
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   uiVisible: true,
+  spread: false,
+  navLocked: false,
 })
 
+const emit = defineEmits<{ openTranslation: [verseKey: string] }>()
+
 const mushafStore = useMushafStore()
+const readerSettings = useReaderSettingsStore()
 
 const currentPage = computed(() => mushafStore.currentPage)
-const hasPrev = computed(() => currentPage.value > 1)
-const hasNext = computed(() => currentPage.value < mushafStore.totalPages)
+const hasPrev = computed(() => mushafStore.hasPrevPage)
+const hasNext = computed(() => mushafStore.hasNextPage)
+const rightPage = computed(() => mushafStore.spreadPages[0])
+const leftPage = computed(() => mushafStore.spreadPages[1])
+const showColumns = computed(() => readerSettings.showPageTranslation)
 
 function handleKeydown(e: KeyboardEvent) {
+  if (props.navLocked || e.metaKey || e.ctrlKey || e.altKey) return
+  const target = e.target as HTMLElement | null
+  if (target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return
   if (e.key === 'ArrowRight') {
     e.preventDefault()
     mushafStore.prevPage()
@@ -48,7 +64,7 @@ function handleTouchStart(e: TouchEvent) {
 }
 
 function handleTouchEnd(e: TouchEvent) {
-  if (!e.changedTouches || !e.changedTouches[0]) return
+  if (props.navLocked || !e.changedTouches || !e.changedTouches[0]) return
 
   const touchEndX = e.changedTouches[0].screenX
   const touchEndY = e.changedTouches[0].screenY
@@ -103,15 +119,44 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="mushaf-reader" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
-    <!-- Full-width page display -->
-    <div class="mushaf-page-wrapper">
-      <MushafPageView :page-number="currentPage" :is-font-loaded="isFontLoaded" />
+  <div
+    class="relative flex flex-1 flex-col"
+    :class="spread ? 'overflow-hidden' : 'overflow-y-auto'"
+    @touchstart="handleTouchStart"
+    @touchend="handleTouchEnd"
+  >
+    <!-- Spread: [left translation] [left page] [fold] [right page] [right translation] -->
+    <div v-if="spread" class="flex min-h-0 flex-1 px-6 pt-4 pb-10">
+      <div class="paper-surface book-sheet flex min-w-0 flex-1 justify-center overflow-hidden">
+        <MushafPageTranslationColumn v-if="showColumns" :page="leftPage" side="left" />
+        <MushafFittedPage :page-number="leftPage" :is-font-loaded="isFontLoaded" />
+        <div
+          aria-hidden="true"
+          class="book-spine w-7 shrink-0"
+        />
+        <MushafFittedPage :page-number="rightPage" :is-font-loaded="isFontLoaded" />
+        <MushafPageTranslationColumn v-if="showColumns" :page="rightPage" side="right" />
+      </div>
     </div>
 
-    <!-- Overlay navigation arrows — bottom right -->
+    <!-- Single page on a paper sheet; tapping an ayah opens its translation -->
+    <!-- Phones: full-bleed paper so the Mushaf lines get the whole screen width -->
+    <div v-else class="mushaf-page-wrapper md:p-2">
+      <MushafPageView
+        :page-number="currentPage"
+        :is-font-loaded="isFontLoaded"
+        sheet
+        @word-click="emit('openTranslation', $event)"
+      />
+    </div>
+
+    <!-- Fullscreen button — bottom right -->
     <div class="nav-overlay" :class="{ 'nav-overlay--hidden': !uiVisible }">
-      <button class="nav-arrow" title="Toggle Fullscreen" @click="toggleFullscreen">
+      <button
+        :aria-label="isFullscreen ? 'ออกจากเต็มจอ' : 'เต็มจอ'"
+        class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-[10px] bg-paper-pill text-ink-icon shadow-pill"
+        @click="toggleFullscreen"
+      >
         <svg
           v-if="!isFullscreen"
           xmlns="http://www.w3.org/2000/svg"
@@ -147,60 +192,11 @@ onUnmounted(() => {
           <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
         </svg>
       </button>
-      <button
-        :disabled="!hasPrev"
-        class="nav-arrow"
-        title="Previous page"
-        @click="mushafStore.prevPage()"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="m18 15-6-6-6 6" />
-        </svg>
-      </button>
-      <button
-        :disabled="!hasNext"
-        class="nav-arrow"
-        title="Next page"
-        @click="mushafStore.nextPage()"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
-      </button>
     </div>
   </div>
 </template>
 
 <style scoped>
-.mushaf-reader {
-  position: relative;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
 .mushaf-page-wrapper {
   flex: 1;
   display: flex;
@@ -216,7 +212,6 @@ onUnmounted(() => {
   right: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
   z-index: 20;
   transition:
     opacity 0.3s ease,
@@ -227,33 +222,5 @@ onUnmounted(() => {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-}
-
-.nav-arrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: white;
-  color: #475569;
-  cursor: pointer;
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.08),
-    0 1px 2px rgba(0, 0, 0, 0.04);
-  transition: all 0.15s ease;
-}
-
-.nav-arrow:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #94a3b8;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-.nav-arrow:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
 }
 </style>

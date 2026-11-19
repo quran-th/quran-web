@@ -25,9 +25,12 @@ const props = defineProps<Props>()
 const fontSettings = useFontSettingsStore()
 const { quranFont, fontVersion, isQcf } = storeToRefs(fontSettings)
 
-const { activeWordKey } = storeToRefs(useRecitationStore())
+const { activeWordKey, activeVerseKey, status } = storeToRefs(useRecitationStore())
 const isRecitationActive = computed(
   () => !!props.word.verse_key && activeWordKey.value === `${props.word.verse_key}:${props.word.position}`,
+)
+const isGlowing = computed(
+  () => props.word.char_type_name === 'end' && status.value === 'playing' && activeVerseKey.value === props.word.verse_key,
 )
 </script>
 
@@ -35,7 +38,7 @@ const isRecitationActive = computed(
   <div
     v-if="word.char_type_name !== 'pause'"
     class="quran-word rounded-md transition-colors duration-150"
-    :class="{ 'bg-amber-100 text-amber-900': isRecitationActive }"
+    :class="{ 'bg-amber-100 text-amber-900': isRecitationActive, 'ayah-glow': isGlowing }"
   >
     <!-- QCF glyph fonts: V1, V2, Tajweed V4 -->
     <QuranGlyphWord

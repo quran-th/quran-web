@@ -52,6 +52,16 @@ const fontSettings = useFontSettingsStore();
 const readerSettings = useReaderSettingsStore();
 const recitation = useRecitationStore();
 const NuxtLink = resolveComponent("NuxtLink");
+
+// Book mode needs two pages side by side; phones and the server keep the ayah reader.
+// Evaluated up front on client navigation so the ayah reader never flashes in.
+const BOOK_MEDIA = "(orientation: landscape) and (min-width: 1024px)";
+const isWideScreen = ref(import.meta.client && !useNuxtApp().isHydrating && window.matchMedia(BOOK_MEDIA).matches);
+const bookMode = computed(() => route.query.mode === "book" && isWideScreen.value);
+let bookMedia: MediaQueryList | null = null;
+function syncWideScreen() {
+  isWideScreen.value = bookMedia?.matches ?? false;
+}
 const {
   currentSurah,
   verses,
@@ -464,6 +474,7 @@ function teardown(keepChapter?: number) {
   if (autoNextTimer) clearInterval(autoNextTimer);
   disposePin?.();
   sentinelObserver?.disconnect();
+  bookMedia?.removeEventListener("change", syncWideScreen);
   window.removeEventListener("scroll", onScroll);
   if (scrollRaf) cancelAnimationFrame(scrollRaf);
   if (urlSyncTimer) clearTimeout(urlSyncTimer);
@@ -476,6 +487,9 @@ onBeforeRouteLeave(() => teardown());
 onBeforeUnmount(() => teardown());
 
 onMounted(async () => {
+  bookMedia = window.matchMedia(BOOK_MEDIA);
+  syncWideScreen();
+  bookMedia.addEventListener("change", syncWideScreen);
   sentinelObserver = new IntersectionObserver(
     (entries) => {
       if (entries.some((e) => e.isIntersecting)) loadNextPage();
@@ -520,38 +534,58 @@ onMounted(async () => {
 
 // External /2/N navigation within this surah (back/forward, in-app links).
 // Our own scroll-driven URL sync is ignored via lastSyncedAyah.
-watch(
-  () => route.params.ayah,
-  async (newAyah) => {
-    if (isTornDown) return;
-    const ayah = parseInt(newAyah as string) || 1;
-    if (ayah === lastSyncedAyah) return;
-    lastSyncedAyah = ayah;
-    disposePin?.();
-    const index = mushafPageList.value.findIndex(
-      (p) => ayah >= p.verseFrom && ayah <= p.verseTo,
-    );
-    if (index === -1) {
-      showError({ statusCode: 404, statusMessage: "Ayah not found" });
-      return;
-    }
-    if (index < firstLoadedIndex.value || index > lastLoadedIndex.value) {
-      const generation = ++loadGeneration;
-      const result = await fetchPageVerses(mushafPageList.value[index]!);
-      if (!result || !isCurrent(generation)) return;
-      currentSourceId.value = result.sourceId;
-      verses.value = result.verses;
-      firstLoadedIndex.value = index;
-      lastLoadedIndex.value = index;
-    }
-    currentPage.value = mushafPageList.value[index]!.page;
-    await nextTick();
-    const el = document.getElementById(`ayah-${ayah}`);
-    if (el) {
-      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 72, behavior: "smooth" });
-    }
-  },
-);
+/** Loads the Mushaf page holding `ayah` if needed; false when it is gone or superseded. */
+async function followRouteAyahData(ayah: number): Promise<boolean> {
+  const index = mushafPageList.value.findIndex(
+    (p) => ayah >= p.verseFrom && ayah <= p.verseTo,
+  );
+  if (index === -1) {
+    showError({ statusCode: 404, statusMessage: "Ayah not found" });
+    return false;
+  }
+  if (index < firstLoadedIndex.value || index > lastLoadedIndex.value) {
+    const generation = ++loadGeneration;
+    const result = await fetchPageVerses(mushafPageList.value[index]!);
+    if (!result || !isCurrent(generation)) return false;
+    currentSourceId.value = result.sourceId;
+    verses.value = result.verses;
+    firstLoadedIndex.value = index;
+    lastLoadedIndex.value = index;
+  }
+  currentPage.value = mushafPageList.value[index]!.page;
+  return true;
+}
+
+async function followRouteAyah(newAyah: unknown) {
+  if (isTornDown || bookMode.value) return;
+  const ayah = parseInt(newAyah as string) || 1;
+  if (ayah === lastSyncedAyah) return;
+  lastSyncedAyah = ayah;
+  disposePin?.();
+  if (!(await followRouteAyahData(ayah))) return;
+  await nextTick();
+  const el = document.getElementById(`ayah-${ayah}`);
+  if (el) {
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 72, behavior: "smooth" });
+  }
+}
+
+watch(() => route.params.ayah, followRouteAyah);
+
+// Book mode keeps the URL ayah moving while this watcher is skipped, so the
+// loaded verses are stale when the ayah reader takes over again.
+watch(bookMode, async (isBook, wasBook) => {
+  if (!wasBook || isBook) return;
+  const ayah = parseInt(route.params.ayah as string) || 1;
+  lastSyncedAyah = ayah;
+  disposePin?.();
+  // The ayah reader mounts fresh here, and its rows keep growing as fonts and
+  // word data arrive, so a one-off scroll would land verses short. Pin instead.
+  urlSyncPausedUntil = Date.now() + INITIAL_SCROLL_SETTLE_MS;
+  if (!(await followRouteAyahData(ayah))) return;
+  await nextTick();
+  if (!isTornDown && !bookMode.value) disposePin = pinToAyah(ayah);
+});
 
 // Recitation: keep one Mushaf page loaded ahead of the reciter
 const isRecitingThisSurah = computed(
@@ -606,7 +640,7 @@ function playNextSurah() {
   autoNextTimer = null;
   // 0 = navigating; teardown resets it once the route actually changes
   autoNextCountdown.value = 0;
-  router.push({ path: `/${next.id}`, query: { play: null } });
+  router.push({ path: `/${next.id}`, query: { play: null, ...(route.query.mode === "book" ? { mode: "book" } : {}) } });
 }
 
 watch(completedChapter, (finished) => {
@@ -792,7 +826,18 @@ useSchemaOrg([
 </script>
 
 <template>
-  <div class="min-h-screen bg-white font-sans text-slate-900">
+  <BookReader
+    v-if="bookMode && currentSurah"
+    :surah-number="surahId"
+    :source-id="effectiveSourceId"
+    :initial-ayah="Number(route.params.ayah) || 1"
+    :name-arabic="currentSurah.name_arabic"
+    :name-thai="currentSurah.name_thai"
+    :revelation-place="currentSurah.revelation_place"
+    :verses-count="currentSurah.verses_count"
+    :prev-surah-verses-count="allSurahs.find((s) => s.id === surahId - 1)?.verses_count"
+  />
+  <div v-else class="min-h-screen bg-white font-sans text-slate-900">
     <!-- TODO: temporarily hidden -->
     <!-- <QuranToolbar
       class="sticky top-0 z-40"
@@ -847,7 +892,7 @@ useSchemaOrg([
                   <span v-if="currentPageInfo" class="text-slate-300">·</span>
                   <NuxtLink
                     v-if="currentPageInfo"
-                    to="/page/1"
+                    :to="`/page/${currentPageInfo.page}`"
                     class="hover:text-slate-700 underline underline-offset-2"
                     title="อ่านในมุศฮัฟ"
                   >

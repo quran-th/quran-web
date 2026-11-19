@@ -8,7 +8,13 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
     maxAge: 60 * 60 * 24 * 365, // 1 year
   })
 
+  const pageTranslationCookie = useCookie<boolean>('page-translation', {
+    default: () => true,
+    maxAge: 60 * 60 * 24 * 365, // 1 year
+  })
+
   const selectedSourceId = ref<number | undefined>(sourceCookie.value)
+  const showPageTranslation = ref<boolean>(pageTranslationCookie.value)
   const translationSources = ref<TranslationSource[]>([])
   /** The source the Thai translation audio reads from */
   const mukhtasarSourceId = computed(() => translationSources.value.find((s) => s.name.includes('มุคตะศ็อร'))?.id)
@@ -16,6 +22,11 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
   function setTranslationSource(id: number | undefined) {
     selectedSourceId.value = id
     sourceCookie.value = id
+  }
+
+  function setShowPageTranslation(v: boolean) {
+    showPageTranslation.value = v
+    pageTranslationCookie.value = v
   }
 
   async function fetchTranslationSources() {
@@ -38,9 +49,11 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
 
   return {
     selectedSourceId,
+    showPageTranslation,
     translationSources,
     mukhtasarSourceId,
     setTranslationSource,
+    setShowPageTranslation,
     fetchTranslationSources,
   }
 })

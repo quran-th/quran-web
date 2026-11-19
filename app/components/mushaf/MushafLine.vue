@@ -16,6 +16,7 @@ interface Props {
 }
 
 defineProps<Props>()
+const emit = defineEmits<{ wordClick: [verseKey: string] }>()
 </script>
 
 <template>
@@ -25,6 +26,7 @@ defineProps<Props>()
       :key="`${word.page_number}-${word.line_number}-${word.position}`"
       :word="word"
       :is-font-loaded="isFontLoaded(word.page_number)"
+      @click="word.verse_key && emit('wordClick', word.verse_key)"
     />
   </div>
 </template>

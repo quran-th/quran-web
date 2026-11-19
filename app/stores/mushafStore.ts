@@ -160,22 +160,53 @@ export const useMushafStore = defineStore('mushaf', () => {
     return words
   }
 
+  // Spread mode shows an odd (right) + even (left) page pair; set by the page
+  const spreadMode = ref(false)
+
+  const spreadPages = computed<[number, number]>(() => {
+    const odd = currentPage.value % 2 === 1 ? currentPage.value : currentPage.value - 1
+    return [odd, Math.min(odd + 1, totalPages)]
+  })
+
+  const hasPrevPage = computed(() => (spreadMode.value ? spreadPages.value[0] > 1 : currentPage.value > 1))
+  const hasNextPage = computed(() => (spreadMode.value ? spreadPages.value[1] < totalPages : currentPage.value < totalPages))
+
+  function visiblePages(): number[] {
+    return spreadMode.value ? spreadPages.value : [currentPage.value]
+  }
+
+  function windowPages(): number[] {
+    const [first, last] = spreadMode.value
+      ? spreadPages.value
+      : [currentPage.value, currentPage.value]
+    const span = spreadMode.value ? 2 : 1
+    const pages: number[] = []
+    for (let p = first - span; p <= last + span; p++) {
+      if (p >= 1 && p <= totalPages) pages.push(p)
+    }
+    return pages
+  }
+
   /**
-   * Load the current page plus its neighbors (sliding window of 3).
+   * Load the visible page(s) plus neighbors: a sliding window of 3 pages, or
+   * the current spread plus the previous and next spread (6 pages) in spread mode.
    */
   async function loadWindow(centerPage: number) {
     loading.value = true
-    currentPage.value = centerPage
+    currentPage.value = spreadMode.value && centerPage % 2 === 0 ? centerPage - 1 : centerPage
 
-    const pages = [centerPage]
-    if (centerPage > 1) pages.push(centerPage - 1)
-    if (centerPage < totalPages) pages.push(centerPage + 1)
+    const visible = visiblePages()
+    const others = windowPages().filter(p => !visible.includes(p))
+    // Previous-spread words are only a warm-up for going back, so they never block
+    const [next, prev] = spreadMode.value
+      ? [others.filter(p => p > visible[visible.length - 1]!), others.filter(p => p < visible[0]!)]
+      : [others, []]
+    Promise.all(prev.map(p => fetchPageWords(p))).catch(() => {})
 
-    await Promise.all(pages.map(p => fetchPageWords(p)))
+    await Promise.all([...visible, ...next].map(p => fetchPageWords(p)))
 
-    // Pre-load bismillah words if any surah starts on this page
-    const surahStarts = getSurahStartsOnPage(centerPage)
-    if (surahStarts.some(s => s.hasBismillah)) {
+    // Pre-load bismillah words if any surah starts on a visible page
+    if (visible.some(p => getSurahStartsOnPage(p).some(s => s.hasBismillah))) {
       await fetchBismillahWords()
     }
 
@@ -188,20 +219,19 @@ export const useMushafStore = defineStore('mushaf', () => {
   }
 
   function nextPage() {
-    goToPage(currentPage.value + 1)
+    goToPage(currentPage.value + (spreadMode.value ? 2 : 1))
   }
 
   function prevPage() {
-    goToPage(currentPage.value - 1)
+    goToPage(currentPage.value - (spreadMode.value ? 2 : 1))
   }
 
   /**
-   * All words currently in the 3-page window — used by useQcfFont to load fonts.
+   * All words currently in the loaded window — used by useQcfFont to load fonts.
    */
   const windowWords = computed<QuranWord[]>(() => {
     const result: QuranWord[] = []
-    const center = currentPage.value
-    for (const pg of [center - 1, center, center + 1]) {
+    for (const pg of windowPages()) {
       const words = pageWordsCache.value.get(pg)
       if (words) result.push(...words)
     }
@@ -212,20 +242,18 @@ export const useMushafStore = defineStore('mushaf', () => {
     return result
   })
 
-  // Expose unique verse keys (e.g. "2:282") strictly belonging to the current visible page.
-  // This is used to query the backend for exact page translations, including overflow parts.
-  const currentPageVerseKeys = computed<string[]>(() => {
-    const words = pageWordsCache.value.get(currentPage.value)
+  /** Unique verse keys (e.g. "2:282") of a page, in reading order. */
+  function getPageVerseKeys(pageNumber: number): string[] {
+    const words = pageWordsCache.value.get(pageNumber)
     if (!words) return []
-
-    // We use a Set to keep unique keys, and they are inherently ordered by their first appearance
-    // in the already-sorted `words` array.
     const keys = new Set<string>()
     for (const w of words) {
       if (w.verse_key) keys.add(w.verse_key)
     }
     return Array.from(keys)
-  })
+  }
+
+  const currentPageVerseKeys = computed<string[]>(() => getPageVerseKeys(currentPage.value))
 
   return {
     currentPage,
@@ -243,5 +271,10 @@ export const useMushafStore = defineStore('mushaf', () => {
     prevPage,
     windowWords,
     currentPageVerseKeys,
+    spreadMode,
+    spreadPages,
+    hasPrevPage,
+    hasNextPage,
+    getPageVerseKeys,
   }
 })

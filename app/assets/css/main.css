@@ -11,6 +11,18 @@
     from { stroke-dashoffset: 0; }
     to { stroke-dashoffset: 100; }
   }
+
+  --animate-ayah-glow: ayah-glow 2.4s ease-in-out infinite;
+  @keyframes ayah-glow {
+    0%, 100% {
+      transform: translate(-50%, -50%) scale(0.92);
+      box-shadow: 0 0 6px 1px rgba(212, 168, 55, 0.35);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.06);
+      box-shadow: 0 0 16px 4px rgba(212, 168, 55, 0.6);
+    }
+  }
 }
 
 /* Static: scoped component CSS reads these through var(), which Tailwind cannot see */
@@ -25,4 +37,119 @@
   --color-brand-600: #179a74;
   --color-brand-700: #157a5e;
   --color-brand-800: #14614c;
+
+  --color-paper-surround: #e9e4da;
+  /* Eye-comfort green reading paper */
+  --color-paper: #f2f4ec;
+  /* Highlights that sit on the paper (tapped ayah, surah header block) */
+  --color-paper-wash: #e7eadf;
+  --color-paper-tint: #f1ece1;
+  --color-paper-tray: #dcd5c8;
+  --color-paper-pill: #fdfaf4;
+  --color-ink: #2b2925;
+  --color-ink-soft: #3b3832;
+  --color-ink-strong: #24221e;
+  --color-ink-icon: #5b564d;
+  --color-ink-muted: #756e62;
+  --color-sage-500: #5f7d69;
+  --color-sage-600: #4d6b58;
+  --color-sage-700: #3f5848;
+  --color-sage-wash: #e9ebe0;
+  --shadow-paper: 0 1px 1px rgba(70, 55, 30, 0.05), 0 16px 40px rgba(70, 55, 30, 0.1);
+  --shadow-pill: 0 1px 2px rgba(60, 45, 25, 0.08), 0 1px 3px rgba(60, 45, 25, 0.06);
+  --shadow-menu: 0 8px 24px rgba(60, 45, 25, 0.1);
+}
+
+/* The verse being recited: its end-of-ayah mark sits on a breathing gold disc.
+   QCF marks are font glyphs, so the fill is a disc drawn behind the glyph.
+   --ayah-disc-w/-h let a plain number widen the disc into a pill. */
+@utility ayah-glow {
+  position: relative;
+  z-index: 0;
+  color: #6b4e0e;
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    left: 50%;
+    top: 50%;
+    width: var(--ayah-disc-w, 1.1em);
+    height: var(--ayah-disc-h, 1.1em);
+    border-radius: 9999px;
+    background: #f3dc92;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px 2px rgba(212, 168, 55, 0.5);
+    animation: var(--animate-ayah-glow);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &::before {
+      animation: none;
+    }
+  }
+}
+
+/* An open book: stacked leaves showing on the fore-edges and foot, then the drop shadow */
+@utility book-sheet {
+  border-radius: 3px;
+  /* Alternating light leaves and darker gaps, offset outward and down one px at a time */
+  box-shadow:
+    -1px 1px 0 #fafbf6, 1px 1px 0 #fafbf6,
+    -2px 2px 0 #d6d9cd, 2px 2px 0 #d6d9cd,
+    -3px 3px 0 #f8f9f4, 3px 3px 0 #f8f9f4,
+    -4px 4px 0 #d1d4c7, 4px 4px 0 #d1d4c7,
+    -5px 5px 0 #f6f7f1, 5px 5px 0 #f6f7f1,
+    -6px 6px 0 #cccfc1, 6px 6px 0 #cccfc1,
+    -7px 7px 0 #f4f5ee, 7px 7px 0 #f4f5ee,
+    -8px 8px 0 #b5b9aa, 8px 8px 0 #b5b9aa,
+    0 12px 16px -2px rgba(35, 45, 25, 0.22),
+    0 32px 56px -10px rgba(35, 45, 25, 0.3);
+}
+
+/* The gutter: pages darken as they curve into the binding, with a faint crease highlight */
+@utility book-spine {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    inset: 0 -56px;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      rgba(45, 60, 35, 0) 0%,
+      rgba(45, 60, 35, 0.04) 30%,
+      rgba(45, 60, 35, 0.1) 44%,
+      rgba(45, 60, 35, 0.2) 49.4%,
+      rgba(255, 255, 255, 0.35) 50%,
+      rgba(45, 60, 35, 0.18) 50.6%,
+      rgba(45, 60, 35, 0.1) 56%,
+      rgba(45, 60, 35, 0.04) 70%,
+      rgba(45, 60, 35, 0) 100%
+    );
+  }
+}
+
+@utility paper-surface {
+  background-color: var(--color-paper);
+}
+
+/* scrollbar-width/scrollbar-color from Chrome 121 override the webkit rules, so only set them as a fallback */
+@utility scrollbar-dot {
+  &::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  &::-webkit-scrollbar-track {
+    background: linear-gradient(90deg, transparent 4px, #d8d2c6 4px, #d8d2c6 5px, transparent 5px);
+  }
+  &::-webkit-scrollbar-thumb {
+    background: radial-gradient(circle, #a49d90 3px, transparent 3.6px) center / 9px 9px no-repeat;
+  }
+  &::-webkit-scrollbar-button {
+    display: none;
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    scrollbar-width: thin;
+    scrollbar-color: #cdc6b8 transparent;
+  }
 }
