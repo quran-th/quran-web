@@ -74,7 +74,7 @@ watch(footArea, (el, old) => {
 </script>
 
 <template>
-  <section :aria-label="verseRange" class="flex min-w-0 flex-1 flex-col px-[30px] pb-3.5 pt-5">
+  <section :aria-label="verseRange" class="flex min-w-0 max-w-[calc(820px*var(--book-scale,1))] flex-1 flex-col px-[30px] pb-3.5 pt-5">
     <div
       class="flex min-h-6 shrink-0 items-center text-[length:calc(12px*var(--book-scale,1))] text-ink-muted"
       :class="side === 'right' ? 'justify-start' : 'justify-end'"

@@ -296,7 +296,7 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="sheetEl"
-    class="absolute inset-0 flex"
+    class="absolute inset-0 flex justify-center"
     :style="{ '--book-scale': bookScale }"
     @touchstart.passive="handleTouchStart"
     @touchend.passive="handleTouchEnd"
