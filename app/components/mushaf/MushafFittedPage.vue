@@ -21,6 +21,8 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), { fill: false })
+// The slot's full-height width, so the spread can size its sheet to the pages it holds
+const emit = defineEmits<{ slotWidth: [width: number] }>()
 
 const { fontScale } = storeToRefs(useFontSettingsStore())
 
@@ -88,6 +90,8 @@ watch(fontScale, async () => {
   await nextTick()
   fit()
 })
+
+watch(maxSlotWidth, width => emit('slotWidth', width))
 
 watch(() => props.fill, async () => {
   await nextTick()

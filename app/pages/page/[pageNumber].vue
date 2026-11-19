@@ -6,7 +6,7 @@
  * show one Mushaf page and open the translation in a bottom sheet on demand.
  */
 import { storeToRefs } from "pinia";
-import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { useMushafStore } from "~/stores/mushafStore";
 import { useQuranStore } from "~/stores/quranStore";
 import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
@@ -111,6 +111,7 @@ const translationOn = computed(() => {
 });
 
 const showSettings = ref(false);
+const indexOpen = ref(false);
 const showReport = ref(false);
 const reportVerse = ref<Verse | null>(null);
 const reportSurah = ref(1);
@@ -165,6 +166,22 @@ function handleBookCross(direction: "next" | "prev") {
   if (!target) return;
   bookPosition.value = null;
   position.value = { surah, verse: direction === "next" ? 1 : target.verses_count };
+}
+
+async function goToSurah(surah: number) {
+  if (mode.value === "book") {
+    bookPosition.value = null;
+    position.value = { surah, verse: 1 };
+    return;
+  }
+  await mushafStore.loadWindow(await mushafStore.getSurahStartPage(surah));
+  // The spread can open on the previous surah's last verses; the picked surah is the one to read
+  await nextTick();
+  position.value = { surah, verse: 1 };
+}
+
+function handleIndexKeydown(e: KeyboardEvent) {
+  if (e.key === "Escape" && indexOpen.value && !modalOpen.value) indexOpen.value = false;
 }
 
 function setMode(next: SpreadMode) {
@@ -286,6 +303,7 @@ onMounted(() => {
     : setTimeout(warmBook, 2000) as unknown as number;
 
   resetUiTimer();
+  window.addEventListener("keydown", handleIndexKeydown);
   window.addEventListener("mousemove", resetUiTimer);
   window.addEventListener("touchstart", resetUiTimer);
   window.addEventListener("scroll", resetUiTimer);
@@ -298,6 +316,7 @@ onUnmounted(() => {
     if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idleHandle);
     else clearTimeout(idleHandle);
   }
+  window.removeEventListener("keydown", handleIndexKeydown);
   window.removeEventListener("mousemove", resetUiTimer);
   window.removeEventListener("touchstart", resetUiTimer);
   window.removeEventListener("scroll", resetUiTimer);
@@ -325,6 +344,7 @@ watch(isPane, closeSheet);
 
 watch(isSpread, (spread) => {
   closeSheet();
+  if (!spread) indexOpen.value = false;
   mushafStore.spreadMode = spread;
   mushafStore.loadWindow(currentPage.value);
 });
@@ -349,6 +369,7 @@ useSeoMeta({
       :range-label="rangeLabel"
       :has-prev="hasPrev"
       :has-next="hasNext"
+      :index-open="indexOpen"
       back-to="/"
       @update:mode="setMode"
       @toggle-translation="handleToggleTranslation"
@@ -357,6 +378,7 @@ useSeoMeta({
       @listen="handleListen"
       @report="handleReport"
       @settings="showSettings = true"
+      @toggle-index="indexOpen = !indexOpen"
     />
 
     <MushafReader
@@ -367,8 +389,24 @@ useSeoMeta({
       :pane-translation="paneTranslation"
       :layer-hidden="mode === 'book'"
       :nav-locked="mode === 'book' || sheetOpen || modalOpen"
+      :index-open="isSpread && indexOpen"
       @open-translation="openSheet"
     >
+      <template #aside>
+        <Transition
+          enter-active-class="transition duration-300 ease-out motion-reduce:transition-none"
+          enter-from-class="-translate-y-6 opacity-0"
+          leave-active-class="transition duration-200 ease-in motion-reduce:transition-none"
+          leave-to-class="-translate-y-6 opacity-0"
+        >
+          <ReadingSurahIndex
+            v-if="isSpread && indexOpen"
+            :current-surah="position?.surah"
+            @select="goToSurah"
+            @close="indexOpen = false"
+          />
+        </Transition>
+      </template>
       <template #sheet>
         <BookSpread
           v-if="bookWarm && position && bookSurah"

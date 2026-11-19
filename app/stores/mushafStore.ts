@@ -255,6 +255,16 @@ export const useMushafStore = defineStore('mushaf', () => {
 
   const currentPageVerseKeys = computed<string[]>(() => getPageVerseKeys(currentPage.value))
 
+  /** The first Mushaf page a surah appears on, from the page index */
+  async function getSurahStartPage(surahId: number): Promise<number> {
+    const index = await loadPageIndex(assetsBaseUrl)
+    let first = totalPages
+    for (const [page, chapters] of Object.entries(index)) {
+      if (chapters.includes(surahId)) first = Math.min(first, Number(page))
+    }
+    return first
+  }
+
   return {
     currentPage,
     totalPages,
@@ -276,5 +286,6 @@ export const useMushafStore = defineStore('mushaf', () => {
     hasPrevPage,
     hasNextPage,
     getPageVerseKeys,
+    getSurahStartPage,
   }
 })

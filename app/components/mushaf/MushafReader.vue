@@ -9,6 +9,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { flipPage } from '~/composables/usePageFlip'
 import { useMushafStore } from '~/stores/mushafStore'
 import { useReaderSettingsStore } from '~/stores/readerSettingsStore'
+import { useFontSettingsStore } from '~/stores/fontSettingsStore'
 import {
   toggleFullscreen as toggleFullscreenHelper,
   getFullscreenElement,
@@ -25,6 +26,8 @@ interface Props {
   /** Single page with the translation pane beside it instead of the bottom sheet */
   pane?: boolean
   paneTranslation?: boolean
+  /** The index takes the space right of the sheet, so the sheet gives way to it */
+  indexOpen?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -34,6 +37,7 @@ const props = withDefaults(defineProps<Props>(), {
   paneTranslation: true,
   navLocked: false,
   layerHidden: false,
+  indexOpen: false,
 })
 
 const emit = defineEmits<{ openTranslation: [verseKey: string] }>()
@@ -47,6 +51,30 @@ const hasNext = computed(() => mushafStore.hasNextPage)
 const rightPage = computed(() => mushafStore.spreadPages[0])
 const leftPage = computed(() => mushafStore.spreadPages[1])
 const showColumns = computed(() => readerSettings.showPageTranslation)
+const fontSettings = useFontSettingsStore()
+
+// Each layer keeps one width per index state, so a mode switch only resizes the
+// paper and crossfades the ink; neither layer re-lays itself out. The book is two
+// 820px pages and the spine, scaled with the font size setting like everything in it.
+// The Mushaf spread is as wide as its two pages, which follow the screen height,
+// plus the translation columns at their 460px cap.
+const INDEX_WIDTH = '324px'
+const SPINE_WIDTH = 28
+const COLUMN_MAX_WIDTH = 460
+// Outer margin so a full-width column's text doesn't run to the paper's edge
+const SHEET_MARGIN = 16
+const pageSlotWidth = ref(0)
+const mushafWidth = computed(() => {
+  if (!pageSlotWidth.value) return 'var(--spread-avail)'
+  const natural = 2 * (pageSlotWidth.value + SHEET_MARGIN) + SPINE_WIDTH + (showColumns.value ? 2 * COLUMN_MAX_WIDTH : 0)
+  return `min(${natural}px, var(--spread-avail))`
+})
+const spreadVars = computed(() => ({
+  '--book-scale': 1 + (fontSettings.fontScale - 3) * 0.12,
+  '--spread-avail': `calc(100cqw - ${props.indexOpen ? INDEX_WIDTH : '0px'})`,
+  '--book-width': `min(calc(var(--book-scale) * 1640px + ${SPINE_WIDTH}px), var(--spread-avail))`,
+}))
+const sheetWidth = computed(() => (props.layerHidden ? 'var(--book-width)' : mushafWidth.value))
 // Odd pages are the right page of a spread, even pages the left
 const paneSide = computed(() => (currentPage.value % 2 === 1 ? 'right' : 'left'))
 
@@ -162,29 +190,47 @@ onUnmounted(() => {
 
     <!-- Spread: [left translation] [left page] [fold] [right page] [right translation] -->
     <!-- One sheet and one spine for both layers, so switching to the book layer only crossfades the ink -->
-    <div v-else-if="spread" class="relative flex min-h-0 flex-1 px-6 pt-4 pb-10">
-      <div class="paper-surface book-sheet relative min-w-0 flex-1 overflow-hidden [view-transition-name:book-spread]">
-        <div
-          class="absolute inset-0 flex justify-center transition-[opacity,visibility] duration-300 ease-out motion-reduce:transition-none"
-          :class="layerHidden ? 'invisible opacity-0' : ''"
-          :inert="layerHidden || undefined"
-        >
-          <div class="flex min-w-0 flex-[1_1_0] justify-end">
-            <MushafPageTranslationColumn v-if="showColumns" :page="leftPage" side="left" />
-            <MushafFittedPage :page-number="leftPage" :is-font-loaded="isFontLoaded" />
+    <div
+      v-else-if="spread"
+      class="flex min-h-0 flex-1 justify-center px-6 pt-4 pb-10 [container-type:inline-size]"
+      :style="spreadVars"
+    >
+      <div
+        class="relative shrink-0 transition-[width] duration-300 ease-out motion-reduce:transition-none"
+        :style="{ width: sheetWidth }"
+      >
+        <div class="paper-surface book-sheet relative h-full overflow-hidden [view-transition-name:book-spread]">
+          <div
+            class="absolute inset-y-0 left-1/2 flex -translate-x-1/2 justify-center transition-[opacity,visibility] duration-300 ease-out motion-reduce:transition-none"
+            :class="layerHidden ? 'invisible opacity-0' : ''"
+            :style="{ width: 'var(--spread-avail)' }"
+            :inert="layerHidden || undefined"
+          >
+            <div class="flex min-w-0 flex-[1_1_0] justify-end">
+              <MushafPageTranslationColumn v-if="showColumns" :page="leftPage" side="left" />
+              <MushafFittedPage :page-number="leftPage" :is-font-loaded="isFontLoaded" @slot-width="pageSlotWidth = $event" />
+            </div>
+            <div aria-hidden="true" class="w-7 shrink-0" />
+            <div class="flex min-w-0 flex-[1_1_0] justify-start">
+              <MushafFittedPage :page-number="rightPage" :is-font-loaded="isFontLoaded" />
+              <MushafPageTranslationColumn v-if="showColumns" :page="rightPage" side="right" />
+            </div>
           </div>
-          <div aria-hidden="true" class="w-7 shrink-0" />
-          <div class="flex min-w-0 flex-[1_1_0] justify-start">
-            <MushafFittedPage :page-number="rightPage" :is-font-loaded="isFontLoaded" />
-            <MushafPageTranslationColumn v-if="showColumns" :page="rightPage" side="right" />
+          <slot name="sheet" />
+          <div aria-hidden="true" class="pointer-events-none absolute inset-y-0 left-1/2 w-7 -translate-x-1/2">
+            <div class="book-spine h-full" />
           </div>
         </div>
-        <slot name="sheet" />
-        <div aria-hidden="true" class="pointer-events-none absolute inset-y-0 left-1/2 w-7 -translate-x-1/2">
-          <div class="book-spine h-full" />
+        <div aria-hidden="true" class="book-spine-foot absolute -bottom-[9px] left-1/2 h-[9px] w-7 -translate-x-1/2" />
+      </div>
+      <div
+        class="shrink-0 overflow-hidden transition-[width] duration-300 ease-out motion-reduce:transition-none"
+        :style="{ width: indexOpen ? INDEX_WIDTH : '0px' }"
+      >
+        <div class="h-full pl-6" :style="{ width: INDEX_WIDTH }">
+          <slot name="aside" />
         </div>
       </div>
-      <div aria-hidden="true" class="book-spine-foot absolute bottom-[31px] left-1/2 h-[9px] w-7 -translate-x-1/2" />
     </div>
 
     <!-- Portrait tablets: one page with the translation pane on the side the page has in the spread -->

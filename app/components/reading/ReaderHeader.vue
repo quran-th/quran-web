@@ -11,9 +11,10 @@ interface Props {
   hasNext: boolean;
   backTo: string;
   showTranslationToggle?: boolean;
+  indexOpen?: boolean;
 }
 
-withDefaults(defineProps<Props>(), { showTranslationToggle: true, rangeLabel: undefined });
+withDefaults(defineProps<Props>(), { showTranslationToggle: true, rangeLabel: undefined, indexOpen: false });
 
 const emit = defineEmits<{
   "update:mode": [mode: SpreadMode];
@@ -23,6 +24,7 @@ const emit = defineEmits<{
   listen: [];
   report: [];
   settings: [];
+  "toggle-index": [];
 }>();
 
 const tabs: { key: SpreadMode; label: string }[] = [
@@ -187,6 +189,17 @@ onBeforeUnmount(() => {
           @click="emit('settings')"
         >
           <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+        </button>
+        <!-- The index needs room beside the sheet, so it only exists on the spread -->
+        <button
+          type="button"
+          aria-label="สารบัญ"
+          :aria-pressed="indexOpen"
+          class="hidden h-11 w-11 items-center justify-center rounded-xl text-ink-icon hover:bg-paper-tint spread:flex"
+          :class="{ 'bg-paper-tint text-ink': indexOpen }"
+          @click="emit('toggle-index')"
+        >
+          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13" /><path d="M8 12h13" /><path d="M8 18h13" /><path d="M3 6h.01" /><path d="M3 12h.01" /><path d="M3 18h.01" /></svg>
         </button>
       </div>
     </div>

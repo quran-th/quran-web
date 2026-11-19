@@ -60,9 +60,8 @@ const loaded = ref(false);
 
 // The book follows the reader's chosen font; only the Mushaf layer is locked
 const { quranFont, isQcf, fontVersion } = useQuranFont();
+// --book-scale and --book-width come from MushafReader's spread
 const { fontScale } = storeToRefs(useFontSettingsStore());
-// Same curve as the verse reader; every font in the book scales off this one factor
-const bookScale = computed(() => 1 + (fontScale.value - 3) * 0.12);
 const bookWords = computed(() => (isQcf.value ? verses.value.flatMap(v => v.words) : []));
 const { isFontLoaded, isFontSettled } = useQcfFont(bookWords, fontVersion);
 provide(BOOK_FONT_LOADED_KEY, isFontLoaded);
@@ -296,8 +295,8 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="sheetEl"
-    class="absolute inset-0 flex justify-center"
-    :style="{ '--book-scale': bookScale }"
+    class="absolute inset-0 mx-auto flex"
+    :style="{ width: 'var(--book-width, 100%)' }"
     @touchstart.passive="handleTouchStart"
     @touchend.passive="handleTouchEnd"
   >
