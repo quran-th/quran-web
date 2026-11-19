@@ -1,3 +1,23 @@
+# [1.31.0](https://github.com/quran-th/quran-web/compare/v1.30.0...v1.31.0) (2026-11-19)
+
+### Bug Fixes
+
+* clamp book footnotes only when the page has no room for them ([5e1eef9](https://github.com/quran-th/quran-web/commit/5e1eef928ab5d38af738122f57dc1d53cb8e44e6))
+* keep the saved Quran font across reloads ([e64d0d1](https://github.com/quran-th/quran-web/commit/e64d0d1bf75f79fac6c3cca32574f2aab9c34dab))
+
+### Features
+
+* add the Mushaf spread and bilingual book reading modes ([39dc13c](https://github.com/quran-th/quran-web/commit/39dc13c1809238fd822004bc581a530235ef4aee))
+* cap the bilingual pages at a reading width beside the spine ([00deec3](https://github.com/quran-th/quran-web/commit/00deec3951fa5084cb43dcae1b8a159d25664c44))
+* draw the surah title as a vector cartouche ([0cab368](https://github.com/quran-th/quran-web/commit/0cab368d61bdbdecaa8bc6f1df99e649ef5189e0))
+* fade-wipe page turns and start the spread on first paint ([69fbc75](https://github.com/quran-th/quran-web/commit/69fbc75b8963544fc99c072283cdbf605ebec0b0))
+* fill a surah's blank left page with the next surah in the book ([33b0b8a](https://github.com/quran-th/quran-web/commit/33b0b8a1c5081c3a84b480d92bf38bbd86730a7e))
+* lock the Mushaf to King Fahd V2 and render the book in the chosen font ([ee994a4](https://github.com/quran-th/quran-web/commit/ee994a4ed4fb4190e89ed91b34a72d19c2e2e410))
+* show footnotes in a popover from the translation column ([ef4da46](https://github.com/quran-th/quran-web/commit/ef4da4661625e1524a93c157a7cacb12f81c45da))
+* size the spread sheet to its content and add a surah index ([1eddb86](https://github.com/quran-th/quran-web/commit/1eddb86eef71a3fdbc629b3e3ee79f3a59ca66c0))
+* switch the Mushaf and bilingual spreads in place on one page ([2ca224a](https://github.com/quran-th/quran-web/commit/2ca224a82562bc41cf896d2e5ee79157b44c9c9d))
+* tap a Mushaf verse to find its translation, and slide the spread for the index ([a59086a](https://github.com/quran-th/quran-web/commit/a59086ad791393660a20ae80fa36ef691999ef02))
+
 # [1.30.0](https://github.com/quran-th/quran-web/compare/v1.29.0...v1.30.0) (2026-11-17)
 
 ### Features
