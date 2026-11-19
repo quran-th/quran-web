@@ -20,12 +20,20 @@ interface Props {
   spread?: boolean
   /** Blocks keyboard and swipe page turns (e.g. while the translation sheet is open) */
   navLocked?: boolean
+  /** Fades the Mushaf spread out so the `sheet` slot's layer shows on the same paper */
+  layerHidden?: boolean
+  /** Single page with the translation pane beside it instead of the bottom sheet */
+  pane?: boolean
+  paneTranslation?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   uiVisible: true,
   spread: false,
+  pane: false,
+  paneTranslation: true,
   navLocked: false,
+  layerHidden: false,
 })
 
 const emit = defineEmits<{ openTranslation: [verseKey: string] }>()
@@ -39,6 +47,8 @@ const hasNext = computed(() => mushafStore.hasNextPage)
 const rightPage = computed(() => mushafStore.spreadPages[0])
 const leftPage = computed(() => mushafStore.spreadPages[1])
 const showColumns = computed(() => readerSettings.showPageTranslation)
+// Odd pages are the right page of a spread, even pages the left
+const paneSide = computed(() => (currentPage.value % 2 === 1 ? 'right' : 'left'))
 
 function turn(direction: 'next' | 'prev') {
   const go = () => (direction === 'next' ? mushafStore.nextPage() : mushafStore.prevPage())
@@ -151,26 +161,42 @@ onUnmounted(() => {
     </template>
 
     <!-- Spread: [left translation] [left page] [fold] [right page] [right translation] -->
+    <!-- One sheet and one spine for both layers, so switching to the book layer only crossfades the ink -->
     <div v-else-if="spread" class="relative flex min-h-0 flex-1 px-6 pt-4 pb-10">
-      <div class="paper-surface book-sheet flex min-w-0 flex-1 justify-center overflow-hidden [view-transition-name:book-spread]">
-        <div class="flex min-w-0 flex-[1_1_0] justify-end">
-          <MushafPageTranslationColumn v-if="showColumns" :page="leftPage" side="left" />
-          <MushafFittedPage :page-number="leftPage" :is-font-loaded="isFontLoaded" />
-        </div>
+      <div class="paper-surface book-sheet relative min-w-0 flex-1 overflow-hidden [view-transition-name:book-spread]">
         <div
-          aria-hidden="true"
-          class="book-spine w-7 shrink-0"
-        />
-        <div class="flex min-w-0 flex-[1_1_0] justify-start">
-          <MushafFittedPage :page-number="rightPage" :is-font-loaded="isFontLoaded" />
-          <MushafPageTranslationColumn v-if="showColumns" :page="rightPage" side="right" />
+          class="absolute inset-0 flex justify-center transition-[opacity,visibility] duration-300 ease-out motion-reduce:transition-none"
+          :class="layerHidden ? 'invisible opacity-0' : ''"
+          :inert="layerHidden || undefined"
+        >
+          <div class="flex min-w-0 flex-[1_1_0] justify-end">
+            <MushafPageTranslationColumn v-if="showColumns" :page="leftPage" side="left" />
+            <MushafFittedPage :page-number="leftPage" :is-font-loaded="isFontLoaded" />
+          </div>
+          <div aria-hidden="true" class="w-7 shrink-0" />
+          <div class="flex min-w-0 flex-[1_1_0] justify-start">
+            <MushafFittedPage :page-number="rightPage" :is-font-loaded="isFontLoaded" />
+            <MushafPageTranslationColumn v-if="showColumns" :page="rightPage" side="right" />
+          </div>
+        </div>
+        <slot name="sheet" />
+        <div aria-hidden="true" class="pointer-events-none absolute inset-y-0 left-1/2 w-7 -translate-x-1/2">
+          <div class="book-spine h-full" />
         </div>
       </div>
       <div aria-hidden="true" class="book-spine-foot absolute bottom-[31px] left-1/2 h-[9px] w-7 -translate-x-1/2" />
     </div>
 
-    <!-- Single page on a paper sheet; tapping an ayah opens its translation -->
-    <!-- Phones: full-bleed paper so the Mushaf lines get the whole screen width -->
+    <!-- Portrait tablets: one page with the translation pane on the side the page has in the spread -->
+    <div v-else-if="pane" class="flex min-h-0 flex-1 px-6 pt-4 pb-6">
+      <div class="paper-surface flex min-w-0 flex-1 justify-center overflow-hidden rounded-[4px] shadow-paper">
+        <MushafPageTranslationColumn v-if="paneTranslation && paneSide === 'left'" :page="currentPage" side="left" />
+        <MushafFittedPage :page-number="currentPage" :is-font-loaded="isFontLoaded" :fill="!paneTranslation" />
+        <MushafPageTranslationColumn v-if="paneTranslation && paneSide === 'right'" :page="currentPage" side="right" />
+      </div>
+    </div>
+
+    <!-- Phones: single page on full-bleed paper; tapping an ayah opens its translation -->
     <div v-else class="mushaf-page-wrapper md:p-2">
       <MushafPageView
         :page-number="currentPage"

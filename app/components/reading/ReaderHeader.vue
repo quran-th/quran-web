@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
-type ReaderMode = "ayah" | "mushaf" | "book";
+type SpreadMode = "mushaf" | "book";
 
 interface Props {
-  mode: ReaderMode;
-  links: { ayah?: string; mushaf?: string; book?: string };
+  mode: SpreadMode;
   translationOn: boolean;
   rangeLabel?: string;
   hasPrev: boolean;
@@ -17,6 +16,7 @@ interface Props {
 withDefaults(defineProps<Props>(), { showTranslationToggle: true, rangeLabel: undefined });
 
 const emit = defineEmits<{
+  "update:mode": [mode: SpreadMode];
   "toggle-translation": [];
   prev: [];
   next: [];
@@ -25,10 +25,9 @@ const emit = defineEmits<{
   settings: [];
 }>();
 
-const tabs: { key: ReaderMode; label: string }[] = [
-  { key: "ayah", label: "อายะห์" },
+const tabs: { key: SpreadMode; label: string }[] = [
   { key: "mushaf", label: "มุศฮัฟ" },
-  { key: "book", label: "หนังสือ" },
+  { key: "book", label: "สองภาษา" },
 ];
 
 const menuOpen = ref(false);
@@ -106,11 +105,12 @@ onBeforeUnmount(() => {
         >
           <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
         </NuxtLink>
+        <!-- Single-page tablets can hide the pane to read a full Mushaf page; the spread keeps its layout -->
         <button
           v-if="showTranslationToggle"
           type="button"
           :aria-pressed="translationOn"
-          class="flex h-11 items-center gap-2.5 rounded-xl px-2 hover:bg-paper-tint"
+          class="flex h-11 items-center gap-2.5 rounded-xl px-2 hover:bg-paper-tint spread:hidden"
           @click="emit('toggle-translation')"
         >
           <span
@@ -126,21 +126,22 @@ onBeforeUnmount(() => {
         </button>
       </div>
 
-      <nav aria-label="โหมดการอ่าน" class="flex gap-[2px] rounded-xl bg-paper-tray p-1">
-        <template v-for="tab in tabs" :key="tab.key">
-          <template v-if="links[tab.key]">
-            <span
-              v-if="mode === tab.key"
-              aria-current="page"
-              class="flex h-9 items-center rounded-[9px] bg-paper-pill px-5 text-sm font-semibold text-ink shadow-pill"
-            >{{ tab.label }}</span>
-            <NuxtLink
-              v-else
-              :to="links[tab.key]!"
-              class="flex h-9 items-center rounded-[9px] px-5 text-sm font-medium text-ink-icon"
-            >{{ tab.label }}</NuxtLink>
-          </template>
-        </template>
+      <!-- Book mode needs the two-page spread, so the switch only exists where it fits -->
+      <nav aria-label="โหมดการอ่าน" class="relative hidden grid-cols-2 rounded-xl bg-paper-tray p-1 spread:grid">
+        <span
+          aria-hidden="true"
+          class="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-[9px] bg-paper-pill shadow-pill transition-transform duration-300 ease-out motion-reduce:transition-none"
+          :class="mode === 'book' ? 'translate-x-full' : 'translate-x-0'"
+        />
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
+          type="button"
+          :aria-pressed="mode === tab.key"
+          class="relative flex h-9 items-center justify-center rounded-[9px] px-5 text-sm transition-colors duration-300"
+          :class="mode === tab.key ? 'font-semibold text-ink' : 'font-medium text-ink-icon'"
+          @click="emit('update:mode', tab.key)"
+        >{{ tab.label }}</button>
       </nav>
 
       <div class="flex flex-1 items-center justify-end gap-1">
@@ -200,22 +201,7 @@ onBeforeUnmount(() => {
         <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
       </NuxtLink>
 
-      <nav aria-label="โหมดการอ่าน" class="flex gap-[2px] rounded-xl bg-paper-tray p-[3px]">
-        <template v-for="tab in tabs" :key="tab.key">
-          <template v-if="links[tab.key]">
-            <span
-              v-if="mode === tab.key"
-              aria-current="page"
-              class="flex h-[34px] items-center rounded-[9px] bg-paper-pill px-3 text-[13.5px] font-semibold text-ink shadow-pill"
-            >{{ tab.label }}</span>
-            <NuxtLink
-              v-else
-              :to="links[tab.key]!"
-              class="flex h-[34px] items-center rounded-[9px] px-3 text-[13.5px] font-medium text-ink-icon"
-            >{{ tab.label }}</NuxtLink>
-          </template>
-        </template>
-      </nav>
+      <span v-if="rangeLabel" class="text-sm tabular-nums text-ink-icon">{{ rangeLabel }}</span>
 
       <div ref="menuRoot" class="relative flex items-center gap-0.5">
         <button

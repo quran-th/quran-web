@@ -1,32 +1,50 @@
 <script setup lang="ts">
+/**
+ * BookSpread — the bilingual book layer of the Mushaf page's spread sheet.
+ * It paginates one surah into facing pages; the page owns the URL, the header
+ * and crossing into the next or previous surah.
+ */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { paginateBook, type BookItem, type BookPage } from "~/composables/bookPagination";
 import { flipPage } from "~/composables/usePageFlip";
 import { useBookVerses } from "~/composables/useBookVerses";
-import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
-import { useRecitationStore } from "~/stores/recitationStore";
-import type { Verse } from "~/stores/quranStore";
-import ReportModal from "~/components/reading/ReportModal.vue";
 
-const props = defineProps<{
-  surahNumber: number;
-  sourceId?: number;
-  initialAyah: number;
+export interface BookSurahMeta {
   nameArabic: string;
   nameThai: string;
   revelationPlace: string;
   versesCount: number;
-  prevSurahVersesCount?: number;
+}
+
+export interface BookPosition {
+  surah: number;
+  firstVerse: number;
+  lastVerse: number;
+  /** Mushaf page of the first verse on the spread */
+  page: number;
+  atStart: boolean;
+  atEnd: boolean;
+}
+
+const props = defineProps<{
+  surahNumber: number;
+  sourceId?: number;
+  /** The spread holding this verse is shown; it moves whenever the page moves it */
+  anchorVerse: number;
+  surah: BookSurahMeta;
+  /** The visible layer is the only one that takes keyboard and swipe turns */
+  active: boolean;
+  navLocked: boolean;
+}>();
+
+const emit = defineEmits<{
+  position: [position: BookPosition];
+  cross: [direction: "next" | "prev"];
 }>();
 
 const FOOTNOTE_AREA_GAP = 8;
 const FOOTNOTE_GAP = 5;
 const SWIPE_MIN_PX = 50;
-
-const router = useRouter();
-const route = useRoute();
-const recitation = useRecitationStore();
-const readerSettings = useReaderSettingsStore();
 
 const surahRef = computed(() => props.surahNumber);
 const sourceRef = computed(() => props.sourceId);
@@ -36,13 +54,7 @@ const versesByKey = computed(() => new Map(verses.value.map(v => [v.key, v])));
 const loaded = ref(false);
 const ready = computed(() => loaded.value && verses.value.length > 0);
 
-const surahMeta = computed(() => ({
-  surahNumber: props.surahNumber,
-  nameArabic: props.nameArabic,
-  nameThai: props.nameThai,
-  revelationPlace: props.revelationPlace,
-  versesCount: props.versesCount,
-}));
+const surahMeta = computed(() => ({ surahNumber: props.surahNumber, ...props.surah }));
 
 const sheetEl = ref<HTMLElement | null>(null);
 const measureEl = ref<HTMLElement | null>(null);
@@ -50,12 +62,9 @@ const bodySize = ref({ width: 0, height: 0 });
 const pages = ref<BookPage[]>([]);
 const spreadIndex = ref(0);
 const expandedFootnote = ref<string | null>(null);
-const showSettings = ref(false);
-const showReport = ref(false);
-const reportVerse = ref<Verse | null>(null);
 
 // The first verse on the right page is what survives a re-pagination
-const anchorVerse = ref(props.initialAyah);
+const anchor = ref(props.anchorVerse);
 let paginateToken = 0;
 
 const spreadCount = computed(() => Math.ceil(pages.value.length / 2));
@@ -70,27 +79,6 @@ function verseNumbersOf(page: BookPage | undefined): number[] {
 }
 
 const spreadVerses = computed(() => [...verseNumbersOf(rightPage.value), ...verseNumbersOf(leftPage.value)]);
-const firstVerse = computed(() => spreadVerses.value[0] ?? anchorVerse.value);
-
-const rangeLabel = computed(() => {
-  const list = spreadVerses.value;
-  if (list.length === 0) return undefined;
-  const first = list[0]!;
-  const last = list[list.length - 1]!;
-  return first === last ? `อายะห์ ${first}` : `อายะห์ ${first}–${last}`;
-});
-
-const headerLinks = computed(() => {
-  const mushafPage = versesByKey.value.get(`${props.surahNumber}:${firstVerse.value}`)?.pageNumber;
-  return {
-    ayah: `/${props.surahNumber}/${firstVerse.value}`,
-    mushaf: mushafPage ? `/page/${mushafPage}` : undefined,
-    book: `/${props.surahNumber}/${firstVerse.value}?mode=book`,
-  };
-});
-
-const hasPrev = computed(() => spreadIndex.value > 0 || props.surahNumber > 1);
-const hasNext = computed(() => spreadIndex.value + 1 < spreadCount.value || props.surahNumber < 114);
 
 const measureItems = computed(() => [
   { key: "header", verse: undefined },
@@ -106,21 +94,22 @@ function spreadForVerse(verseNumber: number): number {
 
 function goToSpread(index: number) {
   spreadIndex.value = index;
-  anchorVerse.value = verseNumbersOf(pages.value[index * 2])[0] ?? 1;
+  anchor.value = verseNumbersOf(pages.value[index * 2])[0] ?? 1;
 }
 
-function goNext() {
+function next() {
+  if (!ready.value) return;
   if (spreadIndex.value + 1 < spreadCount.value) flipPage("next", () => goToSpread(spreadIndex.value + 1));
-  else if (props.surahNumber < 114) router.push({ path: `/${props.surahNumber + 1}/1`, query: { ...route.query, mode: "book" } });
+  else emit("cross", "next");
 }
 
-function goPrev() {
+function prev() {
+  if (!ready.value) return;
   if (spreadIndex.value > 0) flipPage("prev", () => goToSpread(spreadIndex.value - 1));
-  else if (props.surahNumber > 1) {
-    const lastVerse = props.prevSurahVersesCount ?? 1;
-    router.push({ path: `/${props.surahNumber - 1}/${lastVerse}`, query: { ...route.query, mode: "book" } });
-  }
+  else emit("cross", "prev");
 }
+
+defineExpose({ next, prev });
 
 async function paginate() {
   const token = ++paginateToken;
@@ -153,7 +142,7 @@ async function paginate() {
     footnoteAreaGap: FOOTNOTE_AREA_GAP,
     footnoteGap: FOOTNOTE_GAP,
   });
-  spreadIndex.value = Math.min(spreadForVerse(anchorVerse.value), Math.max(spreadCount.value - 1, 0));
+  spreadIndex.value = Math.min(spreadForVerse(anchor.value), Math.max(spreadCount.value - 1, 0));
 }
 
 let paginateFrame = 0;
@@ -170,7 +159,7 @@ let loadToken = 0;
 async function load() {
   const token = ++loadToken;
   try {
-    await ensureLoaded(1, props.versesCount);
+    await ensureLoaded(1, props.surah.versesCount);
     if (token === loadToken) loaded.value = true;
   }
   catch (e) {
@@ -193,60 +182,49 @@ watch(ready, (isReady) => {
   if (isReady) schedulePaginate();
 });
 
+watch(() => props.anchorVerse, (verse) => {
+  anchor.value = verse;
+  if (pages.value.length > 0) spreadIndex.value = spreadForVerse(verse);
+});
+
 watch(spreadIndex, () => {
   expandedFootnote.value = null;
 });
 
-watch([firstVerse, pages], ([verse, paginated]) => {
-  if (!ready.value || paginated.length === 0 || String(route.params.ayah) === String(verse)) return;
-  router.replace({
-    path: `/${props.surahNumber}/${verse}`,
-    query: { ...route.query, mode: "book" },
+watch(spreadVerses, (list) => {
+  if (!ready.value || pages.value.length === 0 || list.length === 0) return;
+  const firstVerse = list[0]!;
+  emit("position", {
+    surah: props.surahNumber,
+    firstVerse,
+    lastVerse: list[list.length - 1]!,
+    page: versesByKey.value.get(`${props.surahNumber}:${firstVerse}`)?.pageNumber ?? 0,
+    atStart: spreadIndex.value === 0,
+    atEnd: spreadIndex.value + 1 >= spreadCount.value,
   });
 });
-
-// Prefetch: iOS only allows audio playback started from a user gesture
-watch(
-  () => props.surahNumber,
-  (surah) => {
-    recitation.loadTimings(surah);
-    recitation.loadTranslation(surah);
-  },
-  { immediate: true },
-);
-
-function handleListen() {
-  recitation.playVerse(props.surahNumber, firstVerse.value);
-}
-
-async function handleReport() {
-  const key = `${props.surahNumber}:${firstVerse.value}`;
-  try {
-    const res = await $fetch<{ success: boolean; data: { verses: Verse[] } }>("/api/verses/by-keys", {
-      method: "POST",
-      body: { keys: [key], sourceId: props.sourceId },
-    });
-    const verse = res.success ? res.data.verses[0] : undefined;
-    if (!verse) return;
-    reportVerse.value = verse;
-    showReport.value = true;
-  }
-  catch (e) {
-    console.error("Failed to load verse for report:", e);
-  }
-}
 
 function toggleFootnote(key: string) {
   expandedFootnote.value = expandedFootnote.value === key ? null : key;
 }
 
+function canTurn() {
+  return props.active && !props.navLocked;
+}
+
 // Mushaf convention: the book is right-to-left, so "next" is leftwards
 function handleKeydown(e: KeyboardEvent) {
-  if (showSettings.value || showReport.value || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (!canTurn() || e.metaKey || e.ctrlKey || e.altKey) return;
   const target = e.target as HTMLElement | null;
   if (target && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
-  if (e.key === "ArrowLeft") goNext();
-  else if (e.key === "ArrowRight") goPrev();
+  if (e.key === "ArrowLeft") {
+    e.preventDefault();
+    next();
+  }
+  else if (e.key === "ArrowRight") {
+    e.preventDefault();
+    prev();
+  }
 }
 
 let touchStart: { x: number; y: number } | null = null;
@@ -258,22 +236,20 @@ function handleTouchStart(e: TouchEvent) {
 
 function handleTouchEnd(e: TouchEvent) {
   const t = e.changedTouches[0];
-  if (!touchStart || !t) return;
+  if (!touchStart || !t || !canTurn()) return;
   const dx = t.clientX - touchStart.x;
   const dy = t.clientY - touchStart.y;
   touchStart = null;
   if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-  if (dx > 0) goNext();
-  else goPrev();
+  if (dx > 0) next();
+  else prev();
 }
 
 let resizeObserver: ResizeObserver | undefined;
 
 onMounted(() => {
-  document.body.style.overflow = "hidden";
   window.addEventListener("keydown", handleKeydown);
   document.fonts.addEventListener("loadingdone", schedulePaginate);
-  readerSettings.fetchTranslationSources();
 
   const body = sheetEl.value?.querySelector<HTMLElement>("[data-page-body]");
   if (body) {
@@ -284,7 +260,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  document.body.style.overflow = "";
   window.removeEventListener("keydown", handleKeydown);
   document.fonts.removeEventListener("loadingdone", schedulePaginate);
   resizeObserver?.disconnect();
@@ -293,76 +268,42 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 flex flex-col overflow-hidden bg-paper-surround">
-    <ReadingReaderHeader
-      mode="book"
-      :links="headerLinks"
-      :translation-on="true"
-      :show-translation-toggle="false"
-      :range-label="rangeLabel"
-      :has-prev="hasPrev"
-      :has-next="hasNext"
-      back-to="/"
-      @prev="goPrev"
-      @next="goNext"
-      @listen="handleListen"
-      @report="handleReport"
-      @settings="showSettings = true"
+  <div
+    ref="sheetEl"
+    class="absolute inset-0 flex"
+    @touchstart.passive="handleTouchStart"
+    @touchend.passive="handleTouchEnd"
+  >
+    <BookPageView
+      :page="leftPage"
+      side="left"
+      :verses-by-key="versesByKey"
+      :surah="surahMeta"
+      :expanded-footnote="expandedFootnote"
+      @toggle-footnote="toggleFootnote"
+    />
+    <div aria-hidden="true" class="w-7 shrink-0" />
+    <BookPageView
+      :page="rightPage"
+      side="right"
+      :verses-by-key="versesByKey"
+      :surah="surahMeta"
+      :expanded-footnote="expandedFootnote"
+      @toggle-footnote="toggleFootnote"
     />
 
-    <main class="relative flex min-h-0 flex-1 px-6 pt-4 pb-10">
-      <div
-        ref="sheetEl"
-        class="paper-surface book-sheet relative flex flex-1 overflow-hidden [view-transition-name:book-spread]"
-        @touchstart.passive="handleTouchStart"
-        @touchend.passive="handleTouchEnd"
-      >
-        <BookPageView
-          :page="leftPage"
-          side="left"
-          :verses-by-key="versesByKey"
-          :surah="surahMeta"
-          :expanded-footnote="expandedFootnote"
-          @toggle-footnote="toggleFootnote"
-        />
-        <div
-          aria-hidden="true"
-          class="book-spine w-7 shrink-0"
-        />
-        <BookPageView
-          :page="rightPage"
-          side="right"
-          :verses-by-key="versesByKey"
-          :surah="surahMeta"
-          :expanded-footnote="expandedFootnote"
-          @toggle-footnote="toggleFootnote"
-        />
-
-        <div
-          v-if="!ready"
-          class="absolute inset-0 flex text-sm text-ink-muted"
-          :class="error ? 'text-red-600' : ''"
-        >
-          <div class="flex flex-1 items-center justify-center">
-            <InkSpinner v-if="!error" class="text-ink" />
-          </div>
-          <div aria-hidden="true" class="w-7 shrink-0" />
-          <div class="flex flex-1 flex-col items-center justify-center gap-3">
-            <p v-if="error" class="m-0">เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาลองใหม่อีกครั้ง</p>
-            <InkSpinner v-else class="text-ink" />
-            <button
-              v-if="error"
-              type="button"
-              class="h-10 rounded-xl px-3 text-sm text-ink hover:bg-paper-tint"
-              @click="reload"
-            >
-              ลองอีกครั้ง
-            </button>
-          </div>
-        </div>
+    <div v-if="!ready && error" class="absolute inset-0 z-10 flex items-center justify-center bg-paper">
+      <ErrorState @retry="reload" />
+    </div>
+    <div v-else-if="!ready" class="absolute inset-0 flex bg-paper">
+      <div class="flex flex-1 items-center justify-center">
+        <InkSpinner class="text-ink" />
       </div>
-      <div aria-hidden="true" class="book-spine-foot absolute bottom-[31px] left-1/2 h-[9px] w-7 -translate-x-1/2" />
-    </main>
+      <div aria-hidden="true" class="w-7 shrink-0" />
+      <div class="flex flex-1 items-center justify-center">
+        <InkSpinner class="text-ink" />
+      </div>
+    </div>
 
     <div
       v-if="ready && bodySize.width > 0"
@@ -385,17 +326,5 @@ onBeforeUnmount(() => {
         />
       </div>
     </div>
-
-    <SettingsReaderSettingsModal v-model:visible="showSettings" />
-    <ReportModal
-      v-if="reportVerse"
-      v-model:visible="showReport"
-      :verse="reportVerse"
-      :surah-number="surahNumber"
-      :source-id="sourceId"
-    />
-    <ClientOnly>
-      <ReadingRecitationPlayerBar />
-    </ClientOnly>
   </div>
 </template>

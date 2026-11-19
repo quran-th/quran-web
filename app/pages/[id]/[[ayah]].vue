@@ -52,16 +52,6 @@ const fontSettings = useFontSettingsStore();
 const readerSettings = useReaderSettingsStore();
 const recitation = useRecitationStore();
 const NuxtLink = resolveComponent("NuxtLink");
-
-// Book mode needs two pages side by side; phones and the server keep the ayah reader.
-// Evaluated up front on client navigation so the ayah reader never flashes in.
-const BOOK_MEDIA = "(orientation: landscape) and (min-width: 1024px)";
-const isWideScreen = ref(import.meta.client && !useNuxtApp().isHydrating && window.matchMedia(BOOK_MEDIA).matches);
-const bookMode = computed(() => route.query.mode === "book" && isWideScreen.value);
-let bookMedia: MediaQueryList | null = null;
-function syncWideScreen() {
-  isWideScreen.value = bookMedia?.matches ?? false;
-}
 const {
   currentSurah,
   verses,
@@ -163,6 +153,14 @@ if (ayahParam && mushafPagesData.value?.data?.length) {
     throw createError({ statusCode: 404, statusMessage: "Ayah not found", fatal: true });
   }
   currentPage.value = resolved;
+}
+
+// Book mode lives on the Mushaf page; links from before the move follow it there
+if (route.query.mode === "book") {
+  await navigateTo(
+    { path: `/page/${currentPage.value}`, query: { mode: "book", ayah: `${surahId}:${ayahParam || 1}` } },
+    { replace: true, redirectCode: 301 },
+  );
 }
 
 // Get current page info - use mushafPagesData directly for SSR compatibility
@@ -474,7 +472,6 @@ function teardown(keepChapter?: number) {
   if (autoNextTimer) clearInterval(autoNextTimer);
   disposePin?.();
   sentinelObserver?.disconnect();
-  bookMedia?.removeEventListener("change", syncWideScreen);
   window.removeEventListener("scroll", onScroll);
   if (scrollRaf) cancelAnimationFrame(scrollRaf);
   if (urlSyncTimer) clearTimeout(urlSyncTimer);
@@ -487,9 +484,6 @@ onBeforeRouteLeave(() => teardown());
 onBeforeUnmount(() => teardown());
 
 onMounted(async () => {
-  bookMedia = window.matchMedia(BOOK_MEDIA);
-  syncWideScreen();
-  bookMedia.addEventListener("change", syncWideScreen);
   sentinelObserver = new IntersectionObserver(
     (entries) => {
       if (entries.some((e) => e.isIntersecting)) loadNextPage();
@@ -557,7 +551,7 @@ async function followRouteAyahData(ayah: number): Promise<boolean> {
 }
 
 async function followRouteAyah(newAyah: unknown) {
-  if (isTornDown || bookMode.value) return;
+  if (isTornDown) return;
   const ayah = parseInt(newAyah as string) || 1;
   if (ayah === lastSyncedAyah) return;
   lastSyncedAyah = ayah;
@@ -571,21 +565,6 @@ async function followRouteAyah(newAyah: unknown) {
 }
 
 watch(() => route.params.ayah, followRouteAyah);
-
-// Book mode keeps the URL ayah moving while this watcher is skipped, so the
-// loaded verses are stale when the ayah reader takes over again.
-watch(bookMode, async (isBook, wasBook) => {
-  if (!wasBook || isBook) return;
-  const ayah = parseInt(route.params.ayah as string) || 1;
-  lastSyncedAyah = ayah;
-  disposePin?.();
-  // The ayah reader mounts fresh here, and its rows keep growing as fonts and
-  // word data arrive, so a one-off scroll would land verses short. Pin instead.
-  urlSyncPausedUntil = Date.now() + INITIAL_SCROLL_SETTLE_MS;
-  if (!(await followRouteAyahData(ayah))) return;
-  await nextTick();
-  if (!isTornDown && !bookMode.value) disposePin = pinToAyah(ayah);
-});
 
 // Recitation: keep one Mushaf page loaded ahead of the reciter
 const isRecitingThisSurah = computed(
@@ -640,7 +619,7 @@ function playNextSurah() {
   autoNextTimer = null;
   // 0 = navigating; teardown resets it once the route actually changes
   autoNextCountdown.value = 0;
-  router.push({ path: `/${next.id}`, query: { play: null, ...(route.query.mode === "book" ? { mode: "book" } : {}) } });
+  router.push({ path: `/${next.id}`, query: { play: null } });
 }
 
 watch(completedChapter, (finished) => {
@@ -826,18 +805,7 @@ useSchemaOrg([
 </script>
 
 <template>
-  <BookReader
-    v-if="bookMode && currentSurah"
-    :surah-number="surahId"
-    :source-id="effectiveSourceId"
-    :initial-ayah="Number(route.params.ayah) || 1"
-    :name-arabic="currentSurah.name_arabic"
-    :name-thai="currentSurah.name_thai"
-    :revelation-place="currentSurah.revelation_place"
-    :verses-count="currentSurah.verses_count"
-    :prev-surah-verses-count="allSurahs.find((s) => s.id === surahId - 1)?.verses_count"
-  />
-  <div v-else class="min-h-screen bg-white font-sans text-slate-900">
+  <div class="min-h-screen bg-white font-sans text-slate-900">
     <!-- TODO: temporarily hidden -->
     <!-- <QuranToolbar
       class="sticky top-0 z-40"
