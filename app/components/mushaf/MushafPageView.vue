@@ -126,12 +126,11 @@ const hasBismillahWords = computed(() => bismillahWords.value.length === 4);
           class="surah-header-block"
           dir="rtl"
         >
-          <!-- Surah name with double border + pill background -->
-          <div class="surah-name-line">
+          <MushafSurahHeaderFrame class="my-[0.2em]">
             <span class="surah-name-pill">{{
               getHeaderBeforeLine(lineNum)!.glyph
             }}</span>
-          </div>
+          </MushafSurahHeaderFrame>
           <!-- Bismillah (not for Surah 9) -->
           <MushafBismillahLine
             v-if="
@@ -228,74 +227,12 @@ const hasBismillahWords = computed(() => bismillahWords.value.length === 4);
   width: 100%;
 }
 
-.surah-name-line {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  direction: rtl;
-  text-align: center;
-  width: 100%;
-  padding: 0.2em 0;
-  background:
-    radial-gradient(
-      circle at bottom,
-      transparent 24%,
-      rgb(203, 196, 161) 25%,
-      rgb(203, 196, 161) 30%,
-      transparent 31%,
-      transparent 39%,
-      rgb(203, 196, 161) 40%,
-      rgb(203, 196, 161) 45%,
-      transparent 46%
-    ),
-    radial-gradient(
-      circle at top,
-      transparent 24%,
-      rgb(203, 196, 161) 25%,
-      rgb(203, 196, 161) 30%,
-      transparent 31%,
-      transparent 39%,
-      rgb(203, 196, 161) 40%,
-      rgb(203, 196, 161) 45%,
-      transparent 46%
-    ),
-    radial-gradient(
-      circle at left,
-      transparent 24%,
-      rgb(203, 196, 161) 25%,
-      rgb(203, 196, 161) 30%,
-      transparent 31%,
-      transparent 39%,
-      rgb(203, 196, 161) 40%,
-      rgb(203, 196, 161) 45%,
-      transparent 46%
-    ),
-    radial-gradient(
-      circle at right,
-      transparent 24%,
-      rgb(203, 196, 161) 25%,
-      rgb(203, 196, 161) 30%,
-      transparent 31%,
-      transparent 39%,
-      rgb(203, 196, 161) 40%,
-      rgb(203, 196, 161) 45%,
-      transparent 46%
-    );
-  background-size: 1em 1em;
-  background-color: rgb(218, 210, 177);
-  opacity: 1;
-  border-radius: 5px;
-}
-
 .surah-name-pill {
   font-family: "SurahNameV4", sans-serif;
   font-size: calc(var(--mushaf-font-size, 5.3vw) * 0.85);
   position: relative;
-  min-width: 7em;
   z-index: 1;
-  padding: 0.15em 1em;
-  border-radius: 999px;
-  background-color: var(--color-paper);
+  line-height: 1;
 }
 
 .bismillah-line {

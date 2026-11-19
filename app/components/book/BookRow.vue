@@ -9,9 +9,10 @@ const props = withDefaults(defineProps<{
   footnoteStart?: number;
 }>(), { footnoteStart: 1 });
 
-// Ayah mark (۝ + digits) is tinted apart from the text
-const arabicBody = computed(() => props.verse.arabic.slice(0, props.verse.arabic.lastIndexOf("۝")));
-const arabicMark = computed(() => props.verse.arabic.slice(props.verse.arabic.lastIndexOf("۝")));
+// The trailing digits render as the ayah ornament, tinted apart from the text
+const markStart = computed(() => props.verse.arabic.lastIndexOf(" ") + 1);
+const arabicBody = computed(() => props.verse.arabic.slice(0, markStart.value));
+const arabicMark = computed(() => props.verse.arabic.slice(markStart.value));
 
 const { activeVerseKey, status } = storeToRefs(useRecitationStore());
 const isGlowing = computed(() => status.value === "playing" && activeVerseKey.value === props.verse.key);

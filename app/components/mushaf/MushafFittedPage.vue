@@ -32,9 +32,11 @@ function fit() {
   if (!slotEl || !pageEl) return
   const lineWidthCqh = parseFloat(getComputedStyle(pageEl).getPropertyValue('--mushaf-line-width'))
   if (!lineWidthCqh) return
-  fittedHeight.value = Math.floor(Math.min(slotEl.clientHeight, (slotEl.clientWidth * 100) / lineWidthCqh))
+  const style = getComputedStyle(slotEl)
+  const innerHeight = slotEl.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
+  fittedHeight.value = Math.floor(Math.min(innerHeight, (slotEl.clientWidth * 100) / lineWidthCqh))
   // Pages claim their full-height width first; only the width left over goes to the translation columns
-  maxSlotWidth.value = Math.ceil((slotEl.clientHeight * lineWidthCqh) / 100) + SLOT_BREATHING_ROOM
+  maxSlotWidth.value = Math.ceil((innerHeight * lineWidthCqh) / 100) + SLOT_BREATHING_ROOM
 }
 
 let resizeObserver: ResizeObserver | null = null
@@ -57,7 +59,7 @@ watch([fontScale, quranFont], async () => {
 <template>
   <div
     ref="slot"
-    class="flex min-w-0 items-center justify-center"
+    class="flex min-w-0 items-center justify-center pt-7 pb-2"
     :style="{ flex: maxSlotWidth ? `0 1 ${maxSlotWidth}px` : '1 1 0' }"
   >
     <div

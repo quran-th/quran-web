@@ -43,13 +43,14 @@ function toArabicIndic(n: number): string {
   return String(n).replace(/\d/g, d => arabicDigits[Number(d)]!)
 }
 
-// The 'end' word only holds the bare digit, so the ayah mark is rebuilt from the verse number.
+// UthmanicHafs draws bare Arabic-Indic digits as the ornamented ayah number;
+// a leading U+06DD would add a second, empty ornament.
 function buildArabic(entry: QuranVerseEntry): string {
   const text = entry.words
     .filter(w => w.char_type_name === 'word')
     .map(w => w.text_qpc_hafs || w.text_uthmani)
     .join(' ')
-  return `${text} ۝${toArabicIndic(entry.verse_number)}`
+  return `${text} ${toArabicIndic(entry.verse_number)}`
 }
 
 function loadArabic(surahNumber: number, baseUrl: string): Promise<Map<number, ArabicVerse>> {
