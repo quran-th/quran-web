@@ -20,6 +20,8 @@ import { useQcfFont } from "~/composables/useQcfFont";
 
 interface Props {
   visible: boolean;
+  /** The Mushaf page always renders in King Fahd V2, so the chosen font shows only elsewhere */
+  mushafFontLocked?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -415,6 +417,9 @@ function pickSource(id: number) {
                 </div>
               </button>
             </div>
+            <p v-if="mushafFontLocked" class="mx-6 mt-2 mb-0 text-xs leading-relaxed text-ink-muted">
+              หน้ามุศฮัฟใช้ฟอนต์ King Fahd V2 เสมอ เพื่อให้บรรทัดตรงตามต้นฉบับ ฟอนต์ที่เลือกจะแสดงในโหมดสองภาษาและหน้าอ่านรายอายะห์
+            </p>
 
             <!-- Font scale -->
             <div class="scale-section">

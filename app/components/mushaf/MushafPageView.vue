@@ -15,9 +15,9 @@ import { computed } from "vue";
 import { storeToRefs } from "pinia";
 import { useMushafStore } from "~/stores/mushafStore";
 import { useFontSettingsStore } from "~/stores/fontSettingsStore";
-import { QuranFont } from "~/types/quran";
 import type { QuranWord } from "~/types/quran";
 import { getSurahNameGlyph } from "~/composables/useSurahNameGlyph";
+import { MUSHAF_LOCKED_FONT, provideLockedQuranFont } from "~/composables/useQuranFont";
 
 interface Props {
   pageNumber: number;
@@ -32,7 +32,10 @@ const props = defineProps<Props>();
 const emit = defineEmits<{ wordClick: [verseKey: string] }>();
 const mushafStore = useMushafStore();
 const fontSettings = useFontSettingsStore();
-const { quranFont, fontScale } = storeToRefs(fontSettings);
+const { fontScale } = storeToRefs(fontSettings);
+
+// Other fonts break the page's line alignment; the saved font still applies outside the Mushaf
+provideLockedQuranFont(MUSHAF_LOCKED_FONT);
 
 const lines = computed<Record<number, QuranWord[]>>(() => {
   return mushafStore.getPageLines(props.pageNumber);
@@ -49,21 +52,8 @@ const hasWords = computed(() => sortedLineNumbers.value.length > 0);
 // Pages 1 and 2 have fewer words per line — center-align, don't stretch height
 const isCentered = computed(() => props.pageNumber <= 2);
 
-/**
- * Build the mushaf scale CSS class name based on font type and scale level.
- * Maps to classes defined in mushaf-scales.css (e.g. "qcf-v2-scale-3").
- */
-const scaleClass = computed(() => {
-  const scale = fontScale.value;
-  switch (quranFont.value) {
-    case QuranFont.MadaniV1:
-      return `qcf-v1-scale-${scale}`;
-    case QuranFont.MadaniV2:
-    case QuranFont.TajweedV4:
-    default:
-      return `qcf-v2-scale-${scale}`;
-  }
-});
+/** Maps to the V2 classes in mushaf-scales.css (e.g. "qcf-v2-scale-3") */
+const scaleClass = computed(() => `qcf-v2-scale-${fontScale.value}`);
 
 // ── Surah header detection ──
 

@@ -35,7 +35,7 @@ const fontFamily = computed(() => {
 
 <style scoped>
 .text-word {
-  line-height: 2;
+  line-height: var(--mushaf-line-height, 2);
   font-size: inherit;
 }
 </style>

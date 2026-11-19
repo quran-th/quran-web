@@ -3,7 +3,7 @@
  * QuranWord — renders a single word with char-type awareness.
  *
  * Switches between GlyphWord (QCF per-page fonts) and TextWord (Unicode text
- * fonts) based on the active font from fontSettingsStore.
+ * fonts) based on the active font (useQuranFont).
  *
  * Font scaling is handled by the parent container (MushafLine applies
  * scale classes from mushaf-scales.css; VerseText can use its own scaling).
@@ -12,7 +12,7 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import type { QuranWord } from '~/types/quran'
 import { getWordTextField } from '~/types/quran'
-import { useFontSettingsStore } from '~/stores/fontSettingsStore'
+import { useQuranFont } from '~/composables/useQuranFont'
 import { useRecitationStore } from '~/stores/recitationStore'
 
 interface Props {
@@ -22,8 +22,7 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const fontSettings = useFontSettingsStore()
-const { quranFont, fontVersion, isQcf } = storeToRefs(fontSettings)
+const { quranFont, fontVersion, isQcf } = useQuranFont()
 
 const { activeWordKey, activeVerseKey, status } = storeToRefs(useRecitationStore())
 const isRecitationActive = computed(

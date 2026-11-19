@@ -8,8 +8,7 @@
  */
 import type { QuranWord } from '~/types/quran'
 import { getWordTextField } from '~/types/quran'
-import { useFontSettingsStore } from '~/stores/fontSettingsStore'
-import { storeToRefs } from 'pinia'
+import { useQuranFont } from '~/composables/useQuranFont'
 import { getFontFaceName } from '~/composables/useQcfFont'
 
 interface Props {
@@ -19,8 +18,7 @@ interface Props {
 }
 
 defineProps<Props>()
-const fontSettings = useFontSettingsStore()
-const { quranFont, fontVersion, isQcf } = storeToRefs(fontSettings)
+const { quranFont, fontVersion, isQcf } = useQuranFont()
 </script>
 
 <template>

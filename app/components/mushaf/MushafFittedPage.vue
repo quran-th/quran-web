@@ -22,7 +22,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), { fill: false })
 
-const { quranFont, fontScale } = storeToRefs(useFontSettingsStore())
+const { fontScale } = storeToRefs(useFontSettingsStore())
 
 const slot = ref<HTMLElement | null>(null)
 const container = ref<HTMLElement | null>(null)
@@ -82,7 +82,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => resizeObserver?.disconnect())
 
-watch([fontScale, quranFont], async () => {
+watch(fontScale, async () => {
   scale = null
   fillVars.value = null
   await nextTick()

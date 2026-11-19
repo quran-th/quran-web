@@ -4,10 +4,14 @@
  * It paginates one surah into facing pages; the page owns the URL, the header
  * and crossing into the next or previous surah.
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from "vue";
 import { paginateBook, type BookItem, type BookPage } from "~/composables/bookPagination";
 import { flipPage } from "~/composables/usePageFlip";
-import { useBookVerses } from "~/composables/useBookVerses";
+import { BOOK_FONT_LOADED_KEY, useBookVerses } from "~/composables/useBookVerses";
+import { useQcfFont } from "~/composables/useQcfFont";
+import { useQuranFont } from "~/composables/useQuranFont";
+import { useFontSettingsStore } from "~/stores/fontSettingsStore";
+import { storeToRefs } from "pinia";
 
 export interface BookSurahMeta {
   nameArabic: string;
@@ -42,7 +46,8 @@ const emit = defineEmits<{
   cross: [direction: "next" | "prev"];
 }>();
 
-const FOOTNOTE_AREA_GAP = 8;
+// Padding, the 1px rule and the space under it, as BookPageView lays them out
+const FOOTNOTE_AREA_GAP = 16;
 const FOOTNOTE_GAP = 5;
 const SWIPE_MIN_PX = 50;
 
@@ -52,7 +57,20 @@ const { verses, error, ensureLoaded, reset } = useBookVerses(surahRef, sourceRef
 
 const versesByKey = computed(() => new Map(verses.value.map(v => [v.key, v])));
 const loaded = ref(false);
-const ready = computed(() => loaded.value && verses.value.length > 0);
+
+// The book follows the reader's chosen font; only the Mushaf layer is locked
+const { quranFont, isQcf, fontVersion } = useQuranFont();
+const { fontScale } = storeToRefs(useFontSettingsStore());
+// Same curve as the verse reader; every font in the book scales off this one factor
+const bookScale = computed(() => 1 + (fontScale.value - 3) * 0.12);
+const bookWords = computed(() => (isQcf.value ? verses.value.flatMap(v => v.words) : []));
+const { isFontLoaded, isFontSettled } = useQcfFont(bookWords, fontVersion);
+provide(BOOK_FONT_LOADED_KEY, isFontLoaded);
+const bookFontPages = computed(() => [...new Set(bookWords.value.map(w => w.page_number))]);
+// Rows measured before their page fonts arrive would paginate at the wrong heights
+const fontsSettled = computed(() => bookFontPages.value.every(isFontSettled));
+
+const ready = computed(() => loaded.value && verses.value.length > 0 && fontsSettled.value);
 
 const surahMeta = computed(() => ({ surahNumber: props.surahNumber, ...props.surah }));
 
@@ -182,7 +200,15 @@ watch(ready, (isReady) => {
   if (isReady) schedulePaginate();
 });
 
-watch(() => props.anchorVerse, (verse) => {
+// A size change, a text font, or glyphs already loaded swap in without a font load event to repaginate on
+watch([quranFont, fontScale], async () => {
+  await nextTick();
+  schedulePaginate();
+});
+
+watch(() => [props.surahNumber, props.anchorVerse] as const, ([surah, verse], [prevSurah]) => {
+  // The page echoes back the spread's first verse; adopting it would walk the anchor back on every re-pagination
+  if (surah === prevSurah && spreadVerses.value.includes(verse)) return;
   anchor.value = verse;
   if (pages.value.length > 0) spreadIndex.value = spreadForVerse(verse);
 });
@@ -271,6 +297,7 @@ onBeforeUnmount(() => {
   <div
     ref="sheetEl"
     class="absolute inset-0 flex"
+    :style="{ '--book-scale': bookScale }"
     @touchstart.passive="handleTouchStart"
     @touchend.passive="handleTouchEnd"
   >
@@ -315,7 +342,7 @@ onBeforeUnmount(() => {
       <div v-for="item in measureItems" :key="item.key" :data-measure-key="item.key">
         <div data-measure-row>
           <BookSurahHeader v-if="!item.verse" v-bind="surahMeta" />
-          <BookRow v-else :verse="item.verse" />
+          <BookRow v-else :verse="item.verse" :verses-count="surah.versesCount" />
         </div>
         <BookFootnote
           v-for="f in item.verse?.footnotes ?? []"

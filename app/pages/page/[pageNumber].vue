@@ -8,7 +8,6 @@
 import { storeToRefs } from "pinia";
 import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { useMushafStore } from "~/stores/mushafStore";
-import { useFontSettingsStore } from "~/stores/fontSettingsStore";
 import { useQuranStore } from "~/stores/quranStore";
 import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
 import { useRecitationStore } from "~/stores/recitationStore";
@@ -17,6 +16,8 @@ import type BookSpread from "~/components/book/BookSpread.vue";
 import type { BookPosition } from "~/components/book/BookSpread.vue";
 import ReportModal from "~/components/reading/ReportModal.vue";
 import { useQcfFont } from "~/composables/useQcfFont";
+import { MUSHAF_LOCKED_FONT } from "~/composables/useQuranFont";
+import { getQcfFontVersion } from "~/types/quran";
 import { flipPage } from "~/composables/usePageFlip";
 import { usePaneMode, useSpreadMode } from "~/composables/useSpreadMode";
 import { useFootnotePopover } from "~/composables/useFootnotePopover";
@@ -30,15 +31,13 @@ const route = useRoute();
 const router = useRouter();
 const mushafStore = useMushafStore();
 const quranStore = useQuranStore();
-const fontSettings = useFontSettingsStore();
 const readerSettings = useReaderSettingsStore();
 const recitation = useRecitationStore();
 const { currentPage, windowWords } = storeToRefs(mushafStore);
-const { fontVersion } = storeToRefs(fontSettings);
 const { showPageTranslation, selectedSourceId } = storeToRefs(readerSettings);
 
-// Load QCF fonts for the visible window of pages
-const { isFontLoaded } = useQcfFont(windowWords, fontVersion);
+// The Mushaf layer always renders in the locked font, whatever the saved setting
+const { isFontLoaded } = useQcfFont(windowWords, computed(() => getQcfFontVersion(MUSHAF_LOCKED_FONT)));
 
 const isUiVisible = ref(true);
 let uiTimer: ReturnType<typeof setTimeout> | undefined;
@@ -396,7 +395,7 @@ useSeoMeta({
       @close="closeSheet"
     />
 
-    <SettingsReaderSettingsModal v-model:visible="showSettings" />
+    <SettingsReaderSettingsModal v-model:visible="showSettings" :mushaf-font-locked="mode === 'mushaf'" />
     <ReportModal
       v-if="reportVerse"
       v-model:visible="showReport"

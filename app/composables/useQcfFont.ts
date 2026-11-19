@@ -57,6 +57,7 @@ export function useQcfFont(
 
   const loadedFonts = ref<Set<string>>(new Set())
   const currentlyLoading = ref<Set<string>>(new Set())
+  const failedFonts = ref<Set<string>>(new Set())
 
   function isFontLoaded(pageNumber: number): boolean {
     return loadedFonts.value.has(getFontFaceName(pageNumber, fontVersion.value))
@@ -73,6 +74,11 @@ export function useQcfFont(
 
     // Add to loading state (create new Set for reactivity)
     currentlyLoading.value = new Set(currentlyLoading.value).add(fontFaceName)
+    if (failedFonts.value.has(fontFaceName)) {
+      const retrying = new Set(failedFonts.value)
+      retrying.delete(fontFaceName)
+      failedFonts.value = retrying
+    }
 
     try {
       const fontFace = new FontFace(fontFaceName, getFontFaceSource(pageNumber, version, assetsBaseUrl))
@@ -87,6 +93,7 @@ export function useQcfFont(
     }
     catch (err) {
       console.error(`Failed to load font ${fontFaceName}:`, err)
+      failedFonts.value = new Set(failedFonts.value).add(fontFaceName)
     }
     finally {
       // Remove from loading state (create new Set for reactivity)
@@ -115,9 +122,16 @@ export function useQcfFont(
     return currentlyLoading.value.has(getFontFaceName(pageNumber, fontVersion.value))
   }
 
+  /** Loaded or failed: either way, nothing is left to wait for */
+  function isFontSettled(pageNumber: number): boolean {
+    const name = getFontFaceName(pageNumber, fontVersion.value)
+    return loadedFonts.value.has(name) || failedFonts.value.has(name)
+  }
+
   return {
     isFontLoaded,
     isFontLoading,
+    isFontSettled,
     loadedFonts,
   }
 }

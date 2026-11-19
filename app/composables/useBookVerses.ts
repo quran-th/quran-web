@@ -1,5 +1,5 @@
-import { ref, type Ref } from 'vue'
-import type { QuranVerseEntry } from '~/types/quran'
+import { ref, type InjectionKey, type Ref } from 'vue'
+import type { QuranVerseEntry, QuranWord } from '~/types/quran'
 
 export interface BookThaiSegment {
   type: 'text' | 'footnote-ref'
@@ -12,6 +12,8 @@ export interface BookVerse {
   surahNumber: number
   verseNumber: number
   arabic: string
+  /** Words and the end marker, for rendering in the reader's chosen font */
+  words: QuranWord[]
   pageNumber: number
   thaiSegments: BookThaiSegment[]
   footnotes: { number: number; text: string }[]
@@ -29,11 +31,15 @@ interface ByKeysResponse {
   data: { verses: ByKeysVerse[]; sourceId: number }
 }
 
+/** BookSpread loads the per-page fonts once for the whole surah; every BookRow reads them through this */
+export const BOOK_FONT_LOADED_KEY: InjectionKey<(pageNumber: number) => boolean> = Symbol('bookFontLoaded')
+
 const CHUNK_SIZE = 25
 const arabicDigits = '٠١٢٣٤٥٦٧٨٩'
 
 interface ArabicVerse {
   arabic: string
+  words: QuranWord[]
   pageNumber: number
 }
 
@@ -53,6 +59,13 @@ function buildArabic(entry: QuranVerseEntry): string {
   return `${text} ${toArabicIndic(entry.verse_number)}`
 }
 
+// The word files leave out verse keys, which the recitation highlight matches on
+function buildWords(entry: QuranVerseEntry): QuranWord[] {
+  return entry.words
+    .filter(w => w.char_type_name !== 'pause')
+    .map(w => ({ ...w, verse_key: entry.verse_key, verse_number: entry.verse_number }))
+}
+
 function loadArabic(surahNumber: number, baseUrl: string): Promise<Map<number, ArabicVerse>> {
   let promise = arabicByVerseCache.get(surahNumber)
   if (!promise) {
@@ -61,7 +74,7 @@ function loadArabic(surahNumber: number, baseUrl: string): Promise<Map<number, A
         if (!res.ok) throw new Error(`quran-words ${surahNumber}: ${res.status}`)
         return res.json() as Promise<QuranVerseEntry[]>
       })
-      .then(entries => new Map(entries.map(e => [e.verse_number, { arabic: buildArabic(e), pageNumber: e.page_number }])))
+      .then(entries => new Map(entries.map(e => [e.verse_number, { arabic: buildArabic(e), words: buildWords(e), pageNumber: e.page_number }])))
     arabicByVerseCache.set(surahNumber, promise)
     promise.catch(() => arabicByVerseCache.delete(surahNumber))
   }
@@ -129,6 +142,7 @@ export function useBookVerses(surahNumber: Ref<number>, sourceId: Ref<number | u
       surahNumber: v.surahNumber,
       verseNumber: v.verseNumber,
       arabic: arabicMap.get(v.verseNumber)?.arabic ?? '',
+      words: arabicMap.get(v.verseNumber)?.words ?? [],
       pageNumber: arabicMap.get(v.verseNumber)?.pageNumber ?? 0,
       thaiSegments: toSegments(v.translation ?? ''),
       footnotes: v.footnotes ?? [],

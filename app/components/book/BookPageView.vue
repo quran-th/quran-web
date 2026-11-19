@@ -76,7 +76,7 @@ watch(footArea, (el, old) => {
 <template>
   <section :aria-label="verseRange" class="flex min-w-0 flex-1 flex-col px-[30px] pb-3.5 pt-5">
     <div
-      class="flex h-6 shrink-0 items-center text-xs text-ink-muted"
+      class="flex min-h-6 shrink-0 items-center text-[length:calc(12px*var(--book-scale,1))] text-ink-muted"
       :class="side === 'right' ? 'justify-start' : 'justify-end'"
     >
       <span v-if="page">{{ surah.nameThai }}</span>
@@ -91,7 +91,7 @@ watch(footArea, (el, old) => {
       <div class="shrink-0">
         <template v-for="row in rows" :key="row.key">
           <BookSurahHeader v-if="row.key === 'header'" v-bind="surah" />
-          <BookRow v-else-if="row.verse" :verse="row.verse" :footnote-start="row.footnoteStart" />
+          <BookRow v-else-if="row.verse" :verse="row.verse" :footnote-start="row.footnoteStart" :verses-count="surah.versesCount" />
         </template>
       </div>
 
@@ -101,20 +101,23 @@ watch(footArea, (el, old) => {
         class="flex flex-col"
         :class="overflow ? 'shrink-0' : 'scrollbar-dot min-h-0 flex-1 overflow-y-auto'"
       >
-        <div class="mt-auto flex flex-col gap-[5px] pt-2">
-          <BookFootnote
-            v-for="f in footnotes"
-            :key="f.number"
-            data-footnote
-            :number="f.number"
-            :text="f.text"
-            :expanded="fitsInFull || overflow || expandedFootnote === `${side}:${f.number}`"
-            @toggle="$emit('toggleFootnote', `${side}:${f.number}`)"
-          />
+        <div class="mt-auto flex flex-col pt-2">
+          <div aria-hidden="true" class="mb-[7px] h-px w-1/3 shrink-0 bg-ink-muted/35" />
+          <div class="flex flex-col gap-[5px]">
+            <BookFootnote
+              v-for="f in footnotes"
+              :key="f.number"
+              data-footnote
+              :number="f.number"
+              :text="f.text"
+              :expanded="fitsInFull || overflow || expandedFootnote === `${side}:${f.number}`"
+              @toggle="$emit('toggleFootnote', `${side}:${f.number}`)"
+            />
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="flex h-[26px] shrink-0 items-end justify-center text-xs text-ink-muted">{{ verseRange }}</div>
+    <div class="flex min-h-[26px] shrink-0 items-end justify-center text-[length:calc(12px*var(--book-scale,1))] text-ink-muted">{{ verseRange }}</div>
   </section>
 </template>
