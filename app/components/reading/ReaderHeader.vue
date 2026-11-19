@@ -98,14 +98,14 @@ onBeforeUnmount(() => {
     @mousedown="keepFocusOffButtons"
   >
     <!-- Wide -->
-    <div class="hidden h-16 items-center px-4 md:flex">
+    <div class="hidden h-[52px] items-center px-3 md:flex">
       <div class="flex flex-1 items-center gap-1">
         <NuxtLink
           :to="backTo"
           aria-label="กลับ"
           class="flex h-11 w-11 items-center justify-center rounded-xl text-ink-icon hover:bg-paper-tint"
         >
-          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+          <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
         </NuxtLink>
         <!-- Single-page tablets can hide the pane to read a full Mushaf page; the spread keeps its layout -->
         <button
@@ -129,10 +129,10 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- Book mode needs the two-page spread, so the switch only exists where it fits -->
-      <nav aria-label="โหมดการอ่าน" class="relative hidden grid-cols-2 rounded-xl bg-paper-tray p-1 spread:grid">
+      <nav aria-label="โหมดการอ่าน" class="relative hidden grid-cols-2 rounded-[10px] bg-paper-tray p-[3px] spread:grid">
         <span
           aria-hidden="true"
-          class="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-[9px] bg-paper-pill shadow-pill transition-transform duration-300 ease-out motion-reduce:transition-none"
+          class="absolute inset-y-[3px] left-[3px] w-[calc(50%-3px)] rounded-[7px] bg-paper-pill shadow-pill transition-transform duration-300 ease-out motion-reduce:transition-none"
           :class="mode === 'book' ? 'translate-x-full' : 'translate-x-0'"
         />
         <button
@@ -140,7 +140,7 @@ onBeforeUnmount(() => {
           :key="tab.key"
           type="button"
           :aria-pressed="mode === tab.key"
-          class="relative flex h-9 items-center justify-center rounded-[9px] px-5 text-sm transition-colors duration-300"
+          class="relative flex h-[26px] items-center justify-center rounded-[7px] px-4 text-[13px] transition-colors duration-300 after:absolute after:inset-x-0 after:-inset-y-[9px]"
           :class="mode === tab.key ? 'font-semibold text-ink' : 'font-medium text-ink-icon'"
           @click="emit('update:mode', tab.key)"
         >{{ tab.label }}</button>
@@ -154,9 +154,9 @@ onBeforeUnmount(() => {
           class="flex h-11 w-11 items-center justify-center rounded-xl text-ink-icon hover:bg-paper-tint disabled:opacity-30"
           @click="emit('next')"
         >
-          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+          <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
         </button>
-        <span v-if="rangeLabel" class="min-w-[72px] text-center text-sm tabular-nums text-ink-icon">{{ rangeLabel }}</span>
+        <span v-if="rangeLabel" class="min-w-[72px] text-center text-[13px] tabular-nums text-ink-icon">{{ rangeLabel }}</span>
         <button
           type="button"
           aria-label="หน้าก่อนหน้า"
@@ -164,7 +164,7 @@ onBeforeUnmount(() => {
           class="flex h-11 w-11 items-center justify-center rounded-xl text-ink-icon hover:bg-paper-tint disabled:opacity-30"
           @click="emit('prev')"
         >
-          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+          <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
         </button>
         <button
           type="button"
@@ -172,14 +172,14 @@ onBeforeUnmount(() => {
           class="flex h-11 w-11 items-center justify-center rounded-xl text-ink-icon hover:bg-paper-tint"
           @click="emit('report')"
         >
-          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4" /><path d="M4 4h13l-2 4 2 4H4" /></svg>
+          <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4" /><path d="M4 4h13l-2 4 2 4H4" /></svg>
         </button>
         <button
           type="button"
           class="flex h-11 items-center gap-1.5 rounded-xl px-3 text-ink-icon hover:bg-paper-tint"
           @click="emit('listen')"
         >
-          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18v-6a9 9 0 0 1 18 0v6" /><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z" /><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" /></svg>
+          <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18v-6a9 9 0 0 1 18 0v6" /><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z" /><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" /></svg>
           <span class="text-[15px] font-medium text-ink">ฟัง</span>
         </button>
         <button
@@ -188,7 +188,7 @@ onBeforeUnmount(() => {
           class="flex h-11 w-11 items-center justify-center rounded-xl text-ink-icon hover:bg-paper-tint"
           @click="emit('settings')"
         >
-          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+          <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
         </button>
         <!-- The index needs room beside the sheet, so it only exists on the spread -->
         <button
@@ -199,7 +199,7 @@ onBeforeUnmount(() => {
           :class="{ 'bg-paper-tint text-ink': indexOpen }"
           @click="emit('toggle-index')"
         >
-          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13" /><path d="M8 12h13" /><path d="M8 18h13" /><path d="M3 6h.01" /><path d="M3 12h.01" /><path d="M3 18h.01" /></svg>
+          <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13" /><path d="M8 12h13" /><path d="M8 18h13" /><path d="M3 6h.01" /><path d="M3 12h.01" /><path d="M3 18h.01" /></svg>
         </button>
       </div>
     </div>
