@@ -1,7 +1,8 @@
 /**
  * Font settings store — manages the user's Quran font preferences.
  *
- * Persisted to localStorage so settings survive page refreshes.
+ * Persisted to a cookie so the server renders the saved font; a localStorage-only
+ * setting was overwritten by the SSR default on every hard load.
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
@@ -20,29 +21,41 @@ interface StoredSettings {
   fontScale: number
 }
 
-function loadFromStorage(): StoredSettings | null {
-  if (!import.meta.client) return null
+function loadLegacyStorage(): StoredSettings | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    return JSON.parse(raw)
+    return raw ? JSON.parse(raw) : null
   }
   catch {
     return null
   }
 }
 
-function saveToStorage(settings: StoredSettings) {
-  if (!import.meta.client) return
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-}
-
 export const useFontSettingsStore = defineStore('fontSettings', () => {
-  const saved = loadFromStorage()
+  const cookie = useCookie<StoredSettings | null>(STORAGE_KEY, {
+    default: () => null,
+    maxAge: 60 * 60 * 24 * 365, // 1 year
+  })
 
   // State
-  const quranFont = ref<QuranFont>(saved?.quranFont ?? QuranFont.MadaniV2)
-  const fontScale = ref(saved?.fontScale ?? 3) // 1-10 range, 3 = default
+  const quranFont = ref<QuranFont>(cookie.value?.quranFont ?? QuranFont.MadaniV2)
+  const fontScale = ref(cookie.value?.fontScale ?? 3) // 1-10 range, 3 = default
+
+  // ISR-cached pages hydrate with the font they were rendered with, and settings saved
+  // before the cookie only exist in localStorage, so the reader's own setting is
+  // reapplied once hydration is done
+  if (import.meta.client) {
+    onNuxtReady(() => {
+      const legacy = cookie.value ? null : loadLegacyStorage()
+      const own = cookie.value ?? legacy
+      quranFont.value = own?.quranFont ?? QuranFont.MadaniV2
+      fontScale.value = own?.fontScale ?? 3
+      if (legacy) {
+        persist()
+        localStorage.removeItem(STORAGE_KEY)
+      }
+    })
+  }
 
   // Getters
   const isQcf = computed(() => isQcfFont(quranFont.value))
@@ -69,10 +82,10 @@ export const useFontSettingsStore = defineStore('fontSettings', () => {
   }
 
   function persist() {
-    saveToStorage({
+    cookie.value = {
       quranFont: quranFont.value,
       fontScale: fontScale.value,
-    })
+    }
   }
 
   return {
