@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Must match SPREAD_QUERY in composables/useSpreadMode.ts */
+@custom-variant spread (@media (orientation: landscape) and (min-width: 1024px));
+
 @theme {
   --font-sans: 'IBM Plex Sans Thai', ui-sans-serif, system-ui, sans-serif;
   --font-reading: 'Sarabun', 'IBM Plex Sans Thai', ui-sans-serif, system-ui, sans-serif;
@@ -129,6 +132,19 @@
   }
 }
 
+/* The spine carried down through the stacked leaves at the foot of the book */
+@utility book-spine-foot {
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(45, 60, 35, 0) 0%,
+    rgba(45, 60, 35, 0.14) 40%,
+    rgba(45, 60, 35, 0.3) 50%,
+    rgba(45, 60, 35, 0.14) 60%,
+    rgba(45, 60, 35, 0) 100%
+  );
+}
+
 @utility paper-surface {
   background-color: var(--color-paper);
 }
@@ -153,3 +169,32 @@
     scrollbar-color: #cdc6b8 transparent;
   }
 }
+
+/* Page turn: the old spread stays put while the new one is revealed by a soft-edged mask sweeping across it (see usePageFlip) */
+html[data-flip]::view-transition-old(root),
+html[data-flip]::view-transition-new(root),
+html[data-flip]::view-transition-group(book-spread),
+html[data-flip]::view-transition-old(book-spread) {
+  animation: none;
+}
+
+html[data-flip]::view-transition-new(book-spread) {
+  mix-blend-mode: normal;
+  mask-size: 250% 100%;
+  mask-repeat: no-repeat;
+  animation-duration: 420ms;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+
+html[data-flip="next"]::view-transition-new(book-spread) {
+  mask-image: linear-gradient(to right, #000 40%, transparent 60%);
+  animation-name: spread-reveal-ltr;
+}
+html[data-flip="prev"]::view-transition-new(book-spread) {
+  mask-image: linear-gradient(to left, #000 40%, transparent 60%);
+  animation-name: spread-reveal-rtl;
+}
+
+@keyframes spread-reveal-ltr { from { mask-position: 100% 0; } to { mask-position: 0% 0; } }
+@keyframes spread-reveal-rtl { from { mask-position: 0% 0; } to { mask-position: 100% 0; } }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { paginateBook, type BookItem, type BookPage } from "~/composables/bookPagination";
+import { flipPage } from "~/composables/usePageFlip";
 import { useBookVerses } from "~/composables/useBookVerses";
 import { useReaderSettingsStore } from "~/stores/readerSettingsStore";
 import { useRecitationStore } from "~/stores/recitationStore";
@@ -109,12 +110,12 @@ function goToSpread(index: number) {
 }
 
 function goNext() {
-  if (spreadIndex.value + 1 < spreadCount.value) goToSpread(spreadIndex.value + 1);
+  if (spreadIndex.value + 1 < spreadCount.value) flipPage("next", () => goToSpread(spreadIndex.value + 1));
   else if (props.surahNumber < 114) router.push({ path: `/${props.surahNumber + 1}/1`, query: { ...route.query, mode: "book" } });
 }
 
 function goPrev() {
-  if (spreadIndex.value > 0) goToSpread(spreadIndex.value - 1);
+  if (spreadIndex.value > 0) flipPage("prev", () => goToSpread(spreadIndex.value - 1));
   else if (props.surahNumber > 1) {
     const lastVerse = props.prevSurahVersesCount ?? 1;
     router.push({ path: `/${props.surahNumber - 1}/${lastVerse}`, query: { ...route.query, mode: "book" } });
@@ -309,10 +310,10 @@ onBeforeUnmount(() => {
       @settings="showSettings = true"
     />
 
-    <main class="flex min-h-0 flex-1 px-6 pt-4 pb-10">
+    <main class="relative flex min-h-0 flex-1 px-6 pt-4 pb-10">
       <div
         ref="sheetEl"
-        class="paper-surface book-sheet relative flex flex-1 overflow-hidden"
+        class="paper-surface book-sheet relative flex flex-1 overflow-hidden [view-transition-name:book-spread]"
         @touchstart.passive="handleTouchStart"
         @touchend.passive="handleTouchEnd"
       >
@@ -339,21 +340,28 @@ onBeforeUnmount(() => {
 
         <div
           v-if="!ready"
-          class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-sm text-ink-muted"
+          class="absolute inset-0 flex text-sm text-ink-muted"
           :class="error ? 'text-red-600' : ''"
         >
-          <p v-if="error" class="m-0">เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาลองใหม่อีกครั้ง</p>
-          <InkSpinner v-else class="text-ink" />
-          <button
-            v-if="error"
-            type="button"
-            class="h-10 rounded-xl px-3 text-sm text-ink hover:bg-paper-tint"
-            @click="reload"
-          >
-            ลองอีกครั้ง
-          </button>
+          <div class="flex flex-1 items-center justify-center">
+            <InkSpinner v-if="!error" class="text-ink" />
+          </div>
+          <div aria-hidden="true" class="w-7 shrink-0" />
+          <div class="flex flex-1 flex-col items-center justify-center gap-3">
+            <p v-if="error" class="m-0">เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาลองใหม่อีกครั้ง</p>
+            <InkSpinner v-else class="text-ink" />
+            <button
+              v-if="error"
+              type="button"
+              class="h-10 rounded-xl px-3 text-sm text-ink hover:bg-paper-tint"
+              @click="reload"
+            >
+              ลองอีกครั้ง
+            </button>
+          </div>
         </div>
       </div>
+      <div aria-hidden="true" class="book-spine-foot absolute bottom-[31px] left-1/2 h-[9px] w-7 -translate-x-1/2" />
     </main>
 
     <div

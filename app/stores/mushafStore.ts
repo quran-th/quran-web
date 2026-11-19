@@ -215,15 +215,15 @@ export const useMushafStore = defineStore('mushaf', () => {
 
   function goToPage(page: number) {
     if (page < 1 || page > totalPages) return
-    loadWindow(page)
+    return loadWindow(page)
   }
 
   function nextPage() {
-    goToPage(currentPage.value + (spreadMode.value ? 2 : 1))
+    return goToPage(currentPage.value + (spreadMode.value ? 2 : 1))
   }
 
   function prevPage() {
-    goToPage(currentPage.value - (spreadMode.value ? 2 : 1))
+    return goToPage(currentPage.value - (spreadMode.value ? 2 : 1))
   }
 
   /**

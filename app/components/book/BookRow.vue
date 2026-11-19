@@ -38,6 +38,6 @@ function localNumber(footnoteNumber: number | undefined): number | null {
         </template>
       </span>
     </p>
-    <p dir="rtl" lang="ar" class="m-0 text-right font-arabic text-[20px] leading-[2] text-ink-strong">{{ arabicBody }}<span class="text-sage-600" :class="{ 'ayah-glow': isGlowing }">{{ arabicMark }}</span></p>
+    <div dir="rtl" lang="ar" class="text-right font-arabic text-[20px] leading-[2] text-ink-strong">{{ arabicBody }}<span class="text-sage-600" :class="{ 'ayah-glow': isGlowing }">{{ arabicMark }}</span></div>
   </div>
 </template>

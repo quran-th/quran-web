@@ -56,7 +56,7 @@ watch(verses, async () => {
       <div
         ref="scroller"
         :dir="side === 'right' ? 'rtl' : 'ltr'"
-        class="scrollbar-dot absolute inset-0 overflow-y-scroll px-[18px] pt-5 pb-[72px] [mask-image:linear-gradient(to_bottom,#000_calc(100%-88px),transparent_calc(100%-16px))]"
+        class="scrollbar-dot absolute inset-x-0 top-4 bottom-0 overflow-y-scroll px-[18px] pt-3 pb-[72px] [mask-image:linear-gradient(to_bottom,transparent,#000_12px,#000_calc(100%-88px),transparent_calc(100%-16px))]"
         @scroll.passive="updateScrollState"
       >
         <!-- Pages 1–2 are centred short pages, so their translation sits centred beside them -->

@@ -14,9 +14,11 @@ import { useRecitationStore } from "~/stores/recitationStore";
 import type { Verse } from "~/stores/quranStore";
 import ReportModal from "~/components/reading/ReportModal.vue";
 import { useQcfFont } from "~/composables/useQcfFont";
+import { flipPage } from "~/composables/usePageFlip";
 import { useSpreadMode } from "~/composables/useSpreadMode";
 
-definePageMeta({ layout: false }); // Mushaf uses its own full-screen layout
+// Mushaf uses its own full-screen layout; a fixed key keeps the reader mounted across page turns so the view transition survives the URL sync
+definePageMeta({ layout: false, key: "mushaf-page" });
 
 const route = useRoute();
 const router = useRouter();
@@ -43,6 +45,10 @@ function resetUiTimer() {
 }
 
 const isSpread = useSpreadMode();
+
+// Start on the URL's page so the first paint (SSR included) already names it, not page 1
+const initialPage = Math.min(Math.max(parseInt(route.params.pageNumber as string) || 1, 1), mushafStore.totalPages);
+mushafStore.currentPage = isSpread.value && initialPage % 2 === 0 ? initialPage - 1 : initialPage;
 
 const sheetOpen = ref(false);
 const sheetVerseKey = ref<string | undefined>();
@@ -75,6 +81,12 @@ const rangeLabel = computed(() => {
   const [odd, even] = mushafStore.spreadPages;
   return `หน้า ${odd}–${even}`;
 });
+
+function turn(direction: "next" | "prev") {
+  const go = () => (direction === "next" ? mushafStore.nextPage() : mushafStore.prevPage());
+  if (isSpread.value) flipPage(direction, go);
+  else go();
+}
 
 const showSettings = ref(false);
 const showReport = ref(false);
@@ -201,8 +213,8 @@ useSeoMeta({
       :has-next="mushafStore.hasNextPage"
       back-to="/"
       @toggle-translation="handleToggleTranslation"
-      @prev="mushafStore.prevPage()"
-      @next="mushafStore.nextPage()"
+      @prev="turn('prev')"
+      @next="turn('next')"
       @listen="handleListen"
       @report="handleReport"
       @settings="showSettings = true"
