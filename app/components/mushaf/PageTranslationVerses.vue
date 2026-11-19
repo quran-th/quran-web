@@ -208,7 +208,7 @@ watch(() => current.value?.trigger.isConnected, (connected) => {
     :data-verse-key="`${verse.surahNumber}:${verse.verseNumber}`"
     class="-mx-2 mb-1.5 rounded-lg px-2 py-1 font-reading text-ink-soft transition-colors"
     :class="[
-      size === 'sheet' ? 'text-[15px] leading-[1.7]' : 'text-[14.5px] leading-[1.65] @min-[340px]:text-base @min-[340px]:leading-[1.75]',
+      size === 'sheet' ? 'text-[15px] leading-[1.7]' : 'text-[13.5px] leading-[1.6] @min-[236px]:text-[14.5px] @min-[236px]:leading-[1.65] @min-[340px]:text-base @min-[340px]:leading-[1.75]',
       highlightKey === `${verse.surahNumber}:${verse.verseNumber}` ? 'bg-paper-wash' : '',
     ]"
   >

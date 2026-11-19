@@ -5,11 +5,12 @@
  * Keyboard: ArrowRight → prev page, ArrowLeft → next page (RTL).
  * In spread mode a page turn moves a whole two-page spread.
  */
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { flipPage } from '~/composables/usePageFlip'
 import { useMushafStore } from '~/stores/mushafStore'
 import { useReaderSettingsStore } from '~/stores/readerSettingsStore'
 import { useFontSettingsStore } from '~/stores/fontSettingsStore'
+import { SELECTED_VERSE_KEY } from '~/composables/selectedVerse'
 import {
   toggleFullscreen as toggleFullscreenHelper,
   getFullscreenElement,
@@ -51,14 +52,28 @@ const hasNext = computed(() => mushafStore.hasNextPage)
 const rightPage = computed(() => mushafStore.spreadPages[0])
 const leftPage = computed(() => mushafStore.spreadPages[1])
 const showColumns = computed(() => readerSettings.showPageTranslation)
+
+// Selecting only means something while a translation column is there to scroll to it
+const columnVisible = computed(() => (props.spread ? showColumns.value : props.pane && props.paneTranslation))
+
+// Tapping the selected verse again clears it
+const focusedVerse = ref<{ key: string } | null>(null)
+function focusVerse(key: string) {
+  if (!columnVisible.value) return
+  focusedVerse.value = focusedVerse.value?.key === key ? null : { key }
+}
+watch([currentPage, columnVisible], () => {
+  focusedVerse.value = null
+})
+provide(SELECTED_VERSE_KEY, computed(() => focusedVerse.value?.key ?? null))
 const fontSettings = useFontSettingsStore()
 
-// Each layer keeps one width per index state, so a mode switch only resizes the
-// paper and crossfades the ink; neither layer re-lays itself out. The book is two
+// Each layer keeps one width, so a mode switch only resizes the paper and
+// crossfades the ink; neither layer re-lays itself out, not even for the index. The book is two
 // 820px pages and the spine, scaled with the font size setting like everything in it.
 // The Mushaf spread is as wide as its two pages, which follow the screen height,
 // plus the translation columns at their 460px cap.
-const INDEX_WIDTH = '324px'
+const INDEX_WIDTH = 284
 const SPINE_WIDTH = 28
 const COLUMN_MAX_WIDTH = 460
 // Outer margin so a full-width column's text doesn't run to the paper's edge
@@ -71,10 +86,51 @@ const mushafWidth = computed(() => {
 })
 const spreadVars = computed(() => ({
   '--book-scale': 1 + (fontSettings.fontScale - 3) * 0.12,
-  '--spread-avail': `calc(100cqw - ${props.indexOpen ? INDEX_WIDTH : '0px'})`,
+  '--spread-avail': '100cqw',
   '--book-width': `min(calc(var(--book-scale) * 1640px + ${SPINE_WIDTH}px), var(--spread-avail))`,
 }))
 const sheetWidth = computed(() => (props.layerHidden ? 'var(--book-width)' : mushafWidth.value))
+
+// The index never resizes the sheet. The sheet slides left just far enough to clear
+// it; where the screen is too narrow, the left page runs off the edge and fades out.
+const spreadEl = ref<HTMLElement | null>(null)
+const sheetEl = ref<HTMLElement | null>(null)
+const spreadInner = ref(0)
+const sheetPx = ref(0)
+const FADE_WIDTH = 200
+let sizeObserver: ResizeObserver | null = null
+
+function measureSpread() {
+  const el = spreadEl.value
+  if (!el) return
+  const style = getComputedStyle(el)
+  spreadInner.value = el.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+  sheetPx.value = sheetEl.value?.offsetWidth ?? 0
+}
+
+watch([spreadEl, sheetEl], ([spread, sheet], [oldSpread, oldSheet]) => {
+  sizeObserver ??= new ResizeObserver(measureSpread)
+  if (oldSpread) sizeObserver.unobserve(oldSpread)
+  if (oldSheet) sizeObserver.unobserve(oldSheet)
+  if (spread) sizeObserver.observe(spread)
+  if (sheet) sizeObserver.observe(sheet)
+  measureSpread()
+})
+
+const sheetShift = computed(() => {
+  if (!props.indexOpen || !sheetPx.value) return 0
+  return Math.max(0, INDEX_WIDTH - (spreadInner.value - sheetPx.value) / 2)
+})
+// How far the sheet's left edge passes the spread's left padding
+const sheetOverflow = computed(() => Math.max(0, sheetShift.value - (spreadInner.value - sheetPx.value) / 2))
+const sheetStyle = computed(() => {
+  const style: Record<string, string> = { width: sheetWidth.value, transform: `translateX(-${sheetShift.value}px)` }
+  if (sheetOverflow.value > 0) {
+    const start = sheetOverflow.value
+    style.maskImage = `linear-gradient(to right, transparent ${start}px, #000 ${start + FADE_WIDTH}px)`
+  }
+  return style
+})
 // Odd pages are the right page of a spread, even pages the left
 const paneSide = computed(() => (currentPage.value % 2 === 1 ? 'right' : 'left'))
 
@@ -158,6 +214,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  sizeObserver?.disconnect()
   window.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
   document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
@@ -192,12 +249,14 @@ onUnmounted(() => {
     <!-- One sheet and one spine for both layers, so switching to the book layer only crossfades the ink -->
     <div
       v-else-if="spread"
-      class="flex min-h-0 flex-1 justify-center px-6 pt-4 pb-10 [container-type:inline-size]"
+      ref="spreadEl"
+      class="relative flex min-h-0 flex-1 justify-center px-6 pt-4 pb-10 [container-type:inline-size]"
       :style="spreadVars"
     >
       <div
-        class="relative shrink-0 transition-[width] duration-300 ease-out motion-reduce:transition-none"
-        :style="{ width: sheetWidth }"
+        ref="sheetEl"
+        class="relative z-10 shrink-0 transition-[width,transform] duration-300 ease-out motion-reduce:transition-none"
+        :style="sheetStyle"
       >
         <div class="paper-surface book-sheet relative h-full overflow-hidden [view-transition-name:book-spread]">
           <div
@@ -207,13 +266,13 @@ onUnmounted(() => {
             :inert="layerHidden || undefined"
           >
             <div class="flex min-w-0 flex-[1_1_0] justify-end">
-              <MushafPageTranslationColumn v-if="showColumns" :page="leftPage" side="left" />
-              <MushafFittedPage :page-number="leftPage" :is-font-loaded="isFontLoaded" @slot-width="pageSlotWidth = $event" />
+              <MushafPageTranslationColumn v-if="showColumns" :page="leftPage" side="left" :focused-verse="focusedVerse" />
+              <MushafFittedPage :page-number="leftPage" :is-font-loaded="isFontLoaded" @slot-width="pageSlotWidth = $event" @word-click="focusVerse" />
             </div>
             <div aria-hidden="true" class="w-7 shrink-0" />
             <div class="flex min-w-0 flex-[1_1_0] justify-start">
-              <MushafFittedPage :page-number="rightPage" :is-font-loaded="isFontLoaded" />
-              <MushafPageTranslationColumn v-if="showColumns" :page="rightPage" side="right" />
+              <MushafFittedPage :page-number="rightPage" :is-font-loaded="isFontLoaded" @word-click="focusVerse" />
+              <MushafPageTranslationColumn v-if="showColumns" :page="rightPage" side="right" :focused-verse="focusedVerse" />
             </div>
           </div>
           <slot name="sheet" />
@@ -223,22 +282,22 @@ onUnmounted(() => {
         </div>
         <div aria-hidden="true" class="book-spine-foot absolute -bottom-[9px] left-1/2 h-[9px] w-7 -translate-x-1/2" />
       </div>
+      <!-- Under the sheet, so the sheet uncovers it as it slides aside rather than the list showing through -->
       <div
-        class="shrink-0 overflow-hidden transition-[width] duration-300 ease-out motion-reduce:transition-none"
-        :style="{ width: indexOpen ? INDEX_WIDTH : '0px' }"
+        class="absolute top-4 right-6 bottom-10 z-0 overflow-hidden pl-6"
+        :class="indexOpen ? '' : 'pointer-events-none'"
+        :style="{ width: `${INDEX_WIDTH}px` }"
       >
-        <div class="h-full pl-6" :style="{ width: INDEX_WIDTH }">
-          <slot name="aside" />
-        </div>
+        <slot name="aside" />
       </div>
     </div>
 
     <!-- Portrait tablets: one page with the translation pane on the side the page has in the spread -->
     <div v-else-if="pane" class="flex min-h-0 flex-1 px-6 pt-4 pb-6">
       <div class="paper-surface flex min-w-0 flex-1 justify-center overflow-hidden rounded-[4px] shadow-paper">
-        <MushafPageTranslationColumn v-if="paneTranslation && paneSide === 'left'" :page="currentPage" side="left" />
-        <MushafFittedPage :page-number="currentPage" :is-font-loaded="isFontLoaded" :fill="!paneTranslation" />
-        <MushafPageTranslationColumn v-if="paneTranslation && paneSide === 'right'" :page="currentPage" side="right" />
+        <MushafPageTranslationColumn v-if="paneTranslation && paneSide === 'left'" :page="currentPage" side="left" :focused-verse="focusedVerse" />
+        <MushafFittedPage :page-number="currentPage" :is-font-loaded="isFontLoaded" :fill="!paneTranslation" @word-click="focusVerse" />
+        <MushafPageTranslationColumn v-if="paneTranslation && paneSide === 'right'" :page="currentPage" side="right" :focused-verse="focusedVerse" />
       </div>
     </div>
 

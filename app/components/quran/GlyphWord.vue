@@ -45,8 +45,11 @@ const fontStyle = computed(() => {
   transition: color 0.15s ease;
 }
 
-.glyph-word:hover {
-  color: #22c55e;
+/* Touch screens keep :hover after a tap, so tapped words are coloured by selection instead */
+@media (hover: hover) {
+  .glyph-word:hover {
+    color: #22c55e;
+  }
 }
 
 .glyph-loading {

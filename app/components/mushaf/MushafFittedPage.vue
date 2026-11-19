@@ -22,7 +22,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), { fill: false })
 // The slot's full-height width, so the spread can size its sheet to the pages it holds
-const emit = defineEmits<{ slotWidth: [width: number] }>()
+const emit = defineEmits<{ slotWidth: [width: number]; wordClick: [verseKey: string] }>()
 
 const { fontScale } = storeToRefs(useFontSettingsStore())
 
@@ -111,7 +111,7 @@ watch(() => props.fill, async () => {
       :class="{ 'opacity-0': !fittedHeight }"
       :style="{ height: `${fittedHeight}px` }"
     >
-      <MushafPageView :page-number="pageNumber" :is-font-loaded="isFontLoaded" :style="fillVars ?? undefined" compact />
+      <MushafPageView :page-number="pageNumber" :is-font-loaded="isFontLoaded" :style="fillVars ?? undefined" compact @word-click="emit('wordClick', $event)" />
     </div>
   </div>
 </template>

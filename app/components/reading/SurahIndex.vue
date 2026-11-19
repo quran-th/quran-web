@@ -33,7 +33,7 @@ watch(() => props.currentSurah, async () => {
 
 <template>
   <nav aria-label="สารบัญซูเราะฮ์" class="flex h-full flex-col text-ink">
-    <div class="flex h-11 shrink-0 items-center justify-between pl-3">
+    <div class="flex h-11 shrink-0 items-center justify-between pl-2.5">
       <span class="text-sm font-semibold text-ink-icon">สารบัญ</span>
       <button
         type="button"
@@ -49,16 +49,16 @@ watch(() => props.currentSurah, async () => {
         <button
           type="button"
           :aria-current="surah.id === currentSurah ? 'true' : undefined"
-          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left outline-none transition-colors hover:bg-paper-tint focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sage-500"
+          class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left outline-none transition-colors hover:bg-paper-tint focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sage-500"
           :class="surah.id === currentSurah ? 'bg-paper-tint' : ''"
           @click="emit('select', surah.id)"
         >
-          <span class="w-7 shrink-0 text-sm font-semibold tabular-nums text-sage-600">{{ surah.id }}</span>
+          <span class="w-6 shrink-0 text-xs font-semibold tabular-nums text-sage-600">{{ surah.id }}</span>
           <span class="min-w-0 flex-1">
-            <span class="block truncate text-[15px]" :class="surah.id === currentSurah ? 'font-semibold text-ink' : 'text-ink-soft'">{{ surah.name_thai }}</span>
-            <span class="block truncate text-xs text-ink-muted">{{ surah.name_meaning_thai }}</span>
+            <span class="block truncate text-sm leading-5" :class="surah.id === currentSurah ? 'font-semibold text-ink' : 'text-ink-soft'">{{ surah.name_thai }}</span>
+            <span class="block truncate text-[11px] leading-4 text-ink-muted">{{ surah.name_meaning_thai }}</span>
           </span>
-          <span dir="rtl" lang="ar" class="shrink-0 font-arabic text-lg text-ink-icon">{{ surah.name_arabic }}</span>
+          <span dir="rtl" lang="ar" class="shrink-0 font-arabic text-base text-ink-icon">{{ surah.name_arabic }}</span>
         </button>
       </li>
     </ol>

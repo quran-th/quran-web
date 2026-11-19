@@ -416,9 +416,9 @@ useSeoMeta({
     >
       <template #aside>
         <Transition
-          enter-active-class="transition duration-300 ease-out motion-reduce:transition-none"
+          enter-active-class="transition delay-150 duration-300 ease-out motion-reduce:transition-none"
           enter-from-class="-translate-x-full opacity-0"
-          leave-active-class="transition duration-300 ease-in-out motion-reduce:transition-none"
+          leave-active-class="transition duration-200 ease-in motion-reduce:transition-none"
           leave-to-class="-translate-x-full opacity-0"
         >
           <ReadingSurahIndex

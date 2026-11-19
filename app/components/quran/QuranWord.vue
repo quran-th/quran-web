@@ -8,12 +8,13 @@
  * Font scaling is handled by the parent container (MushafLine applies
  * scale classes from mushaf-scales.css; VerseText can use its own scaling).
  */
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { storeToRefs } from 'pinia'
 import type { QuranWord } from '~/types/quran'
 import { getWordTextField } from '~/types/quran'
 import { useQuranFont } from '~/composables/useQuranFont'
 import { useRecitationStore } from '~/stores/recitationStore'
+import { SELECTED_VERSE_KEY } from '~/composables/selectedVerse'
 
 interface Props {
   word: QuranWord
@@ -28,6 +29,8 @@ const { activeWordKey, activeVerseKey, status } = storeToRefs(useRecitationStore
 const isRecitationActive = computed(
   () => !!props.word.verse_key && activeWordKey.value === `${props.word.verse_key}:${props.word.position}`,
 )
+const selectedVerseKey = inject(SELECTED_VERSE_KEY, null)
+const isSelected = computed(() => !!props.word.verse_key && selectedVerseKey?.value === props.word.verse_key)
 const isGlowing = computed(
   () => props.word.char_type_name === 'end' && status.value === 'playing' && activeVerseKey.value === props.word.verse_key,
 )
@@ -37,7 +40,7 @@ const isGlowing = computed(
   <div
     v-if="word.char_type_name !== 'pause'"
     class="quran-word rounded-md transition-colors duration-150"
-    :class="{ 'bg-amber-100 text-amber-900': isRecitationActive, 'ayah-glow': isGlowing }"
+    :class="{ 'bg-amber-100 text-amber-900': isRecitationActive, 'ayah-glow': isGlowing, 'text-[#22c55e]': isSelected && !isRecitationActive && !isGlowing }"
   >
     <!-- QCF glyph fonts: V1, V2, Tajweed V4 -->
     <QuranGlyphWord
