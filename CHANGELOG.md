@@ -1,3 +1,14 @@
+# [1.34.0](https://github.com/quran-th/quran-web/compare/v1.33.0...v1.34.0) (2026-11-22)
+
+### Bug Fixes
+
+* shrink a bilingual page's text to fit a verse taller than the page ([a76cf3b](https://github.com/quran-th/quran-web/commit/a76cf3b52296b86f8f4d5688ba4b039d92b6ffc2))
+* undo a stuck zoom when the installed app reopens, and drop double-tap zoom ([037db04](https://github.com/quran-th/quran-web/commit/037db04e328545fdeefd3d3d91ae2cf31f89e5b5))
+
+### Features
+
+* list the reading settings in the tour, spotlight the page edge, and animate the swipe on touch ([f606205](https://github.com/quran-th/quran-web/commit/f606205971642366176207962f218b6af1295761))
+
 # [1.33.0](https://github.com/quran-th/quran-web/compare/v1.32.0...v1.33.0) (2026-11-22)
 
 ### Features
