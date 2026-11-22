@@ -22,11 +22,14 @@ interface Props {
   visible: boolean;
   /** The Mushaf page always renders in King Fahd V2, so the chosen font shows only elsewhere */
   mushafFontLocked?: boolean;
+  /** Offers to replay the reader's first-visit tour */
+  tourReplay?: boolean;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<{
   "update:visible": [value: boolean];
+  "replay-tour": [];
 }>();
 
 const fontSettings = useFontSettingsStore();
@@ -443,6 +446,15 @@ function pickSource(id: number) {
               </div>
             </div>
                 </div>
+
+                <button
+                  v-if="tourReplay"
+                  type="button"
+                  class="mx-auto mt-4 block rounded-lg px-3 py-1.5 text-sm font-medium text-sage-600 hover:bg-paper-tint"
+                  @click="emit('replay-tour')"
+                >
+                  ดูวิธีใช้งานอีกครั้ง
+                </button>
 
                 <p
                   class="mt-4 select-text text-center font-mono text-[11px] text-slate-400"

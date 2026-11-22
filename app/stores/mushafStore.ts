@@ -255,6 +255,14 @@ export const useMushafStore = defineStore('mushaf', () => {
 
   const currentPageVerseKeys = computed<string[]>(() => getPageVerseKeys(currentPage.value))
 
+  /** The Mushaf page an ayah is on; no ayah in this Mushaf runs across a page turn */
+  async function getVersePage(verseKey: string): Promise<number | null> {
+    const surah = Number(verseKey.split(':')[0])
+    if (!surah) return null
+    const verses = await loadChapterWords(surah, assetsBaseUrl)
+    return verses.find(v => v.verse_key === verseKey)?.words[0]?.page_number ?? null
+  }
+
   /** The first Mushaf page a surah appears on, from the page index */
   async function getSurahStartPage(surahId: number): Promise<number> {
     const index = await loadPageIndex(assetsBaseUrl)
@@ -287,5 +295,6 @@ export const useMushafStore = defineStore('mushaf', () => {
     hasNextPage,
     getPageVerseKeys,
     getSurahStartPage,
+    getVersePage,
   }
 })

@@ -21,6 +21,8 @@ import { getQcfFontVersion } from "~/types/quran";
 import { flipPage } from "~/composables/usePageFlip";
 import { usePaneMode, useSpreadMode } from "~/composables/useSpreadMode";
 import { useFootnotePopover } from "~/composables/useFootnotePopover";
+import { hasSeenAnyReaderTour, markReaderTourSeen, readerTourSteps, unseenTourSteps } from "~/composables/useReaderTour";
+import type { ReaderLayout, TourStep } from "~/composables/useReaderTour";
 
 type SpreadMode = "mushaf" | "book";
 
@@ -74,6 +76,9 @@ const mode = computed<SpreadMode>(() => (isSpread.value && requestedMode.value =
 // The shared reading position. Only the visible layer moves it, so switching
 // modes back and forth never drifts: the hidden layer just follows along.
 const position = ref<VersePosition | null>(parseVerseKey(route.query.ayah));
+// Where the Mushaf last stood. The book opens a spread exactly there, rather
+// than on the spread around it, so switching layouts starts on the same ayah.
+const bookBreak = ref<VersePosition | null>(position.value);
 // 1 when the surah's first page was already read on the left of the previous surah's last spread
 const bookLeadingPages = ref(0);
 
@@ -119,7 +124,8 @@ const reportVerse = ref<Verse | null>(null);
 const reportSurah = ref(1);
 const reportCategories = ref<string[]>([]);
 const { footnotePopoverOpen } = useFootnotePopover();
-const modalOpen = computed(() => showSettings.value || showReport.value || footnotePopoverOpen.value);
+const tourSteps = ref<TourStep[] | null>(null);
+const modalOpen = computed(() => showSettings.value || showReport.value || footnotePopoverOpen.value || !!tourSteps.value);
 
 provide("openReport", (verse: Verse, categories: string[] = []) => {
   reportVerse.value = verse;
@@ -134,6 +140,7 @@ const firstVerse = computed(() => parseVerseKey(firstKey.value));
 watch(firstVerse, (verse) => {
   if (verse && (mode.value === "mushaf" || !position.value)) {
     position.value = verse;
+    bookBreak.value = verse;
     bookLeadingPages.value = 0;
   }
 }, { immediate: true });
@@ -250,6 +257,11 @@ function turn(direction: "next" | "prev") {
   else go();
 }
 
+function handleEdgeTurn(direction: "next" | "prev") {
+  if (modalOpen.value || sheetOpen.value) return;
+  turn(direction);
+}
+
 // Prefetch on page change: iOS only allows audio playback started from a user gesture
 watch(
   () => position.value?.surah,
@@ -260,6 +272,47 @@ watch(
   },
   { immediate: true },
 );
+
+// ── Follow the recitation ──
+
+const { activeVerseKey, status: playStatus } = storeToRefs(recitation);
+let followToken = 0;
+
+// Turns to the playing ayah when it leaves the view. A hidden tab is left
+// alone; it catches up when it becomes visible, as audio kept playing meanwhile.
+async function followRecitation(animate: boolean) {
+  const key = activeVerseKey.value;
+  const at = parseVerseKey(key);
+  if (!key || !at || playStatus.value !== "playing" || document.hidden) return;
+
+  if (mode.value === "book") {
+    const book = bookPosition.value;
+    if (book && book.surah === at.surah && at.verse >= book.firstVerse && at.verse <= book.lastVerse) return;
+    if (at.surah !== position.value?.surah) {
+      bookPosition.value = null;
+      bookLeadingPages.value = 0;
+    }
+    position.value = at;
+    return;
+  }
+
+  const token = ++followToken;
+  const page = await mushafStore.getVersePage(key);
+  const shown = isSpread.value ? mushafStore.spreadPages : [currentPage.value];
+  if (token !== followToken || !page || shown.includes(page)) return;
+  const go = () => mushafStore.loadWindow(page);
+  // Reading on into the next spread turns the leaf; any other jump just lands there
+  if (animate && isSpread.value && page === shown[shown.length - 1]! + 1) flipPage("next", go);
+  else go();
+}
+
+watch(activeVerseKey, () => followRecitation(true));
+// While audio plays, a layout switch lands on the playing ayah rather than the page's first
+watch(mode, () => followRecitation(false));
+
+function handleVisibilityChange() {
+  if (!document.hidden) followRecitation(false);
+}
 
 function handleListen() {
   if (!position.value) return;
@@ -285,6 +338,59 @@ async function handleReport() {
     console.error("Failed to load verse for report:", e);
   }
 }
+
+// ── Reader tour: every step on a first visit, then each release's new steps ──
+
+const layout = computed<ReaderLayout>(() => (isSpread.value ? "spread" : isPane.value ? "pane" : "phone"));
+let tourLayout: ReaderLayout = layout.value;
+// Media queries read false until mount, so the layout is only known after it
+const layoutKnown = ref(false);
+let tourTimer: ReturnType<typeof setTimeout> | undefined;
+// Every step this layout has, so finishing records its newest version even when only some were shown
+let tourAllSteps: TourStep[] = [];
+const tourIsUpdate = ref(false);
+
+function layoutTourSteps(forLayout: ReaderLayout) {
+  // Same query as the `mouse:` CSS variant that shows the page-edge zones
+  const mouse = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  return readerTourSteps(forLayout, translationOn.value, mouse);
+}
+
+function startTour(everything = false) {
+  tourLayout = layout.value;
+  tourAllSteps = layoutTourSteps(tourLayout);
+  const steps = everything ? tourAllSteps : unseenTourSteps(tourLayout, tourAllSteps);
+  if (steps.length === 0) return;
+  tourIsUpdate.value = !everything && hasSeenAnyReaderTour(tourLayout);
+  tourSteps.value = steps;
+}
+
+function finishTour() {
+  markReaderTourSeen(tourLayout, tourAllSteps);
+  tourSteps.value = null;
+}
+
+function replayTour() {
+  showSettings.value = false;
+  setMode("mushaf");
+  nextTick(() => startTour(true));
+}
+
+// Waits for a drawn page with nothing else open; a short pause lets the sheet settle
+watch(
+  [layoutKnown, layout, mode, () => isFontLoaded(currentPage.value), modalOpen, sheetOpen, indexOpen],
+  ([known, current, currentMode, fontReady, blocked, sheet, index]) => {
+    clearTimeout(tourTimer);
+    if (!known || currentMode !== "mushaf" || !fontReady || blocked || sheet || index) return;
+    if (unseenTourSteps(current, layoutTourSteps(current)).length === 0) return;
+    tourTimer = setTimeout(() => startTour(), 800);
+  },
+);
+
+// Rotating a tablet swaps the controls on screen, so the old steps would point at nothing
+watch(layout, () => {
+  tourSteps.value = null;
+});
 
 // ── URL ──
 
@@ -324,8 +430,10 @@ onMounted(() => {
     ? window.requestIdleCallback(warmBook, { timeout: 4000 })
     : setTimeout(warmBook, 2000) as unknown as number;
 
+  layoutKnown.value = true;
   resetUiTimer();
   window.addEventListener("keydown", handleIndexKeydown);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
   window.addEventListener("mousemove", resetUiTimer);
   window.addEventListener("touchstart", resetUiTimer);
   window.addEventListener("scroll", resetUiTimer);
@@ -334,11 +442,13 @@ onMounted(() => {
 
 onUnmounted(() => {
   clearTimeout(uiTimer);
+  clearTimeout(tourTimer);
   if (idleHandle !== undefined) {
     if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idleHandle);
     else clearTimeout(idleHandle);
   }
   window.removeEventListener("keydown", handleIndexKeydown);
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
   window.removeEventListener("mousemove", resetUiTimer);
   window.removeEventListener("touchstart", resetUiTimer);
   window.removeEventListener("scroll", resetUiTimer);
@@ -412,7 +522,10 @@ useSeoMeta({
       :layer-hidden="mode === 'book'"
       :nav-locked="mode === 'book' || sheetOpen || modalOpen"
       :index-open="isSpread && indexOpen"
+      :can-next="hasNext"
+      :can-prev="hasPrev"
       @open-translation="openSheet"
+      @edge-turn="handleEdgeTurn"
     >
       <template #aside>
         <Transition
@@ -439,6 +552,7 @@ useSeoMeta({
           :surah-number="position.surah"
           :source-id="selectedSourceId && selectedSourceId > 0 ? selectedSourceId : undefined"
           :anchor-verse="position.verse"
+          :break-verse="bookBreak?.surah === position.surah ? bookBreak.verse : undefined"
           :surah="bookSurah"
           :next-surah="bookNextSurah"
           :leading-pages="bookLeadingPages"
@@ -457,7 +571,12 @@ useSeoMeta({
       @close="closeSheet"
     />
 
-    <SettingsReaderSettingsModal v-model:visible="showSettings" :mushaf-font-locked="mode === 'mushaf'" />
+    <SettingsReaderSettingsModal
+      v-model:visible="showSettings"
+      :mushaf-font-locked="mode === 'mushaf'"
+      tour-replay
+      @replay-tour="replayTour"
+    />
     <ReportModal
       v-if="reportVerse"
       v-model:visible="showReport"
@@ -468,6 +587,7 @@ useSeoMeta({
     />
     <ClientOnly>
       <ReadingRecitationPlayerBar />
+      <ReadingReaderTour v-if="tourSteps" :steps="tourSteps" :is-update="tourIsUpdate" @finish="finishTour" />
     </ClientOnly>
   </div>
 </template>

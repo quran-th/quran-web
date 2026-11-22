@@ -24,13 +24,14 @@ const { quranFont, isQcf } = useQuranFont();
 
 // Each font draws words at a different size for the same px (median ink width over
 // 386 words of Al-Baqarah, against QPC Hafs): V1 0.95, V2 1.09, Tajweed 1.12, IndoPak 0.98.
-// These sizes even that out so every font reads like QPC at 26px beside 16px Thai.
+// Dividing by those evens it out, so every font reads like QPC at 22px beside 16px Thai.
+const QPC_PX = 22;
 const ARABIC_PX: Record<QuranFont, number> = {
-  [QuranFont.QPCHafs]: 26,
-  [QuranFont.MadaniV1]: 27.4,
-  [QuranFont.MadaniV2]: 23.9,
-  [QuranFont.TajweedV4]: 23.2,
-  [QuranFont.IndoPak]: 26.5,
+  [QuranFont.QPCHafs]: QPC_PX,
+  [QuranFont.MadaniV1]: QPC_PX / 0.95,
+  [QuranFont.MadaniV2]: QPC_PX / 1.09,
+  [QuranFont.TajweedV4]: QPC_PX / 1.12,
+  [QuranFont.IndoPak]: QPC_PX / 0.98,
 };
 const arabicSize = computed(() => `calc(${ARABIC_PX[quranFont.value]}px * var(--book-scale, 1))`);
 const fallbackSize = `calc(${ARABIC_PX[QuranFont.QPCHafs]}px * var(--book-scale, 1))`;

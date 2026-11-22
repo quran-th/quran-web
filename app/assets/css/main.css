@@ -2,6 +2,8 @@
 
 /* Must match SPREAD_QUERY in composables/useSpreadMode.ts */
 @custom-variant spread (@media (orientation: landscape) and (min-width: 1024px));
+/* Mouse or trackpad: page-edge click zones only exist here; touch screens swipe instead */
+@custom-variant mouse (@media (hover: hover) and (pointer: fine));
 
 @theme {
   --font-sans: 'IBM Plex Sans Thai', ui-sans-serif, system-ui, sans-serif;

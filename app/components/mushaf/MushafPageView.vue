@@ -17,6 +17,7 @@ import { useMushafStore } from "~/stores/mushafStore";
 import { useFontSettingsStore } from "~/stores/fontSettingsStore";
 import type { QuranWord } from "~/types/quran";
 import { getSurahNameGlyph } from "~/composables/useSurahNameGlyph";
+import { toArabicDigits } from "~/helpers/arabicDigits";
 import { MUSHAF_LOCKED_FONT, provideLockedQuranFont } from "~/composables/useQuranFont";
 
 interface Props {
@@ -147,8 +148,8 @@ const hasBismillahWords = computed(() => bismillahWords.value.length === 4);
     </div>
 
     <!-- Page number footer -->
-    <div class="mushaf-page-footer">
-      {{ pageNumber }}
+    <div class="mushaf-page-footer" lang="ar">
+      {{ toArabicDigits(pageNumber) }}
     </div>
   </div>
 </template>
@@ -199,12 +200,13 @@ const hasBismillahWords = computed(() => bismillahWords.value.length === 4);
 
 .mushaf-page-footer {
   text-align: center;
-  font-size: 0.85rem;
   color: #94a3b8;
   padding-top: 0.75rem;
   margin-bottom: 30px;
   flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
+  /* UthmanicHafs turns a digit run into an ayah-end ornament, so the page number uses Amiri */
+  font-family: 'Amiri', serif;
+  font-size: 1.05rem;
 }
 
 /* ── Surah Header Block ── */
