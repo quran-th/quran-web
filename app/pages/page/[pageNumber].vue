@@ -273,6 +273,47 @@ watch(
   { immediate: true },
 );
 
+// ── Follow the recitation ──
+
+const { activeVerseKey, status: playStatus } = storeToRefs(recitation);
+let followToken = 0;
+
+// Turns to the playing ayah when it leaves the view. A hidden tab is left
+// alone; it catches up when it becomes visible, as audio kept playing meanwhile.
+async function followRecitation(animate: boolean) {
+  const key = activeVerseKey.value;
+  const at = parseVerseKey(key);
+  if (!key || !at || playStatus.value !== "playing" || document.hidden) return;
+
+  if (mode.value === "book") {
+    const book = bookPosition.value;
+    if (book && book.surah === at.surah && at.verse >= book.firstVerse && at.verse <= book.lastVerse) return;
+    if (at.surah !== position.value?.surah) {
+      bookPosition.value = null;
+      bookLeadingPages.value = 0;
+    }
+    position.value = at;
+    return;
+  }
+
+  const token = ++followToken;
+  const page = await mushafStore.getVersePage(key);
+  const shown = isSpread.value ? mushafStore.spreadPages : [currentPage.value];
+  if (token !== followToken || !page || shown.includes(page)) return;
+  const go = () => mushafStore.loadWindow(page);
+  // Reading on into the next spread turns the leaf; any other jump just lands there
+  if (animate && isSpread.value && page === shown[shown.length - 1]! + 1) flipPage("next", go);
+  else go();
+}
+
+watch(activeVerseKey, () => followRecitation(true));
+// While audio plays, a layout switch lands on the playing ayah rather than the page's first
+watch(mode, () => followRecitation(false));
+
+function handleVisibilityChange() {
+  if (!document.hidden) followRecitation(false);
+}
+
 function handleListen() {
   if (!position.value) return;
   recitation.playVerse(position.value.surah, position.value.verse);
@@ -380,6 +421,7 @@ onMounted(() => {
   layoutKnown.value = true;
   resetUiTimer();
   window.addEventListener("keydown", handleIndexKeydown);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
   window.addEventListener("mousemove", resetUiTimer);
   window.addEventListener("touchstart", resetUiTimer);
   window.addEventListener("scroll", resetUiTimer);
@@ -394,6 +436,7 @@ onUnmounted(() => {
     else clearTimeout(idleHandle);
   }
   window.removeEventListener("keydown", handleIndexKeydown);
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
   window.removeEventListener("mousemove", resetUiTimer);
   window.removeEventListener("touchstart", resetUiTimer);
   window.removeEventListener("scroll", resetUiTimer);
