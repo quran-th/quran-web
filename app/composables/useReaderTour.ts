@@ -135,14 +135,14 @@ export function readerTourSteps(layout: ReaderLayout, verseTapWorks: boolean, mo
       body: `สลับระหว่าง${LAYOUT_INFO.mushaf.title}และ${LAYOUT_INFO.book.title}ได้ที่ปุ่มนี้ มาดูตัวอย่างแต่ละแบบกัน`
         + (mouse ? ' ภายหลังชี้ที่ปุ่มเพื่อดูคำอธิบายได้อีกครั้ง' : ''),
     },
-    // Snapshots of Mushaf pages 3–4: full pages show both layouts as they read. The bilingual
-    // one uses King Fahd (source 3), whose footnotes are what this layout is suited to
+    // Snapshots of Mushaf pages 591–592 (juz 30), from the opening of Al-Aʿlā: short ayahs fill
+    // both pages. The bilingual one uses King Fahd (source 3), whose footnotes are what it is suited to
     {
       since: '1.32.0',
       target: 'mode',
       title: LAYOUT_INFO.mushaf.title,
       body: LAYOUT_INFO.mushaf.body,
-      image: { src: '/tour/layout-mushaf.webp', alt: 'ตัวอย่างหน้ามุศฮัฟ 3–4 พร้อมคำแปลข้างหน้า' },
+      image: { src: '/tour/layout-mushaf.webp', alt: 'ตัวอย่างหน้ามุศฮัฟ 591–592 พร้อมคำแปลข้างหน้า' },
     },
     {
       since: '1.32.0',
