@@ -56,20 +56,42 @@ export function useSwipeTurn(options: SwipeTurnOptions) {
     }
   }
 
+  // The rest of a touch goes to the element it started on, even after that element leaves the
+  // page (a word redrawn once its font loads), and from there it no longer bubbles up to the
+  // reader. Listening on that element itself still hears the lift, so the page never stays pulled aside
+  let tracked: EventTarget | null = null
+
+  function track(target: EventTarget | null) {
+    untrack()
+    if (!target) return
+    tracked = target
+    target.addEventListener('touchmove', onTouchMove as EventListener, { passive: true })
+    target.addEventListener('touchend', onTouchEnd as EventListener, { passive: true })
+    target.addEventListener('touchcancel', reset, { passive: true })
+  }
+
+  function untrack() {
+    tracked?.removeEventListener('touchmove', onTouchMove as EventListener)
+    tracked?.removeEventListener('touchend', onTouchEnd as EventListener)
+    tracked?.removeEventListener('touchcancel', reset)
+    tracked = null
+  }
+
   function reset() {
+    untrack()
     springBack()
     start = null
     axis = null
   }
 
   function onTouchStart(e: TouchEvent) {
+    // Whatever the last gesture left pulled aside goes back first
+    reset()
     const t = e.touches[0]
-    if (e.touches.length !== 1 || !t || !options.enabled() || zoomed()) {
-      reset()
-      return
-    }
+    if (e.touches.length !== 1 || !t || !options.enabled() || zoomed()) return
     start = { x: t.clientX, y: t.clientY }
     axis = null
+    track(e.target)
   }
 
   function onTouchMove(e: TouchEvent) {
@@ -102,6 +124,7 @@ export function useSwipeTurn(options: SwipeTurnOptions) {
 
   function onTouchEnd(e: TouchEvent) {
     const t = e.changedTouches[0]
+    untrack()
     if (!start || !t) {
       reset()
       return
@@ -123,5 +146,5 @@ export function useSwipeTurn(options: SwipeTurnOptions) {
     setTimeout(() => springBack(layers), 400)
   }
 
-  return { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel: reset }
+  return { onTouchStart }
 }

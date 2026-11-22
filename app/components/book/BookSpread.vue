@@ -415,9 +415,6 @@ onBeforeUnmount(() => {
     class="absolute inset-0 mx-auto flex"
     :style="{ width: 'var(--book-width, 100%)' }"
     @touchstart.passive="swipe.onTouchStart"
-    @touchmove.passive="swipe.onTouchMove"
-    @touchend.passive="swipe.onTouchEnd"
-    @touchcancel.passive="swipe.onTouchCancel"
   >
     <BookPageView
       v-if="showNeighbor && neighborMeta"

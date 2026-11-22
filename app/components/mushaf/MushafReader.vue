@@ -232,9 +232,6 @@ onUnmounted(() => {
     class="relative flex flex-1 flex-col"
     :class="spread ? 'overflow-hidden' : 'overflow-x-hidden overflow-y-auto'"
     @touchstart.passive="swipe.onTouchStart"
-    @touchmove.passive="swipe.onTouchMove"
-    @touchend.passive="swipe.onTouchEnd"
-    @touchcancel.passive="swipe.onTouchCancel"
   >
     <!-- Before hydration the viewport is unknown to JS; CSS picks two pages or one -->
     <template v-if="!mounted">
