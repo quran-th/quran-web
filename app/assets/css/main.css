@@ -200,3 +200,11 @@ html[data-flip="prev"]::view-transition-new(book-spread) {
 
 @keyframes spread-reveal-ltr { from { mask-position: 100% 0; } to { mask-position: 0% 0; } }
 @keyframes spread-reveal-rtl { from { mask-position: 0% 0; } to { mask-position: 100% 0; } }
+
+/* No double-tap zoom: readers tap words and ayahs, and a quick second tap zoomed the whole app.
+   Pinch zoom still works */
+@layer base {
+  html {
+    touch-action: manipulation;
+  }
+}
