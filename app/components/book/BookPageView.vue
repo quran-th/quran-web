@@ -67,6 +67,48 @@ onMounted(() => {
 });
 onBeforeUnmount(() => footObserver?.disconnect());
 watch(footnotes, measureFootnotes);
+
+// A verse taller than the page gets the page to itself; shrink its text until it fits,
+// so the reader isn't left scrolling inside a page. Past MIN_FIT it scrolls after all.
+const MIN_FIT = 0.8;
+const section = ref<HTMLElement | null>(null);
+const fitStyle = ref<Record<string, string> | null>(null);
+let fitRun = 0;
+
+async function fitToPage() {
+  const run = ++fitRun;
+  fitStyle.value = null;
+  if (!overflow.value) return;
+  await nextTick();
+  const el = section.value;
+  const body = el?.querySelector<HTMLElement>("[data-page-body]");
+  if (!el?.parentElement || !body) return;
+  const base = Number.parseFloat(getComputedStyle(el.parentElement).getPropertyValue("--book-scale")) || 1;
+  let fit = 1;
+  // Text rewraps as it shrinks, so the height doesn't fall in proportion; a few passes settle it
+  for (let pass = 0; pass < 4 && fit > MIN_FIT && body.scrollHeight > body.clientHeight + 1; pass++) {
+    fit = Math.max(MIN_FIT, fit * (body.clientHeight / body.scrollHeight) * 0.99);
+    // The page keeps its width; only the text shrinks
+    fitStyle.value = { "--book-scale": String(base * fit), maxWidth: `${820 * base}px` };
+    await nextTick();
+    if (run !== fitRun) return;
+  }
+}
+
+let sectionObserver: ResizeObserver | null = null;
+// Page fonts arrive after the first layout and change the verse's height
+const onFontsLoaded = () => fitToPage();
+onMounted(() => {
+  // The section is sized by the spread, not by its text, so refitting can't loop
+  sectionObserver = new ResizeObserver(() => fitToPage());
+  if (section.value) sectionObserver.observe(section.value);
+  document.fonts?.addEventListener("loadingdone", onFontsLoaded);
+});
+onBeforeUnmount(() => {
+  sectionObserver?.disconnect();
+  document.fonts?.removeEventListener("loadingdone", onFontsLoaded);
+});
+watch(() => props.page, fitToPage);
 watch(footArea, (el, old) => {
   if (old) footObserver?.unobserve(old);
   if (el) footObserver?.observe(el);
@@ -74,7 +116,11 @@ watch(footArea, (el, old) => {
 </script>
 
 <template>
-  <section :aria-label="verseRange" class="flex min-w-0 max-w-[calc(820px*var(--book-scale,1))] flex-1 flex-col px-[30px] pb-3.5 pt-5">
+  <section
+    ref="section"
+    :aria-label="verseRange"
+    :style="fitStyle ?? undefined"
+    class="flex min-w-0 max-w-[calc(820px*var(--book-scale,1))] flex-1 flex-col px-[30px] pb-3.5 pt-5">
     <div
       class="flex min-h-6 shrink-0 items-center text-[length:calc(12px*var(--book-scale,1))] text-ink-muted"
       :class="side === 'right' ? 'justify-start' : 'justify-end'"
