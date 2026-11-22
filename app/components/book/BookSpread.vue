@@ -10,6 +10,7 @@ import { layoutBook, paginateBook, type BookItem, type BookPage } from "~/compos
 import { flipPage } from "~/composables/usePageFlip";
 import { BOOK_FONT_LOADED_KEY, useBookVerses, type BookVerse } from "~/composables/useBookVerses";
 import { useQcfFont } from "~/composables/useQcfFont";
+import { SELECTED_VERSE_KEY } from "~/composables/selectedVerse";
 import { useQuranFont } from "~/composables/useQuranFont";
 import { useFontSettingsStore } from "~/stores/fontSettingsStore";
 import { storeToRefs } from "pinia";
@@ -91,6 +92,8 @@ const { fontScale } = storeToRefs(useFontSettingsStore());
 const bookWords = computed(() => (isQcf.value ? [...verses.value, ...neighbor.verses.value].flatMap(v => v.words) : []));
 const { isFontLoaded, isFontSettled } = useQcfFont(bookWords, fontVersion);
 provide(BOOK_FONT_LOADED_KEY, isFontLoaded);
+// The book sits inside the Mushaf reader; an ayah picked on the Mushaf page means nothing here
+provide(SELECTED_VERSE_KEY, ref(null));
 function fontPagesOf(list: BookVerse[]): number[] {
   return isQcf.value ? [...new Set(list.flatMap(v => v.words.map(w => w.page_number)))] : [];
 }

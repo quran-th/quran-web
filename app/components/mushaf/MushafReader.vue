@@ -67,7 +67,7 @@ function focusVerse(key: string) {
   if (!columnVisible.value) return
   focusedVerse.value = focusedVerse.value?.key === key ? null : { key }
 }
-watch([currentPage, columnVisible], () => {
+watch([currentPage, columnVisible, () => props.layerHidden], () => {
   focusedVerse.value = null
 })
 provide(SELECTED_VERSE_KEY, computed(() => focusedVerse.value?.key ?? null))
