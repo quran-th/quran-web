@@ -1,3 +1,21 @@
+# [1.32.0](https://github.com/quran-th/quran-web/compare/v1.31.0...v1.32.0) (2026-11-22)
+
+### Bug Fixes
+
+* catch the surah page up to the playing ayah when the tab returns ([af69a2b](https://github.com/quran-th/quran-web/commit/af69a2bed5878f0db0d51e6d88b55309ecf03919))
+* drop the selected Mushaf ayah when switching to the bilingual book ([688fe26](https://github.com/quran-th/quran-web/commit/688fe26bb00936e877230bd21415282254c5208e))
+* open the bilingual book at the Mushaf page's first ayah ([8c3020b](https://github.com/quran-th/quran-web/commit/8c3020bb8e4c71e52ca9114d82b4c47319a3553a))
+
+### Features
+
+* add a first-visit reader tour per layout and page-edge clicks to turn pages ([4ecdecb](https://github.com/quran-th/quran-web/commit/4ecdecb500557fdbd551b62395e3880d3a7b8fdc))
+* explain the Mushaf and bilingual layouts on the layout switch ([7d3d2da](https://github.com/quran-th/quran-web/commit/7d3d2da11dc3ba7b3d299dc7b6a66739ad6acc43))
+* print Mushaf page numbers in Arabic-Indic digits ([347fecc](https://github.com/quran-th/quran-web/commit/347fecc6a0fefd8979161ca862d9a23489008ca6))
+* set the bilingual Arabic smaller beside 16px translation ([c352443](https://github.com/quran-th/quran-web/commit/c3524431309da28e71b6fbadf521d557952b780e))
+* show both reading layouts in the reader tour, and tag tour steps by release ([83f2918](https://github.com/quran-th/quran-web/commit/83f29182b7a5ab7bd9e6936fd35b6785bf452572))
+* turn the Mushaf page with the recitation and catch up on return ([e860bef](https://github.com/quran-th/quran-web/commit/e860bef783845a2fca1b4213759e59e971bfc341))
+* use a dense juz 30 spread for the reader tour layout snapshots ([5e339ed](https://github.com/quran-th/quran-web/commit/5e339ed7302118febfd6b24924c48498d95c7efa))
+
 # [1.31.0](https://github.com/quran-th/quran-web/compare/v1.30.0...v1.31.0) (2026-11-19)
 
 ### Bug Fixes
