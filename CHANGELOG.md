@@ -1,3 +1,9 @@
+# [1.33.0](https://github.com/quran-th/quran-web/compare/v1.32.0...v1.33.0) (2026-11-22)
+
+### Features
+
+* draw the bilingual book at 14px with a wider translation column and smaller Arabic ([cff8d36](https://github.com/quran-th/quran-web/commit/cff8d361a0fa17ca3978c7db06e70ba6e12c3321))
+
 # [1.32.0](https://github.com/quran-th/quran-web/compare/v1.31.0...v1.32.0) (2026-11-22)
 
 ### Bug Fixes
