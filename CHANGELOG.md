@@ -1,3 +1,9 @@
+## [1.34.1](https://github.com/quran-th/quran-web/compare/v1.34.0...v1.34.1) (2026-11-22)
+
+### Bug Fixes
+
+* slide the new page in where view transitions are missing, like iPadOS 17 ([e9740ab](https://github.com/quran-th/quran-web/commit/e9740ab43ca9c137afcf909dd16aa86199d30e31))
+
 # [1.34.0](https://github.com/quran-th/quran-web/compare/v1.33.0...v1.34.0) (2026-11-22)
 
 ### Bug Fixes
