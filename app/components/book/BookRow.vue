@@ -24,8 +24,8 @@ const { quranFont, isQcf } = useQuranFont();
 
 // Each font draws words at a different size for the same px (median ink width over
 // 386 words of Al-Baqarah, against QPC Hafs): V1 0.95, V2 1.09, Tajweed 1.12, IndoPak 0.98.
-// Dividing by those evens it out, so every font reads like QPC at 22px beside 16px Thai.
-const QPC_PX = 22;
+// Dividing by those evens it out, so every font reads like QPC at 20px beside 16px Thai.
+const QPC_PX = 20;
 const ARABIC_PX: Record<QuranFont, number> = {
   [QuranFont.QPCHafs]: QPC_PX,
   [QuranFont.MadaniV1]: QPC_PX / 0.95,
@@ -52,7 +52,7 @@ function localNumber(footnoteNumber: number | undefined): number | null {
 </script>
 
 <template>
-  <div class="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-baseline gap-x-7 py-2">
+  <div class="grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] items-baseline gap-x-7 py-2">
     <p class="m-0 flex gap-2 font-reading text-[length:calc(16px*var(--book-scale,1))] leading-[1.7] text-ink-soft">
       <span class="shrink-0 font-semibold tabular-nums text-sage-600" :style="{ minWidth: numberWidth }">{{ verse.verseNumber }}.</span>
       <span>

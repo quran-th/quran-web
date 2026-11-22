@@ -90,7 +90,8 @@ const mushafWidth = computed(() => {
   return `min(${natural}px, var(--spread-avail))`
 })
 const spreadVars = computed(() => ({
-  '--book-scale': 1 + (fontSettings.fontScale - 3) * 0.12,
+  // The book's sizes are drawn for 16px translation; at the default size (3) it reads at 14px
+  '--book-scale': (14 / 16) * (1 + (fontSettings.fontScale - 3) * 0.12),
   '--spread-avail': '100cqw',
   '--book-width': `min(calc(var(--book-scale) * 1640px + ${SPINE_WIDTH}px), var(--spread-avail))`,
 }))
