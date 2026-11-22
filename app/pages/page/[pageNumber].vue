@@ -21,7 +21,7 @@ import { getQcfFontVersion } from "~/types/quran";
 import { flipPage } from "~/composables/usePageFlip";
 import { usePaneMode, useSpreadMode } from "~/composables/useSpreadMode";
 import { useFootnotePopover } from "~/composables/useFootnotePopover";
-import { hasSeenReaderTour, markReaderTourSeen, readerTourSteps } from "~/composables/useReaderTour";
+import { hasSeenAnyReaderTour, markReaderTourSeen, readerTourSteps, unseenTourSteps } from "~/composables/useReaderTour";
 import type { ReaderLayout, TourStep } from "~/composables/useReaderTour";
 
 type SpreadMode = "mushaf" | "book";
@@ -339,30 +339,41 @@ async function handleReport() {
   }
 }
 
-// ── First-visit tour ──
+// ── Reader tour: every step on a first visit, then each release's new steps ──
 
 const layout = computed<ReaderLayout>(() => (isSpread.value ? "spread" : isPane.value ? "pane" : "phone"));
 let tourLayout: ReaderLayout = layout.value;
 // Media queries read false until mount, so the layout is only known after it
 const layoutKnown = ref(false);
 let tourTimer: ReturnType<typeof setTimeout> | undefined;
+// Every step this layout has, so finishing records its newest version even when only some were shown
+let tourAllSteps: TourStep[] = [];
+const tourIsUpdate = ref(false);
 
-function startTour() {
-  tourLayout = layout.value;
+function layoutTourSteps(forLayout: ReaderLayout) {
   // Same query as the `mouse:` CSS variant that shows the page-edge zones
   const mouse = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-  tourSteps.value = readerTourSteps(tourLayout, translationOn.value, mouse);
+  return readerTourSteps(forLayout, translationOn.value, mouse);
+}
+
+function startTour(everything = false) {
+  tourLayout = layout.value;
+  tourAllSteps = layoutTourSteps(tourLayout);
+  const steps = everything ? tourAllSteps : unseenTourSteps(tourLayout, tourAllSteps);
+  if (steps.length === 0) return;
+  tourIsUpdate.value = !everything && hasSeenAnyReaderTour(tourLayout);
+  tourSteps.value = steps;
 }
 
 function finishTour() {
-  markReaderTourSeen(tourLayout);
+  markReaderTourSeen(tourLayout, tourAllSteps);
   tourSteps.value = null;
 }
 
 function replayTour() {
   showSettings.value = false;
   setMode("mushaf");
-  nextTick(startTour);
+  nextTick(() => startTour(true));
 }
 
 // Waits for a drawn page with nothing else open; a short pause lets the sheet settle
@@ -370,8 +381,9 @@ watch(
   [layoutKnown, layout, mode, () => isFontLoaded(currentPage.value), modalOpen, sheetOpen, indexOpen],
   ([known, current, currentMode, fontReady, blocked, sheet, index]) => {
     clearTimeout(tourTimer);
-    if (!known || currentMode !== "mushaf" || !fontReady || blocked || sheet || index || hasSeenReaderTour(current)) return;
-    tourTimer = setTimeout(startTour, 800);
+    if (!known || currentMode !== "mushaf" || !fontReady || blocked || sheet || index) return;
+    if (unseenTourSteps(current, layoutTourSteps(current)).length === 0) return;
+    tourTimer = setTimeout(() => startTour(), 800);
   },
 );
 
@@ -575,7 +587,7 @@ useSeoMeta({
     />
     <ClientOnly>
       <ReadingRecitationPlayerBar />
-      <ReadingReaderTour v-if="tourSteps" :steps="tourSteps" @finish="finishTour" />
+      <ReadingReaderTour v-if="tourSteps" :steps="tourSteps" :is-update="tourIsUpdate" @finish="finishTour" />
     </ClientOnly>
   </div>
 </template>

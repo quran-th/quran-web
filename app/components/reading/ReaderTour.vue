@@ -6,7 +6,11 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { TourStep } from "~/composables/useReaderTour";
 
-const props = defineProps<{ steps: TourStep[] }>();
+const props = defineProps<{
+  steps: TourStep[];
+  /** Only the steps released since the reader's last tour, so they are flagged as new */
+  isUpdate?: boolean;
+}>();
 const emit = defineEmits<{ finish: [] }>();
 
 const HOLE_PADDING = 6;
@@ -132,6 +136,10 @@ function handleKeydown(e: KeyboardEvent) {
 }
 
 onMounted(() => {
+  // Fetched up front so an image step opens complete rather than filling in
+  for (const s of props.steps) {
+    if (s.image) new Image().src = s.image.src;
+  }
   resizeObserver = new ResizeObserver(measure);
   if (card.value) resizeObserver.observe(card.value);
   window.addEventListener("resize", measure);
@@ -153,11 +161,11 @@ onBeforeUnmount(() => {
   <Teleport to="body">
     <div class="fixed inset-0 z-[60]" @touchstart.stop @touchend.stop>
       <!-- Blocks the reader underneath; the tour is the only thing to press -->
-      <div class="absolute inset-0" :class="hole ? '' : 'bg-[rgba(38,30,18,0.5)]'" />
+      <div class="absolute inset-0" :class="hole ? '' : 'bg-[rgba(30,25,18,0.42)]'" />
       <div
         v-if="hole"
         aria-hidden="true"
-        class="pointer-events-none absolute rounded-xl shadow-[0_0_0_9999px_rgba(38,30,18,0.5)] transition-[top,left,width,height] duration-300 ease-out motion-reduce:transition-none"
+        class="pointer-events-none absolute rounded-[14px] shadow-[0_0_0_9999px_rgba(30,25,18,0.42)] outline-[1.5px] outline-solid outline-paper-pill/70 transition-[top,left,width,height] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
         :style="{ top: `${hole.top}px`, left: `${hole.left}px`, width: `${hole.width}px`, height: `${hole.height}px` }"
       />
 
@@ -168,46 +176,71 @@ onBeforeUnmount(() => {
         aria-modal="true"
         aria-labelledby="reader-tour-title"
         aria-describedby="reader-tour-body"
-        class="absolute w-[min(320px,calc(100vw-32px))] rounded-2xl outline-none bg-paper-pill p-5 text-ink shadow-menu transition-[top,left,opacity] duration-300 ease-out motion-reduce:transition-none [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-solid [&_button:focus-visible]:outline-sage-500/60"
-        :class="cardSize.w ? 'opacity-100' : 'opacity-0'"
+        class="absolute overflow-hidden rounded-[20px] bg-paper-pill text-ink outline-none ring-1 ring-[rgba(60,45,25,0.08)] shadow-[0_1px_2px_rgba(60,45,25,0.06),0_24px_56px_-12px_rgba(60,45,25,0.3)] transition-[top,left,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-solid [&_button:focus-visible]:outline-sage-500/60"
+        :class="[cardSize.w ? 'opacity-100' : 'opacity-0', step?.image ? 'w-[min(420px,calc(100vw-32px))] 2xl:w-[520px]' : 'w-[min(340px,calc(100vw-32px))]']"
         :style="{ top: `${cardPosition.top}px`, left: `${cardPosition.left}px` }"
       >
-        <div class="mb-3 flex items-center gap-1.5" aria-hidden="true">
-          <span
-            v-for="(_, i) in steps"
-            :key="i"
-            class="h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none"
-            :class="i === index ? 'w-4 bg-sage-500' : 'w-1.5 bg-paper-tray'"
+        <div aria-hidden="true" class="h-[2px] bg-paper-tray/50">
+          <div
+            class="h-full bg-ink-strong transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+            :style="{ width: `${((index + 1) / steps.length) * 100}%` }"
           />
-          <span class="ml-auto text-xs tabular-nums text-ink-muted">{{ index + 1 }} / {{ steps.length }}</span>
         </div>
-        <h2 id="reader-tour-title" class="text-base font-semibold text-ink-strong">{{ step?.title }}</h2>
-        <p id="reader-tour-body" class="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-ink-soft">{{ step?.body }}</p>
-        <div class="mt-4 flex items-center gap-2">
-          <button
-            v-if="!isLast"
-            type="button"
-            class="-ml-2 h-9 rounded-lg px-2 text-sm text-ink-muted hover:bg-paper-tint"
-            @click="emit('finish')"
+
+        <div class="px-6 pb-5 pt-5">
+          <p aria-hidden="true" class="flex items-center gap-2 text-[11px] font-medium tabular-nums tracking-[0.16em] text-ink-muted">
+            <span v-if="isUpdate" class="rounded-full bg-sage-wash px-2 py-0.5 tracking-normal text-sage-700">ใหม่</span>
+            <span>{{ String(index + 1).padStart(2, "0") }}<span class="text-ink-muted/50"> / {{ String(steps.length).padStart(2, "0") }}</span></span>
+          </p>
+          <Transition
+            mode="out-in"
+            enter-active-class="transition duration-300 ease-out motion-reduce:transition-none"
+            enter-from-class="translate-y-1 opacity-0"
+            leave-active-class="transition duration-150 ease-in motion-reduce:transition-none"
+            leave-to-class="opacity-0"
           >
-            ข้าม
-          </button>
-          <button
-            v-if="index > 0"
-            type="button"
-            class="ml-auto h-9 rounded-lg px-3 text-sm font-medium text-ink-icon hover:bg-paper-tint"
-            @click="back"
-          >
-            ย้อนกลับ
-          </button>
-          <button
-            type="button"
-            class="h-9 rounded-lg bg-sage-600 px-4 text-sm font-semibold text-white hover:bg-sage-700"
-            :class="{ 'ml-auto': index === 0 }"
-            @click="next"
-          >
-            {{ isLast ? "เริ่มอ่าน" : "ถัดไป" }}
-          </button>
+            <div :key="index">
+              <div v-if="step?.image" class="mt-3 rounded-xl bg-paper-surround p-1.5">
+                <img
+                  :src="step.image.src"
+                  :alt="step.image.alt"
+                  width="1052"
+                  height="610"
+                  class="block aspect-[1052/610] h-auto w-full rounded-lg shadow-pill"
+                >
+              </div>
+              <h2 id="reader-tour-title" class="text-[17px] font-semibold tracking-tight text-ink-strong" :class="step?.image ? 'mt-4' : 'mt-2.5'">{{ step?.title }}</h2>
+              <p id="reader-tour-body" class="mt-2 break-keep text-sm leading-[1.75] text-ink-icon">{{ step?.body }}</p>
+            </div>
+          </Transition>
+
+          <div class="mt-6 flex items-center gap-2">
+            <button
+              v-if="!isLast"
+              type="button"
+              class="-ml-1 h-9 rounded-full px-1 text-[13px] text-ink-muted transition-colors hover:text-ink-strong"
+              @click="emit('finish')"
+            >
+              ข้าม
+            </button>
+            <button
+              v-if="index > 0"
+              type="button"
+              aria-label="ย้อนกลับ"
+              class="ml-auto flex h-9 w-9 items-center justify-center rounded-full text-ink-icon ring-1 ring-paper-tray transition-colors hover:bg-paper-tint hover:text-ink-strong"
+              @click="back"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <button
+              type="button"
+              class="h-9 rounded-full bg-ink-strong px-5 text-[13px] font-medium text-paper-pill transition-colors hover:bg-ink-soft"
+              :class="{ 'ml-auto': index === 0 }"
+              @click="next"
+            >
+              {{ isLast ? "เริ่มอ่าน" : "ถัดไป" }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
