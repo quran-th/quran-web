@@ -1,3 +1,9 @@
+## [1.34.3](https://github.com/quran-th/quran-web/compare/v1.34.2...v1.34.3) (2026-11-22)
+
+### Bug Fixes
+
+* let go of a swiped page even when the touched word was redrawn ([e77ffc6](https://github.com/quran-th/quran-web/commit/e77ffc6cbd51a02682bfec8761a283251b676352))
+
 ## [1.34.2](https://github.com/quran-th/quran-web/compare/v1.34.1...v1.34.2) (2026-11-22)
 
 ### Bug Fixes
