@@ -111,6 +111,7 @@ onBeforeUnmount(() => {
         <button
           v-if="showTranslationToggle"
           type="button"
+          data-tour="translation"
           :aria-pressed="translationOn"
           class="flex h-11 items-center gap-2.5 rounded-xl px-2 hover:bg-paper-tint spread:hidden"
           @click="emit('toggle-translation')"
@@ -129,7 +130,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- Book mode needs the two-page spread, so the switch only exists where it fits -->
-      <nav aria-label="โหมดการอ่าน" class="relative hidden grid-cols-2 rounded-[10px] bg-paper-tray p-[3px] spread:grid">
+      <nav aria-label="โหมดการอ่าน" data-tour="mode" class="relative hidden grid-cols-2 rounded-[10px] bg-paper-tray p-[3px] spread:grid">
         <span
           aria-hidden="true"
           class="absolute inset-y-[3px] left-[3px] w-[calc(50%-3px)] rounded-[7px] bg-paper-pill shadow-pill transition-transform duration-300 ease-out motion-reduce:transition-none"
@@ -147,27 +148,30 @@ onBeforeUnmount(() => {
       </nav>
 
       <div class="flex flex-1 items-center justify-end gap-1">
+        <div data-tour="nav" class="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label="หน้าถัดไป"
+            :disabled="!hasNext"
+            class="flex h-11 w-11 items-center justify-center rounded-xl text-ink-icon hover:bg-paper-tint disabled:opacity-30"
+            @click="emit('next')"
+          >
+            <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+          </button>
+          <span v-if="rangeLabel" class="min-w-[72px] text-center text-[13px] tabular-nums text-ink-icon">{{ rangeLabel }}</span>
+          <button
+            type="button"
+            aria-label="หน้าก่อนหน้า"
+            :disabled="!hasPrev"
+            class="flex h-11 w-11 items-center justify-center rounded-xl text-ink-icon hover:bg-paper-tint disabled:opacity-30"
+            @click="emit('prev')"
+          >
+            <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+          </button>
+        </div>
         <button
           type="button"
-          aria-label="หน้าถัดไป"
-          :disabled="!hasNext"
-          class="flex h-11 w-11 items-center justify-center rounded-xl text-ink-icon hover:bg-paper-tint disabled:opacity-30"
-          @click="emit('next')"
-        >
-          <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
-        </button>
-        <span v-if="rangeLabel" class="min-w-[72px] text-center text-[13px] tabular-nums text-ink-icon">{{ rangeLabel }}</span>
-        <button
-          type="button"
-          aria-label="หน้าก่อนหน้า"
-          :disabled="!hasPrev"
-          class="flex h-11 w-11 items-center justify-center rounded-xl text-ink-icon hover:bg-paper-tint disabled:opacity-30"
-          @click="emit('prev')"
-        >
-          <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-        </button>
-        <button
-          type="button"
+          data-tour="report"
           aria-label="แจ้งข้อผิดพลาด"
           class="flex h-11 w-11 items-center justify-center rounded-xl text-ink-icon hover:bg-paper-tint"
           @click="emit('report')"
@@ -176,6 +180,7 @@ onBeforeUnmount(() => {
         </button>
         <button
           type="button"
+          data-tour="listen"
           class="flex h-11 items-center gap-1.5 rounded-xl px-3 text-ink-icon hover:bg-paper-tint"
           @click="emit('listen')"
         >
@@ -184,6 +189,7 @@ onBeforeUnmount(() => {
         </button>
         <button
           type="button"
+          data-tour="settings"
           aria-label="ตั้งค่าการอ่าน"
           class="flex h-11 w-11 items-center justify-center rounded-xl text-ink-icon hover:bg-paper-tint"
           @click="emit('settings')"
@@ -193,6 +199,7 @@ onBeforeUnmount(() => {
         <!-- The index needs room beside the sheet, so it only exists on the spread -->
         <button
           type="button"
+          data-tour="index"
           aria-label="สารบัญ"
           :aria-pressed="indexOpen"
           class="hidden h-11 w-11 items-center justify-center rounded-xl text-ink-icon hover:bg-paper-tint spread:flex"
@@ -214,12 +221,13 @@ onBeforeUnmount(() => {
         <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
       </NuxtLink>
 
-      <span v-if="rangeLabel" class="text-sm tabular-nums text-ink-icon">{{ rangeLabel }}</span>
+      <span v-if="rangeLabel" data-tour="range" class="text-sm tabular-nums text-ink-icon">{{ rangeLabel }}</span>
 
       <div ref="menuRoot" class="relative flex items-center gap-0.5">
         <button
           v-if="showTranslationToggle"
           type="button"
+          data-tour="translation"
           :aria-pressed="translationOn"
           class="h-8 rounded-full px-2.5 text-[13px] font-semibold"
           :class="translationOn ? 'bg-sage-wash text-sage-600' : 'bg-transparent text-ink-icon'"
@@ -230,6 +238,7 @@ onBeforeUnmount(() => {
         <button
           ref="menuTrigger"
           type="button"
+          data-tour="menu"
           aria-label="เมนูเพิ่มเติม"
           aria-haspopup="menu"
           :aria-expanded="menuOpen"

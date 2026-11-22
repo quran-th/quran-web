@@ -29,6 +29,9 @@ interface Props {
   paneTranslation?: boolean
   /** The index takes the space right of the sheet, so the sheet gives way to it */
   indexOpen?: boolean
+  /** Whether a page-edge click can turn on or back; the page knows, since the book layer has its own limits */
+  canNext?: boolean
+  canPrev?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -39,9 +42,11 @@ const props = withDefaults(defineProps<Props>(), {
   navLocked: false,
   layerHidden: false,
   indexOpen: false,
+  canNext: true,
+  canPrev: true,
 })
 
-const emit = defineEmits<{ openTranslation: [verseKey: string] }>()
+const emit = defineEmits<{ openTranslation: [verseKey: string]; edgeTurn: [direction: 'next' | 'prev'] }>()
 
 const mushafStore = useMushafStore()
 const readerSettings = useReaderSettingsStore()
@@ -96,6 +101,7 @@ const sheetWidth = computed(() => (props.layerHidden ? 'var(--book-width)' : mus
 const spreadEl = ref<HTMLElement | null>(null)
 const sheetEl = ref<HTMLElement | null>(null)
 const spreadInner = ref(0)
+const spreadPadding = ref(0)
 const sheetPx = ref(0)
 const FADE_WIDTH = 200
 let sizeObserver: ResizeObserver | null = null
@@ -104,6 +110,7 @@ function measureSpread() {
   const el = spreadEl.value
   if (!el) return
   const style = getComputedStyle(el)
+  spreadPadding.value = parseFloat(style.paddingLeft)
   spreadInner.value = el.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
   sheetPx.value = sheetEl.value?.offsetWidth ?? 0
 }
@@ -131,6 +138,16 @@ const sheetStyle = computed(() => {
   }
   return style
 })
+// Each edge zone reaches from just inside the paper out across the margin, up to
+// EDGE_REACH, so on a full-width sheet it runs to the screen edge. The inside part
+// stays under the translation column's 18px text inset.
+const EDGE_INSIDE = 12
+const EDGE_REACH = 96
+const edgeWidth = computed(() => {
+  const gutter = spreadPadding.value + (spreadInner.value - sheetPx.value) / 2
+  return Math.min(Math.max(gutter - sheetShift.value, 0), EDGE_REACH) + EDGE_INSIDE
+})
+
 // Odd pages are the right page of a spread, even pages the left
 const paneSide = computed(() => (currentPage.value % 2 === 1 ? 'right' : 'left'))
 
@@ -271,7 +288,7 @@ onUnmounted(() => {
             </div>
             <div aria-hidden="true" class="w-7 shrink-0" />
             <div class="flex min-w-0 flex-[1_1_0] justify-start">
-              <MushafFittedPage :page-number="rightPage" :is-font-loaded="isFontLoaded" @word-click="focusVerse" />
+              <MushafFittedPage :page-number="rightPage" :is-font-loaded="isFontLoaded" data-tour="page" @word-click="focusVerse" />
               <MushafPageTranslationColumn v-if="showColumns" :page="rightPage" side="right" :focused-verse="focusedVerse" />
             </div>
           </div>
@@ -281,6 +298,19 @@ onUnmounted(() => {
           </div>
         </div>
         <div aria-hidden="true" class="book-spine-foot absolute -bottom-[9px] left-1/2 h-[9px] w-7 -translate-x-1/2" />
+        <MushafPageEdge
+          side="left"
+          :disabled="!canNext"
+          :style="{ left: `${EDGE_INSIDE - edgeWidth}px`, width: `${edgeWidth}px` }"
+          @turn="emit('edgeTurn', $event)"
+        />
+        <MushafPageEdge
+          v-if="!indexOpen"
+          side="right"
+          :disabled="!canPrev"
+          :style="{ right: `${EDGE_INSIDE - edgeWidth}px`, width: `${edgeWidth}px` }"
+          @turn="emit('edgeTurn', $event)"
+        />
       </div>
       <!-- Under the sheet, so the sheet uncovers it as it slides aside rather than the list showing through -->
       <div
@@ -293,22 +323,27 @@ onUnmounted(() => {
     </div>
 
     <!-- Portrait tablets: one page with the translation pane on the side the page has in the spread -->
-    <div v-else-if="pane" class="flex min-h-0 flex-1 px-6 pt-4 pb-6">
+    <div v-else-if="pane" class="relative flex min-h-0 flex-1 px-6 pt-4 pb-6">
       <div class="paper-surface flex min-w-0 flex-1 justify-center overflow-hidden rounded-[4px] shadow-paper">
         <MushafPageTranslationColumn v-if="paneTranslation && paneSide === 'left'" :page="currentPage" side="left" :focused-verse="focusedVerse" />
-        <MushafFittedPage :page-number="currentPage" :is-font-loaded="isFontLoaded" :fill="!paneTranslation" @word-click="focusVerse" />
+        <MushafFittedPage :page-number="currentPage" :is-font-loaded="isFontLoaded" :fill="!paneTranslation" data-tour="page" @word-click="focusVerse" />
         <MushafPageTranslationColumn v-if="paneTranslation && paneSide === 'right'" :page="currentPage" side="right" :focused-verse="focusedVerse" />
       </div>
+      <MushafPageEdge side="left" :disabled="!canNext" class="top-4 bottom-6 left-0 w-9" @turn="emit('edgeTurn', $event)" />
+      <MushafPageEdge side="right" :disabled="!canPrev" class="top-4 bottom-6 right-0 w-9" @turn="emit('edgeTurn', $event)" />
     </div>
 
     <!-- Phones: single page on full-bleed paper; tapping an ayah opens its translation -->
-    <div v-else class="mushaf-page-wrapper md:p-2">
+    <div v-else class="mushaf-page-wrapper relative md:p-2">
       <MushafPageView
         :page-number="currentPage"
         :is-font-loaded="isFontLoaded"
         sheet
+        data-tour="page"
         @word-click="emit('openTranslation', $event)"
       />
+      <MushafPageEdge side="left" :disabled="!canNext" class="left-0 w-8" @turn="emit('edgeTurn', $event)" />
+      <MushafPageEdge side="right" :disabled="!canPrev" class="right-0 w-8" @turn="emit('edgeTurn', $event)" />
     </div>
 
     <!-- Fullscreen button — bottom right -->

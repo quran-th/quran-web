@@ -21,6 +21,8 @@ import { getQcfFontVersion } from "~/types/quran";
 import { flipPage } from "~/composables/usePageFlip";
 import { usePaneMode, useSpreadMode } from "~/composables/useSpreadMode";
 import { useFootnotePopover } from "~/composables/useFootnotePopover";
+import { hasSeenReaderTour, markReaderTourSeen, readerTourSteps } from "~/composables/useReaderTour";
+import type { ReaderLayout, TourStep } from "~/composables/useReaderTour";
 
 type SpreadMode = "mushaf" | "book";
 
@@ -119,7 +121,8 @@ const reportVerse = ref<Verse | null>(null);
 const reportSurah = ref(1);
 const reportCategories = ref<string[]>([]);
 const { footnotePopoverOpen } = useFootnotePopover();
-const modalOpen = computed(() => showSettings.value || showReport.value || footnotePopoverOpen.value);
+const tourSteps = ref<TourStep[] | null>(null);
+const modalOpen = computed(() => showSettings.value || showReport.value || footnotePopoverOpen.value || !!tourSteps.value);
 
 provide("openReport", (verse: Verse, categories: string[] = []) => {
   reportVerse.value = verse;
@@ -250,6 +253,11 @@ function turn(direction: "next" | "prev") {
   else go();
 }
 
+function handleEdgeTurn(direction: "next" | "prev") {
+  if (modalOpen.value || sheetOpen.value) return;
+  turn(direction);
+}
+
 // Prefetch on page change: iOS only allows audio playback started from a user gesture
 watch(
   () => position.value?.surah,
@@ -285,6 +293,47 @@ async function handleReport() {
     console.error("Failed to load verse for report:", e);
   }
 }
+
+// ── First-visit tour ──
+
+const layout = computed<ReaderLayout>(() => (isSpread.value ? "spread" : isPane.value ? "pane" : "phone"));
+let tourLayout: ReaderLayout = layout.value;
+// Media queries read false until mount, so the layout is only known after it
+const layoutKnown = ref(false);
+let tourTimer: ReturnType<typeof setTimeout> | undefined;
+
+function startTour() {
+  tourLayout = layout.value;
+  // Same query as the `mouse:` CSS variant that shows the page-edge zones
+  const mouse = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  tourSteps.value = readerTourSteps(tourLayout, translationOn.value, mouse);
+}
+
+function finishTour() {
+  markReaderTourSeen(tourLayout);
+  tourSteps.value = null;
+}
+
+function replayTour() {
+  showSettings.value = false;
+  setMode("mushaf");
+  nextTick(startTour);
+}
+
+// Waits for a drawn page with nothing else open; a short pause lets the sheet settle
+watch(
+  [layoutKnown, layout, mode, () => isFontLoaded(currentPage.value), modalOpen, sheetOpen, indexOpen],
+  ([known, current, currentMode, fontReady, blocked, sheet, index]) => {
+    clearTimeout(tourTimer);
+    if (!known || currentMode !== "mushaf" || !fontReady || blocked || sheet || index || hasSeenReaderTour(current)) return;
+    tourTimer = setTimeout(startTour, 800);
+  },
+);
+
+// Rotating a tablet swaps the controls on screen, so the old steps would point at nothing
+watch(layout, () => {
+  tourSteps.value = null;
+});
 
 // ── URL ──
 
@@ -324,6 +373,7 @@ onMounted(() => {
     ? window.requestIdleCallback(warmBook, { timeout: 4000 })
     : setTimeout(warmBook, 2000) as unknown as number;
 
+  layoutKnown.value = true;
   resetUiTimer();
   window.addEventListener("keydown", handleIndexKeydown);
   window.addEventListener("mousemove", resetUiTimer);
@@ -334,6 +384,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   clearTimeout(uiTimer);
+  clearTimeout(tourTimer);
   if (idleHandle !== undefined) {
     if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idleHandle);
     else clearTimeout(idleHandle);
@@ -412,7 +463,10 @@ useSeoMeta({
       :layer-hidden="mode === 'book'"
       :nav-locked="mode === 'book' || sheetOpen || modalOpen"
       :index-open="isSpread && indexOpen"
+      :can-next="hasNext"
+      :can-prev="hasPrev"
       @open-translation="openSheet"
+      @edge-turn="handleEdgeTurn"
     >
       <template #aside>
         <Transition
@@ -457,7 +511,12 @@ useSeoMeta({
       @close="closeSheet"
     />
 
-    <SettingsReaderSettingsModal v-model:visible="showSettings" :mushaf-font-locked="mode === 'mushaf'" />
+    <SettingsReaderSettingsModal
+      v-model:visible="showSettings"
+      :mushaf-font-locked="mode === 'mushaf'"
+      tour-replay
+      @replay-tour="replayTour"
+    />
     <ReportModal
       v-if="reportVerse"
       v-model:visible="showReport"
@@ -468,6 +527,7 @@ useSeoMeta({
     />
     <ClientOnly>
       <ReadingRecitationPlayerBar />
+      <ReadingReaderTour v-if="tourSteps" :steps="tourSteps" @finish="finishTour" />
     </ClientOnly>
   </div>
 </template>
