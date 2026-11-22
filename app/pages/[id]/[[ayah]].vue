@@ -473,6 +473,10 @@ function teardown(keepChapter?: number) {
   disposePin?.();
   sentinelObserver?.disconnect();
   window.removeEventListener("scroll", onScroll);
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
+  window.removeEventListener("wheel", cancelSettle);
+  window.removeEventListener("touchstart", cancelSettle);
+  cancelSettle();
   if (scrollRaf) cancelAnimationFrame(scrollRaf);
   if (urlSyncTimer) clearTimeout(urlSyncTimer);
 }
@@ -492,6 +496,9 @@ onMounted(async () => {
   );
   if (nextSentinel.value) sentinelObserver.observe(nextSentinel.value);
   window.addEventListener("scroll", onScroll, { passive: true });
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("wheel", cancelSettle, { passive: true });
+  window.addEventListener("touchstart", cancelSettle, { passive: true });
 
   urlSyncPausedUntil = Date.now() + INITIAL_SCROLL_SETTLE_MS;
 
@@ -571,7 +578,7 @@ const isRecitingThisSurah = computed(
   () => recitationStatus.value !== "idle" && recitationChapter.value === surahId,
 );
 
-function scrollToActiveVerse(force = false) {
+function scrollToActiveVerse(force = false, behavior: ScrollBehavior = "smooth") {
   nextTick(() => {
     const verse = activeVerseKey.value?.split(":")[1];
     const el = verse ? document.getElementById(`ayah-${verse}`) : null;
@@ -579,7 +586,7 @@ function scrollToActiveVerse(force = false) {
     const rect = el.getBoundingClientRect();
     // Only scroll when the verse has drifted out of the comfortable reading zone
     if (force || rect.top < 72 || rect.top > window.innerHeight * 0.6) {
-      window.scrollTo({ top: rect.top + window.scrollY - 88, behavior: "smooth" });
+      window.scrollTo({ top: rect.top + window.scrollY - 88, behavior });
     }
   });
 }
@@ -589,14 +596,41 @@ watch(reportHint, (on) => {
   if (on && isRecitingThisSurah.value) scrollToActiveVerse(true);
 });
 
-watch(activeVerseKey, async (key) => {
-  if (!key || !isRecitingThisSurah.value) return;
+let settleTimers: ReturnType<typeof setTimeout>[] = [];
+
+function cancelSettle() {
+  for (const timer of settleTimers) clearTimeout(timer);
+  settleTimers = [];
+}
+
+// Rows that just loaded shrink as their Arabic fonts arrive, which would carry a
+// smooth scroll past the ayah, so a jump lands at once and is re-aimed as the
+// page settles, unless the reader scrolls meanwhile
+function landOnActiveVerse() {
+  cancelSettle();
+  for (const ms of [0, 300, 800, 1500]) settleTimers.push(setTimeout(() => scrollToActiveVerse(false, "instant"), ms));
+}
+
+// A hidden tab waits: the audio kept playing, so it catches up once visible,
+// loading as many pages as the reciter got ahead by
+async function syncToActiveVerse(catchUp = false) {
+  const key = activeVerseKey.value;
+  if (!key || !isRecitingThisSurah.value || document.hidden) return;
   const verseNumber = Number(key.split(":")[1]);
-  if (lastLoadedPage.value && verseNumber >= lastLoadedPage.value.verseFrom) {
-    await loadNextPage();
+  let loaded = 0;
+  while (lastLoadedPage.value && verseNumber >= lastLoadedPage.value.verseFrom) {
+    if (!(await loadNextPage())) break;
+    loaded++;
   }
-  scrollToActiveVerse();
-});
+  if (catchUp || loaded > 1) landOnActiveVerse();
+  else scrollToActiveVerse();
+}
+
+watch(activeVerseKey, () => syncToActiveVerse());
+
+function handleVisibilityChange() {
+  if (!document.hidden) syncToActiveVerse(true);
+}
 
 // Recitation reached the end of this surah: count down, then continue with the next one
 const AUTO_NEXT_SECONDS = 5;
