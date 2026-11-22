@@ -82,6 +82,24 @@ const bookBreak = ref<VersePosition | null>(position.value);
 // 1 when the surah's first page was already read on the left of the previous surah's last spread
 const bookLeadingPages = ref(0);
 
+// What the book layer is given. While the Mushaf shows, the hidden book stays where it was:
+// following every turn would lay out a spread nobody sees in the same frame as the turn,
+// which slows each one. It catches up when the reader switches to it.
+const bookAt = ref({ position: position.value, break: bookBreak.value, leadingPages: bookLeadingPages.value });
+watch([mode, position, bookBreak, bookLeadingPages], () => {
+  if (mode.value !== "book" && bookAt.value.position) return;
+  bookAt.value = { position: position.value, break: bookBreak.value, leadingPages: bookLeadingPages.value };
+});
+// Even invisible, the book's thousands of nodes are restyled with every Mushaf turn, which
+// nearly triples a turn on older iPads. So it leaves the layout once its fade-out is done
+const bookShown = ref(mode.value === "book");
+let bookHideTimer: ReturnType<typeof setTimeout> | undefined;
+watch(mode, (next) => {
+  clearTimeout(bookHideTimer);
+  if (next === "book") bookShown.value = true;
+  else bookHideTimer = setTimeout(() => (bookShown.value = false), 300);
+});
+
 const sheetOpen = ref(false);
 const sheetVerseKey = ref<string | undefined>();
 
@@ -153,7 +171,7 @@ const bookPosition = ref<BookPosition | null>(null);
 const bookWarm = ref(requestedMode.value === "book");
 
 const bookSurah = computed(() => {
-  const id = position.value?.surah;
+  const id = bookAt.value.position?.surah;
   const surah = id ? quranStore.surahs.find(s => s.id === id) : undefined;
   return surah
     ? {
@@ -166,7 +184,7 @@ const bookSurah = computed(() => {
 });
 
 const bookNextSurah = computed(() => {
-  const id = position.value?.surah;
+  const id = bookAt.value.position?.surah;
   const surah = id ? quranStore.surahs.find(s => s.id === id + 1) : undefined;
   return surah
     ? {
@@ -443,6 +461,7 @@ onMounted(() => {
 onUnmounted(() => {
   clearTimeout(uiTimer);
   clearTimeout(tourTimer);
+  clearTimeout(bookHideTimer);
   if (idleHandle !== undefined) {
     if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idleHandle);
     else clearTimeout(idleHandle);
@@ -544,18 +563,19 @@ useSeoMeta({
       </template>
       <template #sheet>
         <BookSpread
-          v-if="bookWarm && position && bookSurah"
+          v-if="bookWarm && bookAt.position && bookSurah"
+          v-show="bookShown"
           ref="bookRef"
           class="transition-[opacity,visibility] duration-300 ease-out motion-reduce:transition-none"
           :class="mode === 'book' ? '' : 'invisible opacity-0'"
           :inert="mode !== 'book' || undefined"
-          :surah-number="position.surah"
+          :surah-number="bookAt.position.surah"
           :source-id="selectedSourceId && selectedSourceId > 0 ? selectedSourceId : undefined"
-          :anchor-verse="position.verse"
-          :break-verse="bookBreak?.surah === position.surah ? bookBreak.verse : undefined"
+          :anchor-verse="bookAt.position.verse"
+          :break-verse="bookAt.break?.surah === bookAt.position.surah ? bookAt.break.verse : undefined"
           :surah="bookSurah"
           :next-surah="bookNextSurah"
-          :leading-pages="bookLeadingPages"
+          :leading-pages="bookAt.leadingPages"
           :active="mode === 'book'"
           :nav-locked="modalOpen"
           @position="handleBookPosition"

@@ -8,6 +8,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from "vue";
 import { layoutBook, paginateBook, type BookItem, type BookPage } from "~/composables/bookPagination";
 import { flipPage } from "~/composables/usePageFlip";
+import { useSwipeTurn } from "~/composables/useSwipeTurn";
 import { BOOK_FONT_LOADED_KEY, useBookVerses, type BookVerse } from "~/composables/useBookVerses";
 import { useQcfFont } from "~/composables/useQcfFont";
 import { SELECTED_VERSE_KEY } from "~/composables/selectedVerse";
@@ -67,7 +68,6 @@ const emit = defineEmits<{
 // Padding, the 1px rule and the space under it, as BookPageView lays them out
 const FOOTNOTE_AREA_GAP = 16;
 const FOOTNOTE_GAP = 5;
-const SWIPE_MIN_PX = 50;
 // One by-keys chunk is plenty for a single page of the next surah
 const NEIGHBOR_VERSES = 25;
 
@@ -380,23 +380,12 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
-let touchStart: { x: number; y: number } | null = null;
-
-function handleTouchStart(e: TouchEvent) {
-  const t = e.touches[0];
-  touchStart = t ? { x: t.clientX, y: t.clientY } : null;
-}
-
-function handleTouchEnd(e: TouchEvent) {
-  const t = e.changedTouches[0];
-  if (!touchStart || !t || !canTurn()) return;
-  const dx = t.clientX - touchStart.x;
-  const dy = t.clientY - touchStart.y;
-  touchStart = null;
-  if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-  if (dx > 0) next();
-  else prev();
-}
+const swipe = useSwipeTurn({
+  enabled: () => canTurn() && ready.value,
+  canTurn: () => true,
+  layers: () => (sheetEl.value ? [sheetEl.value] : []),
+  turn: direction => (direction === "next" ? next() : prev()),
+});
 
 let resizeObserver: ResizeObserver | undefined;
 
@@ -425,8 +414,10 @@ onBeforeUnmount(() => {
     ref="sheetEl"
     class="absolute inset-0 mx-auto flex"
     :style="{ width: 'var(--book-width, 100%)' }"
-    @touchstart.passive="handleTouchStart"
-    @touchend.passive="handleTouchEnd"
+    @touchstart.passive="swipe.onTouchStart"
+    @touchmove.passive="swipe.onTouchMove"
+    @touchend.passive="swipe.onTouchEnd"
+    @touchcancel.passive="swipe.onTouchCancel"
   >
     <BookPageView
       v-if="showNeighbor && neighborMeta"

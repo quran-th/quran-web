@@ -6,27 +6,33 @@ import type { QuranWord, QuranWordFile, QuranVerseEntry } from '~/types/quran'
  * Page index: maps page number → chapter IDs on that page.
  * Loaded once on first use.
  */
-let pageIndex: Record<number, number[]> | null = null
+let pageIndex: Promise<Record<number, number[]>> | null = null
 
-async function loadPageIndex(baseUrl: string): Promise<Record<number, number[]>> {
-  if (pageIndex) return pageIndex
-  const res = await fetch(`${baseUrl}/quran-pages/page-index.json`)
-  pageIndex = await res.json()
-  return pageIndex!
+function loadPageIndex(baseUrl: string): Promise<Record<number, number[]>> {
+  if (!pageIndex) {
+    pageIndex = fetch(`${baseUrl}/quran-pages/page-index.json`).then(res => res.json())
+    pageIndex.catch(() => {
+      pageIndex = null
+    })
+  }
+  return pageIndex
 }
 
 
 /**
- * Chapter word cache: avoids re-fetching the same chapter JSON.
+ * Chapter word cache, holding the request itself so pages of one chapter loading
+ * together share a single download.
  */
-const chapterCache = new Map<number, QuranVerseEntry[]>()
+const chapterCache = new Map<number, Promise<QuranVerseEntry[]>>()
 
-async function loadChapterWords(chapterId: number, baseUrl: string): Promise<QuranVerseEntry[]> {
-  if (chapterCache.has(chapterId)) return chapterCache.get(chapterId)!
-  const res = await fetch(`${baseUrl}/quran-words/${chapterId}.json`)
-  const data: QuranWordFile = await res.json()
-  chapterCache.set(chapterId, data)
-  return data
+function loadChapterWords(chapterId: number, baseUrl: string): Promise<QuranVerseEntry[]> {
+  let words = chapterCache.get(chapterId)
+  if (!words) {
+    words = fetch(`${baseUrl}/quran-words/${chapterId}.json`).then(res => res.json() as Promise<QuranWordFile>)
+    words.catch(() => chapterCache.delete(chapterId))
+    chapterCache.set(chapterId, words)
+  }
+  return words
 }
 
 /** Info about a surah that starts on a specific page. */
@@ -196,14 +202,12 @@ export const useMushafStore = defineStore('mushaf', () => {
     currentPage.value = spreadMode.value && centerPage % 2 === 0 ? centerPage - 1 : centerPage
 
     const visible = visiblePages()
-    const others = windowPages().filter(p => !visible.includes(p))
-    // Previous-spread words are only a warm-up for going back, so they never block
-    const [next, prev] = spreadMode.value
-      ? [others.filter(p => p > visible[visible.length - 1]!), others.filter(p => p < visible[0]!)]
-      : [others, []]
-    Promise.all(prev.map(p => fetchPageWords(p))).catch(() => {})
+    // Neighbouring pages only warm up the following turn. A page turn waits on this
+    // promise (a view transition holds the old page frozen until it settles), so they never block it
+    const neighbours = windowPages().filter(p => !visible.includes(p))
+    Promise.all(neighbours.map(p => fetchPageWords(p))).catch(() => {})
 
-    await Promise.all([...visible, ...next].map(p => fetchPageWords(p)))
+    await Promise.all(visible.map(p => fetchPageWords(p)))
 
     // Pre-load bismillah words if any surah starts on a visible page
     if (visible.some(p => getSurahStartsOnPage(p).some(s => s.hasBismillah))) {

@@ -5,8 +5,9 @@
  * Keyboard: ArrowRight → prev page, ArrowLeft → next page (RTL).
  * In spread mode a page turn moves a whole two-page spread.
  */
-import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue'
-import { flipPage } from '~/composables/usePageFlip'
+import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue'
+import { flipPage, releaseDrag, sheetLayers, slideIn } from '~/composables/usePageFlip'
+import { useSwipeTurn } from '~/composables/useSwipeTurn'
 import { useMushafStore } from '~/stores/mushafStore'
 import { useReaderSettingsStore } from '~/stores/readerSettingsStore'
 import { useFontSettingsStore } from '~/stores/fontSettingsStore'
@@ -152,10 +153,20 @@ const edgeWidth = computed(() => {
 // Odd pages are the right page of a spread, even pages the left
 const paneSide = computed(() => (currentPage.value % 2 === 1 ? 'right' : 'left'))
 
+// The single page in the pane and phone layouts; the spread's layers are found in the sheet
+const pageEl = ref<HTMLElement | null>(null)
+
 function turn(direction: 'next' | 'prev') {
   const go = () => (direction === 'next' ? mushafStore.nextPage() : mushafStore.prevPage())
-  if (props.spread) flipPage(direction, go)
-  else go()
+  if (props.spread) {
+    flipPage(direction, go)
+    return
+  }
+  releaseDrag()
+  go()
+  nextTick(() => {
+    if (pageEl.value) slideIn([pageEl.value], direction)
+  })
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -172,37 +183,12 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
-const touchStartX = ref(0)
-const touchStartY = ref(0)
-
-function handleTouchStart(e: TouchEvent) {
-  if (e.changedTouches && e.changedTouches[0]) {
-    touchStartX.value = e.changedTouches[0].screenX
-    touchStartY.value = e.changedTouches[0].screenY
-  }
-}
-
-function handleTouchEnd(e: TouchEvent) {
-  if (props.navLocked || !e.changedTouches || !e.changedTouches[0]) return
-
-  const touchEndX = e.changedTouches[0].screenX
-  const touchEndY = e.changedTouches[0].screenY
-
-  const diffX = touchEndX - touchStartX.value
-  const diffY = touchEndY - touchStartY.value
-
-  // Threshold for swipe detection (50px)
-  if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
-    if (diffX > 0) {
-      // Swipe Right -> Next (following RTL natural direction)
-      if (hasNext.value) turn('next')
-    }
-    else {
-      // Swipe Left -> Prev
-      if (hasPrev.value) turn('prev')
-    }
-  }
-}
+const swipe = useSwipeTurn({
+  enabled: () => !props.navLocked,
+  canTurn: direction => (direction === 'next' ? hasNext.value : hasPrev.value),
+  layers: () => (props.spread ? sheetLayers() : pageEl.value ? [pageEl.value] : []),
+  turn,
+})
 
 const isFullscreen = ref(false)
 
@@ -244,9 +230,11 @@ onUnmounted(() => {
 <template>
   <div
     class="relative flex flex-1 flex-col"
-    :class="spread ? 'overflow-hidden' : 'overflow-y-auto'"
-    @touchstart="handleTouchStart"
-    @touchend="handleTouchEnd"
+    :class="spread ? 'overflow-hidden' : 'overflow-x-hidden overflow-y-auto'"
+    @touchstart.passive="swipe.onTouchStart"
+    @touchmove.passive="swipe.onTouchMove"
+    @touchend.passive="swipe.onTouchEnd"
+    @touchcancel.passive="swipe.onTouchCancel"
   >
     <!-- Before hydration the viewport is unknown to JS; CSS picks two pages or one -->
     <template v-if="!mounted">
@@ -326,7 +314,7 @@ onUnmounted(() => {
 
     <!-- Portrait tablets: one page with the translation pane on the side the page has in the spread -->
     <div v-else-if="pane" class="relative flex min-h-0 flex-1 px-6 pt-4 pb-6">
-      <div class="paper-surface flex min-w-0 flex-1 justify-center overflow-hidden rounded-[4px] shadow-paper">
+      <div ref="pageEl" class="paper-surface flex min-w-0 flex-1 justify-center overflow-hidden rounded-[4px] shadow-paper">
         <MushafPageTranslationColumn v-if="paneTranslation && paneSide === 'left'" :page="currentPage" side="left" :focused-verse="focusedVerse" />
         <MushafFittedPage :page-number="currentPage" :is-font-loaded="isFontLoaded" :fill="!paneTranslation" data-tour="page" @word-click="focusVerse" />
         <MushafPageTranslationColumn v-if="paneTranslation && paneSide === 'right'" :page="currentPage" side="right" :focused-verse="focusedVerse" />
@@ -336,7 +324,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Phones: single page on full-bleed paper; tapping an ayah opens its translation -->
-    <div v-else class="mushaf-page-wrapper relative md:p-2">
+    <div v-else ref="pageEl" class="mushaf-page-wrapper relative md:p-2">
       <MushafPageView
         :page-number="currentPage"
         :is-font-loaded="isFontLoaded"
