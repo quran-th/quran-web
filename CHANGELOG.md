@@ -1,3 +1,9 @@
+## [1.34.2](https://github.com/quran-th/quran-web/compare/v1.34.1...v1.34.2) (2026-11-22)
+
+### Bug Fixes
+
+* answer a page swipe at once and turn pages faster ([35df54b](https://github.com/quran-th/quran-web/commit/35df54bc7aa604295654ba812f4d7c5024379c50))
+
 ## [1.34.1](https://github.com/quran-th/quran-web/compare/v1.34.0...v1.34.1) (2026-11-22)
 
 ### Bug Fixes
