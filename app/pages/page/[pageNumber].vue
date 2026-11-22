@@ -76,6 +76,9 @@ const mode = computed<SpreadMode>(() => (isSpread.value && requestedMode.value =
 // The shared reading position. Only the visible layer moves it, so switching
 // modes back and forth never drifts: the hidden layer just follows along.
 const position = ref<VersePosition | null>(parseVerseKey(route.query.ayah));
+// Where the Mushaf last stood. The book opens a spread exactly there, rather
+// than on the spread around it, so switching layouts starts on the same ayah.
+const bookBreak = ref<VersePosition | null>(position.value);
 // 1 when the surah's first page was already read on the left of the previous surah's last spread
 const bookLeadingPages = ref(0);
 
@@ -137,6 +140,7 @@ const firstVerse = computed(() => parseVerseKey(firstKey.value));
 watch(firstVerse, (verse) => {
   if (verse && (mode.value === "mushaf" || !position.value)) {
     position.value = verse;
+    bookBreak.value = verse;
     bookLeadingPages.value = 0;
   }
 }, { immediate: true });
@@ -493,6 +497,7 @@ useSeoMeta({
           :surah-number="position.surah"
           :source-id="selectedSourceId && selectedSourceId > 0 ? selectedSourceId : undefined"
           :anchor-verse="position.verse"
+          :break-verse="bookBreak?.surah === position.surah ? bookBreak.verse : undefined"
           :surah="bookSurah"
           :next-surah="bookNextSurah"
           :leading-pages="bookLeadingPages"

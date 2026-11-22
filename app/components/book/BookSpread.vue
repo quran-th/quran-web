@@ -6,7 +6,7 @@
  * the left page blank shows the next surah's first page there instead.
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from "vue";
-import { paginateBook, type BookItem, type BookPage } from "~/composables/bookPagination";
+import { layoutBook, paginateBook, type BookItem, type BookPage } from "~/composables/bookPagination";
 import { flipPage } from "~/composables/usePageFlip";
 import { BOOK_FONT_LOADED_KEY, useBookVerses, type BookVerse } from "~/composables/useBookVerses";
 import { useQcfFont } from "~/composables/useQcfFont";
@@ -47,6 +47,8 @@ const props = defineProps<{
   sourceId?: number;
   /** The spread holding this verse is shown; it moves whenever the page moves it */
   anchorVerse: number;
+  /** A spread starts at this verse, so the book opens where the Mushaf page did */
+  breakVerse?: number;
   surah: BookSurahMeta;
   nextSurah?: BookNeighbor | null;
   /** Pages already read on the previous surah's last spread; spreads start after them */
@@ -106,6 +108,8 @@ const measureEl = ref<HTMLElement | null>(null);
 const neighborMeasureEl = ref<HTMLElement | null>(null);
 const bodySize = ref({ width: 0, height: 0 });
 const pages = ref<BookPage[]>([]);
+// Kept so a new break only lays the pages out again, without measuring
+const measured = ref<BookItem[]>([]);
 const spreadIndex = ref(0);
 const expandedFootnote = ref<string | null>(null);
 
@@ -216,9 +220,20 @@ async function paginate() {
   const container = measureEl.value;
   if (token !== paginateToken || !container) return;
 
-  pages.value = paginateItems(measure(container));
-  spreadIndex.value = Math.min(spreadForVerse(anchor.value), Math.max(spreadCount.value - 1, 0));
+  measured.value = measure(container);
+  layout();
   paginateNeighbor();
+}
+
+function layout() {
+  pages.value = layoutBook(measured.value, {
+    pageHeight: bodySize.value.height - 2,
+    footnoteAreaGap: FOOTNOTE_AREA_GAP,
+    footnoteGap: FOOTNOTE_GAP,
+    breakKey: props.breakVerse ? `${props.surahNumber}:${props.breakVerse}` : undefined,
+    lead: props.leadingPages ?? 0,
+  });
+  spreadIndex.value = Math.min(spreadForVerse(anchor.value), Math.max(spreadCount.value - 1, 0));
 }
 
 let neighborToken = 0;
@@ -282,6 +297,7 @@ function reload() {
   loadToken++;
   loaded.value = false;
   pages.value = [];
+  measured.value = [];
   spreadIndex.value = 0;
   reset();
   load();
@@ -295,8 +311,9 @@ watch(neighborWanted, (wanted) => {
 watch(neighborReady, (isReady) => {
   if (isReady) paginateNeighbor();
 });
-watch(lead, () => {
-  if (pages.value.length > 0) spreadIndex.value = spreadForVerse(anchor.value);
+// The break's spread parity counts from the lead, so a new lead lays the pages out again
+watch(() => props.leadingPages, () => {
+  if (measured.value.length > 0) layout();
 });
 watch(ready, (isReady) => {
   if (isReady) schedulePaginate();
@@ -308,7 +325,12 @@ watch([quranFont, fontScale], async () => {
   schedulePaginate();
 });
 
-watch(() => [props.surahNumber, props.anchorVerse] as const, ([surah, verse], [prevSurah]) => {
+watch(() => [props.surahNumber, props.anchorVerse, props.breakVerse] as const, ([surah, verse, breakVerse], [prevSurah, , prevBreak]) => {
+  if (surah === prevSurah && breakVerse !== prevBreak && measured.value.length > 0) {
+    anchor.value = verse;
+    layout();
+    return;
+  }
   // The page echoes back the spread's first verse; adopting it would walk the anchor back on every re-pagination
   if (surah === prevSurah && spreadVerses.value.includes(verse)) return;
   anchor.value = verse;
