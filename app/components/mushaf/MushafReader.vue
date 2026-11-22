@@ -302,6 +302,7 @@ onUnmounted(() => {
         <MushafPageEdge
           side="left"
           :disabled="!canNext"
+          data-tour="edge"
           :style="{ left: `${EDGE_INSIDE - edgeWidth}px`, width: `${edgeWidth}px` }"
           @turn="emit('edgeTurn', $event)"
         />
@@ -330,7 +331,7 @@ onUnmounted(() => {
         <MushafFittedPage :page-number="currentPage" :is-font-loaded="isFontLoaded" :fill="!paneTranslation" data-tour="page" @word-click="focusVerse" />
         <MushafPageTranslationColumn v-if="paneTranslation && paneSide === 'right'" :page="currentPage" side="right" :focused-verse="focusedVerse" />
       </div>
-      <MushafPageEdge side="left" :disabled="!canNext" class="top-4 bottom-6 left-0 w-9" @turn="emit('edgeTurn', $event)" />
+      <MushafPageEdge side="left" :disabled="!canNext" data-tour="edge" class="top-4 bottom-6 left-0 w-9" @turn="emit('edgeTurn', $event)" />
       <MushafPageEdge side="right" :disabled="!canPrev" class="top-4 bottom-6 right-0 w-9" @turn="emit('edgeTurn', $event)" />
     </div>
 
@@ -343,7 +344,7 @@ onUnmounted(() => {
         data-tour="page"
         @word-click="emit('openTranslation', $event)"
       />
-      <MushafPageEdge side="left" :disabled="!canNext" class="left-0 w-8" @turn="emit('edgeTurn', $event)" />
+      <MushafPageEdge side="left" :disabled="!canNext" data-tour="edge" class="left-0 w-8" @turn="emit('edgeTurn', $event)" />
       <MushafPageEdge side="right" :disabled="!canPrev" class="right-0 w-8" @turn="emit('edgeTurn', $event)" />
     </div>
 

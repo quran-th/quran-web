@@ -39,8 +39,15 @@ let settleTimer: ReturnType<typeof setTimeout> | undefined;
 function measure() {
   const el = step.value ? findTarget(step.value.target) : null;
   if (el !== observed) {
-    if (observed) resizeObserver?.unobserve(observed);
-    if (el) resizeObserver?.observe(el);
+    if (observed) {
+      resizeObserver?.unobserve(observed);
+      delete observed.dataset.tourActive;
+    }
+    if (el) {
+      resizeObserver?.observe(el);
+      // Lets a target show its hover-only parts, like the page edge's arrow, while spotlit
+      el.dataset.tourActive = "";
+    }
     observed = el;
   }
   targetRect.value = el?.getBoundingClientRect() ?? null;
@@ -150,6 +157,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   clearTimeout(settleTimer);
+  if (observed) delete observed.dataset.tourActive;
   resizeObserver?.disconnect();
   window.removeEventListener("resize", measure);
   window.removeEventListener("scroll", measure, true);
@@ -167,7 +175,17 @@ onBeforeUnmount(() => {
         aria-hidden="true"
         class="pointer-events-none absolute rounded-[14px] shadow-[0_0_0_9999px_rgba(30,25,18,0.42)] outline-[1.5px] outline-solid outline-paper-pill/70 transition-[top,left,width,height] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
         :style="{ top: `${hole.top}px`, left: `${hole.left}px`, width: `${hole.width}px`, height: `${hole.height}px` }"
-      />
+      >
+        <!-- A fingertip sliding right, the way a swipe turns to the next page -->
+        <div v-if="step?.gesture === 'swipe'" :key="index" class="absolute inset-0 flex items-center justify-center">
+          <div class="relative h-12 w-40">
+            <span class="tour-swipe-trail absolute left-6 top-1/2 h-1 -translate-y-1/2 rounded-full bg-ink-strong/25" />
+            <span class="tour-swipe-dot absolute left-0 top-0 flex size-12 items-center justify-center rounded-full bg-ink-strong/70 text-paper-pill ring-4 ring-ink-strong/15">
+              <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
+            </span>
+          </div>
+        </div>
+      </div>
 
       <div
         ref="card"
@@ -210,7 +228,15 @@ onBeforeUnmount(() => {
                 >
               </div>
               <h2 id="reader-tour-title" class="text-[17px] font-semibold tracking-tight text-ink-strong" :class="step?.image ? 'mt-4' : 'mt-2.5'">{{ step?.title }}</h2>
-              <p id="reader-tour-body" class="mt-2 break-keep text-sm leading-[1.75] text-ink-icon">{{ step?.body }}</p>
+              <div id="reader-tour-body" class="mt-2 break-keep text-sm leading-[1.75] text-ink-icon">
+                <p>{{ step?.body }}</p>
+                <ul v-if="step?.points?.length" class="mt-2.5 space-y-1.5">
+                  <li v-for="point in step.points" :key="point.title" class="flex gap-2.5">
+                    <span aria-hidden="true" class="mt-[0.7em] size-1 shrink-0 rounded-full bg-ink-muted/60" />
+                    <span><strong class="font-semibold text-ink-strong">{{ point.title }}</strong> {{ point.body }}</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </Transition>
 
@@ -246,3 +272,28 @@ onBeforeUnmount(() => {
     </div>
   </Teleport>
 </template>
+
+<style scoped>
+/* The dot travels 112px (the 160px track less its 48px width); the trail follows from its centre */
+.tour-swipe-dot {
+  animation: tour-swipe-dot 1.8s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+.tour-swipe-trail {
+  animation: tour-swipe-trail 1.8s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+@keyframes tour-swipe-dot {
+  0% { transform: translateX(0) scale(0.85); opacity: 0; }
+  15% { transform: translateX(0) scale(1); opacity: 1; }
+  65% { transform: translateX(112px) scale(1); opacity: 1; }
+  85%, 100% { transform: translateX(112px) scale(0.85); opacity: 0; }
+}
+@keyframes tour-swipe-trail {
+  0%, 15% { width: 0; opacity: 1; }
+  65% { width: 112px; opacity: 1; }
+  85%, 100% { width: 112px; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-swipe-dot { animation: none; transform: translateX(112px); }
+  .tour-swipe-trail { animation: none; width: 112px; }
+}
+</style>

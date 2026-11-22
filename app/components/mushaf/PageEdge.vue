@@ -23,15 +23,15 @@ function handleClick() {
     @click="handleClick"
   >
     <div
-      class="absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100 motion-reduce:transition-none"
+      class="absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-data-[tour-active]:opacity-100 motion-reduce:transition-none"
       :class="side === 'left'
         ? 'bg-linear-to-r from-[rgba(70,55,30,0.12)] to-transparent'
         : 'bg-linear-to-l from-[rgba(70,55,30,0.12)] to-transparent'"
     />
     <div
-      class="absolute top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-paper-pill text-ink-icon opacity-0 shadow-pill transition-[opacity,transform] duration-200 group-hover:opacity-100 motion-reduce:transition-none"
+      class="absolute top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-paper-pill text-ink-icon opacity-0 shadow-pill transition-[opacity,transform] duration-200 group-hover:opacity-100 group-data-[tour-active]:opacity-100 motion-reduce:transition-none"
       :class="side === 'left'
-        ? 'right-0 translate-x-1 group-hover:translate-x-0'
+        ? 'right-0 translate-x-1 group-hover:translate-x-0 group-data-[tour-active]:translate-x-0'
         : 'left-0 -translate-x-1 group-hover:translate-x-0'"
     >
       <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

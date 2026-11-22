@@ -10,6 +10,10 @@ export interface TourStep {
   target: string
   title: string
   body: string
+  /** A looping gesture played over the spotlit area, for touch-only actions */
+  gesture?: 'swipe'
+  /** Listed under the body: a bold topic, then a short line on it */
+  points?: { title: string, body: string }[]
   /** A fixed snapshot shown in the card, so a step can show a layout without moving the reader */
   image?: { src: string, alt: string }
 }
@@ -92,8 +96,8 @@ export function readerTourSteps(layout: ReaderLayout, verseTapWorks: boolean, mo
     return [
       { since: '1.32.0', target: 'page', title: 'แตะอายะห์เพื่ออ่านคำแปล', body: 'แตะคำใดก็ได้บนหน้ามุศฮัฟ คำแปลของอายะห์นั้นจะเปิดขึ้นจากด้านล่าง' },
       mouse
-        ? { since: '1.32.0', target: 'range', title: 'พลิกหน้า', body: 'คลิกขอบซ้ายของหน้าหรือกดปุ่ม ← เพื่อไปหน้าถัดไป และคลิกขอบขวาหรือกดปุ่ม → เพื่อย้อนกลับ ตามทิศการอ่านของมุศฮัฟ' }
-        : { since: '1.32.0', target: 'range', title: 'ปัดเพื่อพลิกหน้า', body: 'ปัดไปทางขวาเพื่อไปหน้าถัดไป และปัดไปทางซ้ายเพื่อย้อนกลับ ตามทิศการอ่านของมุศฮัฟ' },
+        ? { since: '1.32.0', target: 'edge', title: 'พลิกหน้า', body: 'คลิกขอบซ้ายของหน้าหรือกดปุ่ม ← เพื่อไปหน้าถัดไป และคลิกขอบขวาหรือกดปุ่ม → เพื่อย้อนกลับ ตามทิศการอ่านของมุศฮัฟ' }
+        : { since: '1.32.0', target: 'page', gesture: 'swipe', title: 'ปัดเพื่อพลิกหน้า', body: 'ปัดไปทางขวาเพื่อไปหน้าถัดไป และปัดไปทางซ้ายเพื่อย้อนกลับ ตามทิศการอ่านของมุศฮัฟ' },
       { since: '1.32.0', target: 'translation', title: 'คำแปลทั้งหน้า', body: 'เปิดคำแปลของทุกอายะห์ในหน้านี้ได้ในครั้งเดียว' },
       { since: '1.32.0', target: 'menu', title: 'เมนูเพิ่มเติม', body: 'ฟังเสียงอ่าน แจ้งคำแปลที่ผิดพลาด และตั้งค่าฉบับแปลกับขนาดตัวอักษร' },
     ]
@@ -106,17 +110,35 @@ export function readerTourSteps(layout: ReaderLayout, verseTapWorks: boolean, mo
     body: 'แตะคำใดก็ได้บนหน้ามุศฮัฟ คำแปลของอายะห์นั้นจะถูกเน้นในคอลัมน์ข้าง ๆ',
   }
   const common: TourStep[] = [
-    {
-      since: '1.32.0',
-      target: 'nav',
-      title: 'พลิกหน้า',
-      body: mouse
-        ? 'กดลูกศร คลิกที่ขอบหน้ากระดาษ หรือใช้ปุ่ม ← → บนแป้นพิมพ์ หน้าถัดไปอยู่ทางซ้ายตามแบบมุศฮัฟ'
-        : 'กดลูกศรหรือปัดหน้าจอ หน้าถัดไปอยู่ทางซ้ายตามแบบมุศฮัฟ',
-    },
+    // Page edges are click zones for a mouse only; touch screens turn by swiping
+    mouse
+      ? {
+          since: '1.32.0',
+          target: 'edge',
+          title: 'พลิกหน้า',
+          body: 'คลิกขอบซ้ายของหน้าเพื่อไปหน้าถัดไป และขอบขวาเพื่อย้อนกลับ ตามแบบมุศฮัฟ หรือใช้ปุ่ม ← → บนแป้นพิมพ์',
+        }
+      : {
+          since: '1.32.0',
+          target: 'page',
+          gesture: 'swipe',
+          title: 'ปัดเพื่อพลิกหน้า',
+          body: 'ปัดไปทางขวาเพื่อไปหน้าถัดไป และปัดไปทางซ้ายเพื่อย้อนกลับ ตามทิศการอ่านของมุศฮัฟ หรือกดลูกศรด้านบน',
+        },
     { since: '1.32.0', target: 'report', title: 'แจ้งข้อผิดพลาด', body: 'พบคำแปลที่ผิดหรือพิมพ์ผิด แจ้งเราได้ที่นี่ เพื่อช่วยกันปรับปรุงคำแปล' },
     { since: '1.32.0', target: 'listen', title: 'ฟังเสียงอ่าน', body: 'ฟังการอ่านอัลกุรอาน เริ่มจากอายะห์แรกของหน้านี้ เปิดเสียงคำแปลภาษาไทยเพิ่มได้ที่แถบเครื่องเล่น' },
-    { since: '1.32.0', target: 'settings', title: 'ตั้งค่าการอ่าน', body: 'เลือกฉบับแปลและปรับขนาดตัวอักษร' },
+    {
+      since: '1.32.0',
+      target: 'settings',
+      title: 'ตั้งค่าการอ่าน',
+      body: 'ปรับการอ่านให้เหมาะกับคุณได้ที่นี่',
+      points: [
+        { title: 'คำแปล', body: 'เลือกฉบับแปลภาษาไทยที่ต้องการอ่าน' },
+        { title: 'รูปแบบตัวอักษร', body: 'เลือกอักษรอาหรับแบบอุษมานีย์ มะญีด หรือตัจวีด' },
+        { title: 'ขนาดอักษร', body: 'ปรับขนาดตัวอักษรให้อ่านสบายตา' },
+        { title: 'ดูวิธีใช้งานอีกครั้ง', body: 'เปิดคำแนะนำชุดนี้ได้ทุกเมื่อ' },
+      ],
+    },
   ]
 
   if (layout === 'pane') {
