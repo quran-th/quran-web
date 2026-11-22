@@ -7,6 +7,18 @@ export interface TourStep {
   body: string
 }
 
+/** What each reading layout is for, shown on the layout switch and in the tour */
+export const LAYOUT_INFO = {
+  mushaf: {
+    title: 'มุศฮัฟ',
+    body: 'อ่านหน้าอัลกุรอานแบบมุศฮัฟ โดยมีคำแปลอยู่ข้าง ๆ ให้ดูเมื่อต้องการ',
+  },
+  book: {
+    title: 'สองภาษา',
+    body: 'อ่านอายะห์กับความหมายเคียงกันทีละอายะห์ เหมาะกับฉบับแปลที่มีเชิงอรรถ ซึ่งจะแสดงอยู่ท้ายหน้า',
+  },
+} as const
+
 const STORAGE_PREFIX = 'reader-tour-seen:'
 // Private-mode browsers can refuse localStorage; then the tour only stays dismissed for this visit
 const seenThisVisit = new Set<ReaderLayout>()
@@ -75,7 +87,12 @@ export function readerTourSteps(layout: ReaderLayout, verseTapWorks: boolean, mo
   }
 
   return [
-    { target: 'mode', title: 'สองแบบการอ่าน', body: 'มุศฮัฟ แสดงหน้าอัลกุรอานพร้อมคำแปลข้าง ๆ ส่วนสองภาษา จัดอาหรับและคำแปลเป็นหนังสือที่อ่านต่อเนื่องทีละอายะห์' },
+    {
+      target: 'mode',
+      title: 'สองแบบการอ่าน',
+      body: `${LAYOUT_INFO.mushaf.title}: ${LAYOUT_INFO.mushaf.body}\n${LAYOUT_INFO.book.title}: ${LAYOUT_INFO.book.body}`
+        + (mouse ? '\nชี้ที่ปุ่มเพื่อดูคำอธิบายนี้อีกครั้ง' : ''),
+    },
     ...(verseTapWorks ? [verseTap] : []),
     ...common,
     { target: 'index', title: 'สารบัญ', body: 'ข้ามไปยังซูเราะห์ใดก็ได้จากรายชื่อทั้ง 114 ซูเราะห์' },

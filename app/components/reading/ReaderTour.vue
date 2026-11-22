@@ -182,7 +182,7 @@ onBeforeUnmount(() => {
           <span class="ml-auto text-xs tabular-nums text-ink-muted">{{ index + 1 }} / {{ steps.length }}</span>
         </div>
         <h2 id="reader-tour-title" class="text-base font-semibold text-ink-strong">{{ step?.title }}</h2>
-        <p id="reader-tour-body" class="mt-1.5 text-sm leading-relaxed text-ink-soft">{{ step?.body }}</p>
+        <p id="reader-tour-body" class="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-ink-soft">{{ step?.body }}</p>
         <div class="mt-4 flex items-center gap-2">
           <button
             v-if="!isLast"

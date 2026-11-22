@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { LAYOUT_INFO } from "~/composables/useReaderTour";
 
 type SpreadMode = "mushaf" | "book";
 
@@ -136,15 +137,25 @@ onBeforeUnmount(() => {
           class="absolute inset-y-[3px] left-[3px] w-[calc(50%-3px)] rounded-[7px] bg-paper-pill shadow-pill transition-transform duration-300 ease-out motion-reduce:transition-none"
           :class="mode === 'book' ? 'translate-x-full' : 'translate-x-0'"
         />
-        <button
-          v-for="tab in tabs"
-          :key="tab.key"
-          type="button"
-          :aria-pressed="mode === tab.key"
-          class="relative flex h-[26px] items-center justify-center rounded-[7px] px-4 text-[13px] transition-colors duration-300 after:absolute after:inset-x-0 after:-inset-y-[9px]"
-          :class="mode === tab.key ? 'font-semibold text-ink' : 'font-medium text-ink-icon'"
-          @click="emit('update:mode', tab.key)"
-        >{{ tab.label }}</button>
+        <div v-for="tab in tabs" :key="tab.key" class="group relative">
+          <button
+            type="button"
+            :aria-pressed="mode === tab.key"
+            :aria-describedby="`layout-info-${tab.key}`"
+            class="relative flex h-[26px] w-full items-center justify-center rounded-[7px] px-4 text-[13px] transition-colors duration-300 after:absolute after:inset-x-0 after:-inset-y-[9px]"
+            :class="mode === tab.key ? 'font-semibold text-ink' : 'font-medium text-ink-icon'"
+            @click="emit('update:mode', tab.key)"
+          >{{ tab.label }}</button>
+          <!-- Hover waits a beat so passing over the switch doesn't flash the card -->
+          <div
+            :id="`layout-info-${tab.key}`"
+            role="tooltip"
+            class="pointer-events-none invisible absolute left-1/2 top-full z-30 mt-3 w-[260px] -translate-x-1/2 rounded-[14px] bg-paper-pill p-4 text-left opacity-0 shadow-menu transition-[opacity,visibility] duration-150 motion-reduce:transition-none mouse:group-hover:visible mouse:group-hover:opacity-100 mouse:group-hover:delay-500 group-has-[:focus-visible]:visible group-has-[:focus-visible]:opacity-100"
+          >
+            <p class="text-sm font-semibold text-ink-strong">{{ LAYOUT_INFO[tab.key].title }}</p>
+            <p class="mt-1 break-keep text-[13px] leading-relaxed text-ink-soft">{{ LAYOUT_INFO[tab.key].body }}</p>
+          </div>
+        </div>
       </nav>
 
       <div class="flex flex-1 items-center justify-end gap-1">
