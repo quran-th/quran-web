@@ -1,3 +1,13 @@
+# [1.35.0](https://github.com/quran-th/quran-web/compare/v1.34.3...v1.35.0) (2026-11-28)
+
+### Bug Fixes
+
+* restore PwaStepIcon, still used by PwaInstallModal ([5287b56](https://github.com/quran-th/quran-web/commit/5287b56c7477d09f594487b2706c181f3d7010b7))
+
+### Features
+
+* remember the last reading or listening spot for the home page ([07d2a2a](https://github.com/quran-th/quran-web/commit/07d2a2abf5b9ca1e3f871647c52f31daf2558b7e))
+
 ## [1.34.3](https://github.com/quran-th/quran-web/compare/v1.34.2...v1.34.3) (2026-11-22)
 
 ### Bug Fixes
