@@ -1212,8 +1212,8 @@ export const useRecitationStore = defineStore('recitation', () => {
       artist: phase.value === 'translation' ? TRANSLATION_ARTIST : reciter ? getReciterLabelTh(reciter) : '',
       album: 'อัลกุรอานแปลไทย',
       artwork: [
-        { src: `${origin}/icon192_maskable.png`, sizes: '192x192', type: 'image/png' },
-        { src: `${origin}/icon512_maskable.png`, sizes: '512x512', type: 'image/png' },
+        { src: `${origin}/icons/icon-maskable-192.png`, sizes: '192x192', type: 'image/png' },
+        { src: `${origin}/icons/icon-maskable-512.png`, sizes: '512x512', type: 'image/png' },
       ],
     })
     navigator.mediaSession.playbackState = status.value === 'playing' ? 'playing' : 'paused'

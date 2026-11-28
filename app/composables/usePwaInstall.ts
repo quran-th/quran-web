@@ -1,6 +1,5 @@
 import { computed, ref } from 'vue'
-
-type Platform = 'ios' | 'android' | 'desktop' | 'unsupported'
+import { pwaPlatform, type PwaPlatform } from '~/utils/pwaPlatform'
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: ReadonlyArray<string>
@@ -8,176 +7,157 @@ interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
 }
 
-const STORAGE_KEY = 'pwa-install-dismissed-at'
-const REPROMPT_AFTER_MS = 3 * 24 * 60 * 60 * 1000 // 3 days
-const SHOW_DELAY_MS = 10 * 1000 // 10 seconds on-page before prompting
+// The badge shows at most once per 3 days, counted from when it last appeared (not from a dismiss), so ignoring it
+// does not bring it back on every visit.
+const STORAGE_KEY = 'pwa-install-shown-at'
+const REPROMPT_AFTER_MS = 3 * 24 * 60 * 60 * 1000
+const SHOW_DELAY_MS = 10 * 1000
+// Chrome hands over its install prompt only after some engagement with the page; until then the Android sheet waits
+// with a "preparing" button, and after this long it falls back to the menu steps.
+const PROMPT_WAIT_MS = 30 * 1000
 
 const deferredPrompt = ref<BeforeInstallPromptEvent | null>(null)
-const isStandalone = ref(false)
-const platform = ref<Platform>('unsupported')
-const dismissedRecently = ref(false)
+const installed = ref(false)
+const platform = ref<PwaPlatform>({ kind: 'none' })
+const shownRecently = ref(false)
+const dismissed = ref(false)
 const ready = ref(false)
 const delayElapsed = ref(false)
-let listenersAttached = false
-const delayTimer: { id: ReturnType<typeof setTimeout> | null } = { id: null }
+let bootAt = 0
+let previewing = false
 
 function detectStandalone(): boolean {
-  if (typeof window === 'undefined') return false
   if (window.matchMedia?.('(display-mode: standalone)').matches) return true
-  // iOS Safari sets navigator.standalone when launched from home screen
-  const navAny = window.navigator as unknown as { standalone?: boolean }
-  if (navAny.standalone === true) return true
-  if (typeof document !== 'undefined' && document.referrer.startsWith('android-app://')) return true
-  return false
+  if (window.matchMedia?.('(display-mode: fullscreen)').matches) return true
+  if ((window.navigator as Navigator & { standalone?: boolean }).standalone === true) return true
+  return document.referrer.startsWith('android-app://')
 }
 
-function detectPlatform(): Platform {
-  if (typeof window === 'undefined') return 'unsupported'
-  const ua = window.navigator.userAgent
-  if (/iPad|iPhone|iPod/i.test(ua) && !/Windows/i.test(ua)) return 'ios'
-  if (/Android/i.test(ua)) return 'android'
-  // Safari on macOS has no install API — hide rather than show dead UI.
-  const isMacSafari = /Safari/i.test(ua) && !/Chrome|Chromium|Edg|OPR/i.test(ua) && /Macintosh/i.test(ua)
-  if (isMacSafari) return 'unsupported'
-  return 'desktop'
-}
-
-function readDismissed(): boolean {
-  if (typeof window === 'undefined') return false
+function readShownRecently(): boolean {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return false
-    const ts = Number.parseInt(raw, 10)
-    if (!Number.isFinite(ts)) return false
-    return Date.now() - ts < REPROMPT_AFTER_MS
+    const ts = Number.parseInt(window.localStorage.getItem(STORAGE_KEY) ?? '', 10)
+    return Number.isFinite(ts) && Date.now() - ts < REPROMPT_AFTER_MS
   }
   catch {
     return false
   }
 }
 
-function attachListeners() {
-  if (listenersAttached) return
-  listenersAttached = true
-
-  const onBeforeInstall = (event: Event) => {
-    event.preventDefault()
-    deferredPrompt.value = event as BeforeInstallPromptEvent
+function fakePrompt(): BeforeInstallPromptEvent {
+  // The answer comes 2 s after the tap, like a person reading Chrome's dialog.
+  const fake = {
+    platforms: [],
+    userChoice: Promise.resolve({ outcome: 'accepted', platform: 'web' }),
+    prompt: async () => {
+      fake.userChoice = new Promise(resolve => setTimeout(() => resolve({ outcome: 'accepted', platform: 'web' }), 2000))
+    },
   }
-
-  const onInstalled = () => {
-    deferredPrompt.value = null
-    isStandalone.value = true
-  }
-
-  window.addEventListener('beforeinstallprompt', onBeforeInstall as EventListener)
-  window.addEventListener('appinstalled', onInstalled)
+  return fake as unknown as BeforeInstallPromptEvent
 }
 
-// Dev-only preview overrides via ?pwa=ios|android|fallback
-// Forces a specific render branch and bypasses delay + dismissal so the modal
-// can be inspected without device juggling. Remove before production.
-function readPreviewOverride(): 'ios' | 'android' | 'fallback' | null {
-  if (typeof window === 'undefined') return null
-  const value = new URLSearchParams(window.location.search).get('pwa')
-  if (value === 'ios' || value === 'android' || value === 'fallback') return value
-  return null
+// Dev preview via ?pwa=<case>: forces one branch and skips the delay and the 3-day rule, so each sheet can be checked
+// on a desktop browser.
+const PREVIEWS: Record<string, { platform: PwaPlatform, prompt?: boolean }> = {
+  'ios26': { platform: { kind: 'ios', safari: true, menuInMore: true } },
+  'ios': { platform: { kind: 'ios', safari: true, menuInMore: false } },
+  'ios-chrome': { platform: { kind: 'ios', safari: false, menuInMore: false } },
+  'line': { platform: { kind: 'in-app', app: 'line', os: 'ios', browser: 'Safari' } },
+  'line-android': { platform: { kind: 'in-app', app: 'line', os: 'android', browser: 'Chrome' } },
+  'android': { platform: { kind: 'android', prompts: true }, prompt: true },
+  'android-wait': { platform: { kind: 'android', prompts: true } },
+  'android-noprompt': { platform: { kind: 'android', prompts: false } },
+  'desktop': { platform: { kind: 'desktop' }, prompt: true },
 }
 
 let initialized = false
 
-// Run once on the client at app boot (via plugins/pwa-install.client.ts).
-// Attaching `beforeinstallprompt` here — rather than inside a component
-// onMounted — guarantees the listener is in place before Chrome fires the
-// event, which can happen before any <ClientOnly> component hydrates.
+// Run once on the client at app boot (plugins/pwa-install.client.ts): Chrome may fire beforeinstallprompt before any
+// <ClientOnly> component hydrates, so the listener cannot wait for the component.
 export function initPwaInstall(): void {
   if (initialized || typeof window === 'undefined') return
   initialized = true
+  bootAt = Date.now()
 
-  isStandalone.value = detectStandalone()
-  platform.value = detectPlatform()
-  dismissedRecently.value = readDismissed()
-  attachListeners()
-  ready.value = true
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault()
+    deferredPrompt.value = event as BeforeInstallPromptEvent
+  })
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt.value = null
+    installed.value = true
+  })
 
-  const preview = readPreviewOverride()
+  const preview = PREVIEWS[new URLSearchParams(window.location.search).get('pwa') ?? '']
   if (preview) {
-    isStandalone.value = false
-    dismissedRecently.value = false
+    previewing = true
+    platform.value = preview.platform
+    deferredPrompt.value = preview.prompt ? fakePrompt() : null
     delayElapsed.value = true
-    if (preview === 'ios') {
-      platform.value = 'ios'
-      deferredPrompt.value = null
-    }
-    else if (preview === 'android') {
-      platform.value = 'android'
-      deferredPrompt.value = {
-        platforms: [],
-        userChoice: Promise.resolve({ outcome: 'dismissed', platform: 'web' }),
-        prompt: async () => {},
-      } as unknown as BeforeInstallPromptEvent
-    }
-    else {
-      platform.value = 'android'
-      deferredPrompt.value = null
-    }
+    ready.value = true
     return
   }
 
-  if (delayTimer.id === null) {
-    delayTimer.id = setTimeout(() => {
-      delayElapsed.value = true
-      delayTimer.id = null
-    }, SHOW_DELAY_MS)
-  }
+  platform.value = pwaPlatform(window.navigator.userAgent, {
+    standalone: detectStandalone(),
+    maxTouchPoints: window.navigator.maxTouchPoints ?? 0,
+  })
+  shownRecently.value = readShownRecently()
+  ready.value = true
+  setTimeout(() => {
+    delayElapsed.value = true
+  }, SHOW_DELAY_MS)
 }
 
 export function usePwaInstall() {
-  // Safety net for callers that import the composable without the plugin.
-  // No-op once initialized.
   initPwaInstall()
 
   const canShow = computed(() => {
-    if (!ready.value) return false
-    if (!delayElapsed.value) return false
-    if (isStandalone.value) return false
-    if (dismissedRecently.value) return false
-    if (platform.value === 'unsupported') return false
+    if (!ready.value || !delayElapsed.value || shownRecently.value || dismissed.value || installed.value) return false
+    const kind = platform.value.kind
+    if (kind === 'none' || kind === 'unsupported') return false
+    // Desktop has no steps worth drawing: offer it only when the browser's own install prompt is ready.
+    if (kind === 'desktop') return deferredPrompt.value !== null
     return true
   })
 
-  async function triggerInstall(): Promise<void> {
-    const evt = deferredPrompt.value
-    if (!evt) return
-    try {
-      await evt.prompt()
-      const choice = await evt.userChoice
-      deferredPrompt.value = null
-      if (choice.outcome === 'dismissed') {
-        dismiss()
-      }
-    }
-    catch (err) {
-      console.error('PWA install prompt failed:', err)
-    }
-  }
-
-  function dismiss() {
-    dismissedRecently.value = true
+  function noteShown() {
+    if (previewing) return
     try {
       window.localStorage.setItem(STORAGE_KEY, String(Date.now()))
     }
     catch {
-      // localStorage unavailable (private mode) — in-memory dismiss is enough.
+      // localStorage unavailable (private mode): the badge may come back next visit.
     }
+  }
+
+  async function promptInstall(): Promise<'accepted' | 'dismissed' | 'unavailable'> {
+    const event = deferredPrompt.value
+    if (!event) return 'unavailable'
+    deferredPrompt.value = null // a prompt can be used once
+    try {
+      await event.prompt()
+      const { outcome } = await event.userChoice
+      if (outcome === 'accepted') installed.value = true
+      return outcome
+    }
+    catch (err) {
+      console.error('PWA install prompt failed:', err)
+      return 'unavailable'
+    }
+  }
+
+  function dismiss() {
+    dismissed.value = true
   }
 
   return {
     canShow,
     platform,
-    isStandalone,
+    installed,
     hasDeferredPrompt: computed(() => deferredPrompt.value !== null),
-    triggerInstall,
+    promptWaitLeft: () => Math.max(0, PROMPT_WAIT_MS - (Date.now() - bootAt)),
+    noteShown,
+    promptInstall,
     dismiss,
   }
 }

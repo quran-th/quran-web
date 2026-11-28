@@ -28,6 +28,25 @@
       box-shadow: 0 0 16px 4px rgba(212, 168, 55, 0.6);
     }
   }
+
+  /* Install sheet (components/pwa): the ring round the button to tap grows and fades once per 3.2 s step (STEP_MS in
+     PwaWalkthrough.vue), the app icon pops onto the drawn home screen, and each step's picture fades up */
+  --animate-tap-ring: tap-ring 3.2s ease-out infinite;
+  @keyframes tap-ring {
+    0%, 30% { transform: scale(0.6); opacity: 0; }
+    38% { opacity: 0.9; }
+    70%, 100% { transform: scale(1.6); opacity: 0; }
+  }
+  --animate-icon-pop: icon-pop 3.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+  @keyframes icon-pop {
+    0%, 18% { transform: scale(0); opacity: 0; }
+    30% { transform: scale(1.15); opacity: 1; }
+    38%, 100% { transform: scale(1); opacity: 1; }
+  }
+  --animate-step-in: step-in 350ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  @keyframes step-in {
+    from { transform: translateY(10px); opacity: 0; }
+  }
 }
 
 /* Static: scoped component CSS reads these through var(), which Tailwind cannot see */

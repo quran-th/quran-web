@@ -29,7 +29,7 @@ This repo is the public reader. It sits next to three sibling repos:
 | `quran-web` (this repo) | Public reader, Nuxt 4 SSR on Cloudflare Workers |
 | `quran-api` | Hono REST API on Cloudflare Workers + D1 |
 | `quran-admin` | Contributor panel for translation correction |
-| `listen-quran` | Audio player at [quran.in.th](https://quran.in.th) |
+| `listen-quran` | Audio player at [listen.quran.in.th](https://listen.quran.in.th) |
 
 The reader fetches surahs, translations and recitation data from `quran-api`; static assets (fonts, audio) are served from `assets.quran.in.th`.
 
