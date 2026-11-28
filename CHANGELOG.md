@@ -1,3 +1,9 @@
+# [1.36.0](https://github.com/quran-th/quran-web/compare/v1.35.0...v1.36.0) (2026-11-28)
+
+### Features
+
+* guide each phone through adding the app to its home screen, with a new icon set ([6551cbb](https://github.com/quran-th/quran-web/commit/6551cbba5501f4fd8ff0872d512e529b2ab65e1d))
+
 # [1.35.0](https://github.com/quran-th/quran-web/compare/v1.34.3...v1.35.0) (2026-11-28)
 
 ### Bug Fixes
